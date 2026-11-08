@@ -2146,7 +2146,7 @@ let DIFF="normal";try{const d=localStorage.getItem("liftshift-diff");if(d&&DIFFS
 function titleScreen(){
   mode="title";let best=null;try{const s=localStorage.getItem("liftshift-best");best=s===null?null:+s;}catch(e){}
   const opts=Object.entries(DIFFS).map(([k,d])=>`<button class="diff ${k===DIFF?"on":""}" data-diff="${k}" aria-pressed="${k===DIFF}"><b>${d.label}</b><span>${d.desc}</span><small>First client: ${d.counts[0][0]} servers + ${d.counts[0][1]} hidden</small></button>`).join("");
-  show(`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><div class="eyebrow">A cloud migration game · prototype</div><small style="margin-left:auto;text-align:right;color:var(--muted);font-size:10px">Last updated <time datetime="2026-11-08T12:39:00-05:00">Nov 8, 2026 · 12:39 PM ET</time></small></div>
+  show(`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><div class="eyebrow">A cloud migration game · prototype</div><small style="margin-left:auto;text-align:right;color:var(--muted);font-size:10px">Last updated <time datetime="2026-11-08T12:51:00-05:00">Nov 8, 2026 · 12:51 PM ET</time></small></div>
   <h1>Lift <span>&amp;</span> Shift</h1>
   <p><b>You told them you'd done this before. You have not.</b> You're the newest hire at Lift &amp; Shift Consulting. An endless line of clients, each with a bigger server room than the last, and you start with zero automation. Get everything to the cloud without getting fired, and see how far your career goes.</p>
   <h3>Difficulty</h3>
