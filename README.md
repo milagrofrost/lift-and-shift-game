@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/lift-and-shift-logo.png" alt="Lift &amp; Shift logo" width="280"></p>
+
 # Lift & Shift
 
 A browser game about migrating applications to the cloud while keeping everyday IT operations running.
