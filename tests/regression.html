@@ -175,13 +175,22 @@ test("escalations run at half speed during fires and quarter speed during outage
 });
 
 /* ---------- uptime recovery and the manager ---------- */
-test("uptime recovers only while nothing is down or breached, and stops at its cap", () => {
+test("uptime recovers unless gold is down or something is breached, and stops at its cap", () => {
   const S = fresh(); S.err = S.errMax * 0.1;
   check(near(G.uptimeRegen(), S.errMax * 0.002), `base rate ${G.uptimeRegen()}`);
-  const a = firstRack(S); a.down = true; check(G.uptimeRegen() === 0, "recovered during an outage"); a.down = false;
+  const a = firstRack(S); a.down = true; check(G.uptimeRegen() > 0, "a bronze outage stopped recovery"); a.down = false;
+  const g = S.racks.find(x => x && x.tier === "gold"); g.down = true; check(G.uptimeRegen() === 0, "recovered during a gold outage"); g.down = false;
   S.cloud[0] = {name: "x", tier: "bronze", breach: true}; check(G.uptimeRegen() === 0, "recovered during a breach"); S.cloud[0] = null;
   S.err = S.errMax * 0.5; check(G.uptimeRegen() === 0, "recovered past half the budget");
   S.err = S.errMax * 0.8; const before = S.err; S.users = []; G.update(0.05); check(S.err <= before, "update raised uptime above the cap");
+});
+test("offline servers burn uptime by tier: gold most, bronze barely", () => {
+  for (const [tier, rate] of [["gold", 3], ["silver", 1], ["bronze", 0.25]]) {
+    const S = fresh(); S.racks.forEach(a => { if (a) a.down = false; });
+    const a = S.racks.find(x => x && x.tier === tier); check(a, `no ${tier} server`);
+    a.down = true; const before = S.err; G.tickOnPrem(1);
+    check(near(before - S.err, rate), `${tier} burned ${before - S.err}`);
+  }
 });
 test("Redefine Uptime raises the rate and cap; a manager raises the rate", () => {
   const S = fresh(); S.err = S.errMax * 0.1;

@@ -360,15 +360,15 @@ const stars=n=>"★".repeat(n)+"☆".repeat(5-n);
 // restore = seconds of holding E to bring an offline server back up (never costs energy)
 const TIER={
   gold:{c:"#e8b93c",dark:"#5a4614",label:"GOLD",restore:5,drain:1.2,pts:5,sla:3},
-  silver:{c:"#c5cfd8",dark:"#3e464d",label:"SILVER",restore:3.5,drain:0.6,pts:3,sla:2},
-  bronze:{c:"#c98048",dark:"#4a2e1a",label:"BRONZE",restore:2.5,drain:0.3,pts:2,sla:1},
+  silver:{c:"#c5cfd8",dark:"#3e464d",label:"SILVER",restore:3.5,drain:0.6,pts:3,sla:1},
+  bronze:{c:"#c98048",dark:"#4a2e1a",label:"BRONZE",restore:2.5,drain:0.3,pts:2,sla:0.25},
 };
-// Uptime error budget per sprint. Offline servers burn it (gold 3/s, silver 2/s, bronze 1/s). Empty = fired.
+// Uptime error budget per sprint. Offline servers burn it (gold 3/s, silver 1/s, bronze 0.25/s). Empty = fired.
 const ERR_BUDGET=150;
-/* The error budget slowly recovers while nothing is offline or breached, as old downtime rolls out of the window.
+/* The error budget slowly recovers unless a gold server is offline or something is breached, as old downtime rolls out of the window.
    Base: 0.2% of the budget per second, up to half. Redefining "Uptime" and your manager speed it up; the upgrade raises the cap. */
 const uptimeCap=()=>S.errMax*Math.min(1,0.5+0.15*lvl("spin"));
-const uptimeRegen=()=>downCount()>0||S.cloud.some(a=>a&&a.breach)||S.err>=uptimeCap()?0:S.errMax*(0.002+0.0015*lvl("spin")+0.0007*lvl("manager"));
+const uptimeRegen=()=>critList().length>0||S.err>=uptimeCap()?0:S.errMax*(0.002+0.0015*lvl("spin")+0.0007*lvl("manager"));
 // A patch covers the current cycle; its deadline never moves.
 const patchDue=a=>!a.covered;
 function applyPatch(a){
@@ -442,7 +442,7 @@ const UPGRADES=[
   {id:"autopatch",name:"Cloud Auto-Patching",icon:"🩹",cost:5,sec:true,desc:"Cloud apps get patched automatically, so they never drift into riskier states, and new leaks are 20% less likely. Covered apps show a green shield."},
   {id:"pipeline",name:"CI/CD Pipeline",icon:"🏭",cost:6,max:3,desc:"Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud. No walking: about 6 seconds (3 with Terraform), with +10% odds from automated tests. Each level adds a lane, so more jobs can run at once."},
   {id:"bluegreen",name:"Blue-Green Cutovers",icon:"🔀",cost:6,desc:"Run old and new side by side. You carry a see-through copy while the original stays live in its rack, so moving it costs no downtime. The original still takes fires and escalations, and if it goes offline the copy is canceled. Failed cloud deployments stay gray; hold E there to retry."},
-  {id:"spin",name:"Redefine \"Uptime\"",icon:"🎤",cost:3,max:3,desc:"Leadership skills. That outage was a \"planned degradation event.\" Your uptime recovers faster while nothing is down, and can recover further: up to 65%, 80%, then 95% of the budget."},
+  {id:"spin",name:"Redefine \"Uptime\"",icon:"🎤",cost:3,max:3,desc:"Leadership skills. That outage was a \"planned degradation event.\" Your uptime recovers faster and can recover further: up to 65%, 80%, then 95% of the budget."},
   {id:"statuspage",name:"Status Page",icon:"📣",cost:3,desc:"During a red alert, users check the status page instead of grabbing you. (Execs you ignored still come find you.)"},
   {id:"postmortem",name:"Blameless Postmortems",icon:"📝",cost:3,desc:"Learn from every incident. Each red alert you resolve gives back half the story point it cost."},
   {id:"oncall",name:"On-Call Rotation",icon:"📟",cost:3,desc:"You're not the only hero anymore. Energy regenerates 50% faster."},
@@ -2418,14 +2418,14 @@ function howToPlay(){
   mode="title";
   show(`<div class="eyebrow">How to play</div><h2>The full reference</h2>
   <p>Each engagement is one client's server room. Carry every app to the cloud, keep things up while you do, and don't get breached. There's no clock that cuts you off; the engagement ends when the room is empty. Between clients you get an improvement sprint to build tools you'll bring to every client after. Clients never stop coming: they get bigger and busier, and big ones arrive in waves from their other building. Retire whenever you like from the review screen. Money is your score: IT always costs money, so the goal is the least negative total.</p>
-  <p style="font-size:13.5px;color:var(--muted)">You get fired if the <b style="color:var(--ink)">uptime error budget</b> runs out (offline servers burn it; it slowly recovers to half while nothing is down or breached) or <b style="color:var(--ink)">security</b> hits zero (breaches and failed audits drain it). Security carries over between clients, but each improvement sprint's security review gives back 25, and 20 seconds without a breach or failed audit starts a slow recovery.</p>
+  <p style="font-size:13.5px;color:var(--muted)">You get fired if the <b style="color:var(--ink)">uptime error budget</b> runs out (offline servers burn it; gold fastest, bronze barely; it slowly recovers to half unless a gold server is down or something is breached) or <b style="color:var(--ink)">security</b> hits zero (breaches and failed audits drain it). Security carries over between clients, but each improvement sprint's security review gives back 25, and 20 seconds without a breach or failed audit starts a slow recovery.</p>
   <div class="legend">
     <div><span class="ic">📦</span><span><b>Migrate.</b> Space to grab an app, carry it to the cloud, stand on an empty cloud slot and press Space to drop it. To put one back, stand on an empty rack; an escalation chasing that server will follow it there. Migrating earns energy, and cloud apps cost less to run than on-prem servers.</span></div>
     <div><span class="ic">🎲</span><span><b>Cutover odds.</b> Each rack shows its chance of coming up in the cloud. Bronze starts high, gold starts around 15%. Moving bronze raises silver's odds; moving bronze and silver raises gold's, up to 100% once they're all moved. A failed cutover lands offline in the cloud: hold E to retry at the same odds (3s bronze, 5s silver, 8s gold), or hold Space to roll it back on-prem.</span></div>
     <div><span class="ic">📜</span><span><b>License renewal.</b> Some servers show a renewal countdown. Migrate them before it hits zero or you pay for another year. Gold licenses come due later, so you have time to build experience. Answering a finance email buys the closest one 20 more seconds.</span></div>
     <div><span class="ic">⏳</span><span><b>Compliance timer.</b> Every on-prem server runs a compliance cycle. Hold E to patch it: it costs energy and covers the rest of that cycle (green bar, ✓ COVERED). When the cycle ends, a new uncovered one starts and needs another patch. If an uncovered cycle runs out, the audit fails: $12k and 4 security, and a fresh cycle starts. Migrating stops the clock for good, and a server migrated while covered is half as likely to leak for its first 30 seconds in the cloud.</span></div>
     <div><span class="ic">🔥</span><span><b>Fire.</b> Escalated tickets start fires. Escalations run 75% slower during any outage or active breach. Change freezes pause escalations, fire growth and spread. Hold E to put one out. If it burns all the way, the server goes offline, burning your uptime budget until you hold E to bring it back up. While any server is offline, nothing can be moved.</span></div>
-    <div><span class="ic">🥇</span><span><b>Tiers.</b> Gold, silver and bronze servers. Gold takes longest to bring back up (5s) and costs the most while it's down.</span></div>
+    <div><span class="ic">🥇</span><span><b>Tiers.</b> Gold, silver and bronze servers. Gold takes longest to bring back up (5s) and burns uptime fastest: 3 per second, against 1 for silver and 0.25 for bronze.</span></div>
     <div><span class="ic">🚨</span><span><b>Red alert.</b> A gold server offline or any cloud breach. You drop everything and can only fix incidents until it's over. Incident fixes never cost energy.</span></div>
     <div><span class="ic">💧</span><span><b>Cloud leak.</b> Hold E to seal it by hand (it costs energy; security upgrades make leaks rarer). Ignore it and it becomes a breach that spreads to the next app every 10 seconds. Unpatched cloud apps drift: the longer since one was last patched (sealed or contained), the more often it leaks, up to twice as often. Cloud Auto-Patching stops the drift.</span></div>
     <div><span class="ic">📧</span><span><b>Email inbox.</b> At the top of the hallway, with a 5-slot bar. ⚖️ legal, 💰 finance and 👔 exec emails fill it; 📣 vendor spam doesn't and disappears by itself. When the bar is full, fines trickle in and a VP comes hunting you, again and again, until you answer some. While you're at the inbox answering, the VP won't interrupt. Answering a finance email also pushes back the closest license renewal.</span></div>
