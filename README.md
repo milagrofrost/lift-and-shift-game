@@ -63,6 +63,7 @@ Google Fonts supplies optional fonts; system font fallbacks are included. Sound 
 | WASD or arrow keys | Move |
 | Space / J | Grab, or drop while standing on an empty cloud slot or rack; hold near a failed cloud cutover to roll back |
 | Hold E / K | Contextual work: patch, firefight, restore, contain, investigate, answer, or close |
+| F | Use your Emergency Freeze charge (bought between clients) |
 | P / Escape | Pause or resume |
 | M | Toggle sound effects |
 | Music button | Toggle music |
@@ -77,6 +78,12 @@ The gameplay revisions are merged into `main`, including current-cycle patch cov
 
 Play at **https://las.milagrofrost.com**. Cloudflare Pages automatically deploys pushes to `main`. The screenshots above were captured before these gameplay revisions.
 
+## Regression tests
+
+`tests/regression.html` loads the game in a hidden frame and runs deterministic checks with a seeded random number generator: script syntax, patch coverage, completion and cutover accounting, carrying and escalations, blue-green copies, freezes, and hidden servers. Serve the repository root (see *Play locally*) and open <http://127.0.0.1:8766/tests/regression.html>. The page title reads `PASS n/n` or `FAIL k/n`, and `window.__RESULTS` holds the details for scripted runs.
+
+Run it before every push to `main`, and add a check whenever you change a rule it covers.
+
 ## Contributing, including AI assistants
 
 Read [AGENTS.md](AGENTS.md) before making changes. It records the teaching goals, agreed gameplay direction, branch expectations, and validation guidelines. Preserve the relationship between mechanics and the operational lesson they are intended to teach. Explain balance changes and test their interactions instead of treating isolated functions as the whole game.
@@ -85,5 +92,5 @@ Read [AGENTS.md](AGENTS.md) before making changes. It records the teaching goals
 With Blue-Green Cutovers, you carry (or pipeline) a see-through copy while the original stays online in its rack until a successful cutover retires it. The original can still catch fire and take escalations while the copy is in flight; if it goes offline, the copy is canceled and you restore it and migrate again. Failed cloud deployments stay gray; hold E there to retry. Migrating a currently patched server reduces new-leak risk by 50% for the first 30 seconds after cutover.
 
 ### Hidden-server discovery
-Unknown racks require investigation (hold E for 6 seconds; 3 with Asset Inventory). They can be bronze, silver or gold. Discovery can expose an already-expired license with renewal liability, or a license close to expiry. Investigate quickly and you can beat the renewal; leave it, or let an outage find it, and the license has probably already renewed. Escalations can attack hidden racks; a resulting outage reveals the server. Migration progress never reveals them automatically.
+Unknown racks require investigation (hold E for 6 seconds; 3 with Asset Inventory). The three handmade clients keep their designed hidden-server tiers; from client 4 on, hidden servers can be any tier. Discovery can expose an already-expired license with renewal liability, or a license close to expiry. Investigate quickly and you can beat the renewal; leave it, or let an outage find it, and the license has probably already renewed. Escalations can attack hidden racks; a resulting outage reveals the server. Migration progress never reveals them automatically.
 

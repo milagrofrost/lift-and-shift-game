@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lift &amp; Shift regression tests</title>
+<style>
+  :root{--bg:#0f171d;--ink:#e6edf3;--muted:#8aa0b0;--ok:#4cd07d;--bad:#ff5d4d}
+  body{margin:0;padding:24px 16px;background:var(--bg);color:var(--ink);font:14px/1.5 ui-monospace,Consolas,monospace}
+  h1{font-size:18px;margin:0 0 4px}
+  #sum{margin:0 0 16px;color:var(--muted)}
+  #sum.ok{color:var(--ok)} #sum.bad{color:var(--bad)}
+  ol{padding-left:24px} li{margin:2px 0}
+  .pass{color:var(--ok)} .fail{color:var(--bad)}
+  .detail{color:var(--muted)}
+  iframe{position:absolute;left:-9999px;width:960px;height:600px;border:0}
+</style>
+</head>
+<body>
+<h1>Lift &amp; Shift regression tests</h1>
+<p id="sum">Running…</p>
+<ol id="out"></ol>
+<iframe id="game" title="game under test"></iframe>
+<script>
+/* Deterministic state checks for lift-and-shift.html.
+   Serve the repo root over HTTP (python -m http.server) and open /tests/regression.html.
+   The game is loaded into a hidden iframe with a small hook that exposes its internals; the frame loop never
+   starts, so every check drives update() and the other functions by hand with a seeded Math.random.
+   Results: the page title becomes "PASS n/n" or "FAIL k/n", and window.__RESULTS holds the details. */
+const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
+// a missing function becomes undefined (that test fails) instead of stopping the game from loading
+const NAMES = ("newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
+  "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK").split(",");
+const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
+  NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
+
+let W, G;
+const tests = [];
+const test = (name, fn) => tests.push({name, fn});
+const check = (cond, msg) => { if (!cond) throw new Error(msg || "check failed"); };
+const near = (a, b, eps = 1e-6) => Math.abs(a - b) <= eps;
+
+// seeded RNG (mulberry32) so every run takes the same path
+function seed(n) {
+  let t = n >>> 0;
+  W.Math.random = () => { t += 0x6D2B79F5; let r = Math.imul(t ^ t >>> 15, 1 | t); r ^= r + Math.imul(r ^ r >>> 7, 61 | r); return ((r ^ r >>> 14) >>> 0) / 4294967296; };
+}
+const fixedRandom = v => { W.Math.random = () => v; };
+
+// a fresh first client: no users in the way, every rack known, all timers healthy
+function fresh({bluegreen = false, sprint = 1, reveal = true, s = 1} = {}) {
+  seed(s);
+  G.newRun(); G.startSprint(sprint); G.setMode("play");
+  const S = G.S;
+  S.users = []; S.cbots = []; S.atk = []; S.tk = []; S.em = []; S.st = []; S.sp = []; S.temp = null;
+  S.upgrades.bluegreen = bluegreen;
+  S.racks.forEach(a => { if (!a) return; if (reveal) a.hidden = false; a.fire = 0; a.down = false; a.covered = false; a.timer = a.maxT; });
+  seed(s + 1000);
+  return S;
+}
+const firstRack = S => S.racks.find(a => a && a.tier === "bronze" && !a.hidden) || S.racks.find(a => a && !a.hidden);
+const standAt = (S, p, dx = 0, dy = 0) => { S.p.x = p.x + dx; S.p.y = p.y + dy; };
+
+/* ---------- source ---------- */
+let SRC = "";
+test("every inline script parses", () => {
+  const doc = new DOMParser().parseFromString(SRC, "text/html");
+  const scripts = [...doc.querySelectorAll("script:not([src])")];
+  check(scripts.length > 0, "no inline scripts found");
+  scripts.forEach((sc, i) => { try { new Function(sc.textContent); } catch (e) { throw new Error(`script #${i + 1}: ${e.message}`); } });
+});
+
+/* ---------- patch cycles ---------- */
+test("a patch early, mid or late covers the current cycle without moving its deadline", () => {
+  for (const frac of [0.95, 0.5, 0.05]) {
+    const S = fresh(); const a = firstRack(S);
+    a.timer = a.maxT * frac; const before = a.timer;
+    check(G.applyPatch(a), `patch at ${frac} rejected`);
+    check(a.covered && a.timer === before, `patch at ${frac} moved the timer or didn't cover`);
+  }
+});
+test("a redundant patch on a covered server is rejected", () => {
+  const S = fresh(); const a = firstRack(S);
+  G.applyPatch(a); check(!G.applyPatch(a), "second patch accepted"); check(!G.patchDue(a), "covered server still due");
+});
+test("a covered cycle ends into a fresh uncovered one with no audit", () => {
+  const S = fresh(); const a = firstRack(S);
+  a.covered = true; a.timer = 0.01; const audits = S.ss.audits, spent = S.cost.audits || 0;
+  G.tickOnPrem(0.05);
+  check(!a.covered && near(a.timer, a.maxT), "cycle did not reset uncovered");
+  check(S.ss.audits === audits && (S.cost.audits || 0) === spent, "covered expiry was audited");
+});
+test("an uncovered cycle that expires fails its audit", () => {
+  const S = fresh(); const a = firstRack(S);
+  a.timer = 0.01; const audits = S.ss.audits;
+  G.tickOnPrem(0.05);
+  check(S.ss.audits === audits + 1, "no audit failure recorded");
+});
+
+/* ---------- completion and accounting ---------- */
+test("an outage or breach in the cloud blocks client completion", () => {
+  const S = fresh();
+  S.racks = Array(12).fill(null); S.wave = [];
+  S.cloud[0] = {name: "x", tier: "bronze", down: true}; check(!G.engagementReady(), "completed with a cloud outage");
+  S.cloud[0] = {name: "x", tier: "bronze", breach: true}; check(!G.engagementReady(), "completed with an active breach");
+  S.cloud[0] = {name: "x", tier: "bronze", leakOn: true, leak: 50}; check(G.engagementReady(), "a developing leak blocked completion");
+});
+test("a failed cutover pays no savings and keeps the license; success pays once", () => {
+  const S = fresh(); const a = firstRack(S); a.lic = 30; a.licBase = 20;
+  standAt(S, G.RACKS[a.slot]); G.doGrab();
+  standAt(S, G.SLOTS[4]); fixedRandom(0.999); G.doGrab();
+  check(S.cloud[4] && S.cloud[4].down, "cutover did not fail");
+  check(!(S.cost.savings) && a.lic === 30, "failed cutover paid savings or cleared the license");
+  G.cutoverOK(S.cloud[4]); G.cutoverOK(S.cloud[4]);
+  check(S.cost.savings === -4 && a.lic === 0, `savings ${S.cost.savings}, license ${a.lic}`);
+});
+
+/* ---------- carrying, put-back and escalations ---------- */
+test("you must stand on an empty cloud slot to drop a server", () => {
+  const S = fresh(); const a = firstRack(S);
+  standAt(S, G.RACKS[a.slot]); G.doGrab(); check(S.carry === a && !S.racks[a.slot], "grab failed");
+  S.p.x = 620; S.p.y = 530; G.doGrab(); check(S.carry === a, "dropped while not on a slot");
+  standAt(S, G.SLOTS[5], 10, 10); fixedRandom(0); G.doGrab();
+  check(!S.carry && S.cloud[5] && S.cloud[5].orig === a, "did not land in the slot underfoot");
+});
+test("an escalation waits while its server is carried and follows it to a new rack", () => {
+  const S = fresh(); const a = firstRack(S); const old = a.slot; const empty = S.racks.findIndex(x => !x);
+  standAt(S, G.RACKS[old]); G.doGrab();
+  const e = {x: G.DESK.x, y: G.DESK.y, a}; S.atk.push(e);
+  for (let k = 0; k < 200; k++) G.tickEscalation(e, 0.05);
+  check(!e.dead && e.waiting && a.fire === 0, "escalation hit or vanished while the server was carried");
+  standAt(S, G.RACKS[empty]); G.doGrab();
+  check(S.racks[empty] === a && a.slot === empty, "put-down into a different rack failed");
+  for (let k = 0; k < 200 && !e.dead; k++) G.tickEscalation(e, 0.05);
+  check(e.dead && a.fire > 0, "escalation did not follow the server");
+});
+test("a successful migration retires the server's escalation", () => {
+  const S = fresh(); const a = firstRack(S);
+  standAt(S, G.RACKS[a.slot]); G.doGrab();
+  const e = {x: G.DESK.x, y: G.DESK.y, a}; S.atk.push(e);
+  standAt(S, G.SLOTS[2]); fixedRandom(0); G.doGrab();
+  G.tickEscalation(e, 0.05); check(e.dead && a.fire === 0, "escalation survived the migration");
+});
+test("an escalation with nothing on-prem fizzles for $4k", () => {
+  const S = fresh(); S.racks = Array(12).fill(null); S.carry = null; S.pipe = []; S.bots = [];
+  const b0 = S.budget, e = {x: 480, y: 480, a: null}; G.tickEscalation(e, 0.05);
+  check(e.dead && near(b0 - S.budget, 4), "escalation did not fizzle");
+});
+test("a forced put-back never overwrites a rack someone else now uses", () => {
+  const S = fresh(); const a = firstRack(S), slot = a.slot;
+  standAt(S, G.RACKS[slot]); G.doGrab();
+  const intruder = {...a, name: "Intruder", slot}; S.racks[slot] = intruder;
+  S.racks.find(x => x && x !== intruder).down = true; G.update(0.05);
+  check(S.racks[slot] === intruder && S.racks.includes(a) && !S.carry, "carried server overwrote a rack or was lost");
+});
+
+/* ---------- blue-green ---------- */
+test("blue-green: you carry a copy and the original stays live and exposed", () => {
+  const S = fresh({bluegreen: true}); const a = firstRack(S), slot = a.slot;
+  standAt(S, G.RACKS[slot]); G.doGrab();
+  check(S.carry === a && S.racks[slot] === a && G.liveCopy(a), "original left its rack");
+  const e = {x: G.DESK.x, y: G.DESK.y, a}; S.atk.push(e);
+  for (let k = 0; k < 200 && !e.dead; k++) G.tickEscalation(e, 0.05);
+  check(e.dead && a.fire > 0 && S.carry === a, "escalation did not hit the live original");
+  standAt(S, G.SLOTS[2]); fixedRandom(0); G.doGrab();
+  check(!S.racks[slot] && S.cloud[2] && !S.cloud[2].staged && !S.cloud[2].down, "successful cutover did not retire the original");
+});
+test("blue-green: a failed deploy is staged; the original going offline cancels it", () => {
+  const S = fresh({bluegreen: true}); const a = firstRack(S);
+  standAt(S, G.RACKS[a.slot]); G.doGrab(); standAt(S, G.SLOTS[3]); fixedRandom(0.999); G.doGrab();
+  check(S.cloud[3] && S.cloud[3].staged && S.racks[a.slot] === a, "failed deploy not staged");
+  a.down = true; G.cancelDeadCopies();
+  check(S.cloud[3] === null && S.racks[a.slot] === a, "staged copy survived the outage");
+});
+test("blue-green: carried and pipelined copies are canceled when the original goes offline", () => {
+  let S = fresh({bluegreen: true}); let a = firstRack(S);
+  standAt(S, G.RACKS[a.slot]); G.doGrab(); S.p.x = 480; S.p.y = 280; a.down = true; G.update(0.05);
+  check(!S.carry && S.racks.filter(x => x === a).length === 1, "carried copy kept or duplicated");
+  S = fresh({bluegreen: true}); a = firstRack(S);
+  S.pipe.push({a, t: 0, dur: 6, lane: 0}); a.down = true; G.cancelDeadCopies();
+  check(S.pipe.length === 0 && S.racks[a.slot] === a, "pipeline copy kept");
+});
+test("blue-green: Space on-prem discards the carried copy", () => {
+  const S = fresh({bluegreen: true}); const a = firstRack(S);
+  standAt(S, G.RACKS[a.slot]); G.doGrab(); S.p.x = 200; S.p.y = 500; G.doGrab();
+  check(!S.carry && S.racks[a.slot] === a, "copy not discarded");
+});
+
+/* ---------- freezes ---------- */
+test("the emergency freeze uses its charge and extends up to a 30-second cap", () => {
+  const S = fresh(); S.upgrades.freezecharge = true;
+  G.useFreeze(); check(!S.upgrades.freezecharge && near(S.freezeT, 12), `charge ${S.upgrades.freezecharge}, freeze ${S.freezeT}`);
+  G.startFreeze(25); check(near(S.freezeT, 30), `freeze not capped: ${S.freezeT}`);
+});
+test("an incident gets one automatic freeze, then respects the cooldown", () => {
+  const S = fresh(); const gold = S.racks.find(a => a && a.tier === "gold");
+  check(gold, "no gold server on client 1");
+  gold.down = true; G.update(0.05);
+  check(S.freezeT > 3 && S.freezeCooldown > 50, `freeze ${S.freezeT}, cooldown ${S.freezeCooldown}`);
+  gold.down = false; S.freezeT = 0; G.update(0.05); gold.down = true; G.update(0.05);
+  check(!(S.freezeT > 0), "froze again inside the cooldown");
+});
+test("your donut and immunity timers keep running during a freeze", () => {
+  const S = fresh(); S.freezeT = 10; S.p.ghost = 5; S.p.userImm = 3;
+  for (let k = 0; k < 40; k++) G.update(0.05);
+  check(near(S.p.ghost, 3, 0.06) && near(S.p.userImm, 1, 0.06), `ghost ${S.p.ghost}, immunity ${S.p.userImm}`);
+});
+
+/* ---------- hidden servers ---------- */
+test("handmade clients keep their designed hidden tiers, and tier totals match", () => {
+  for (const n of [1, 2, 3]) {
+    seed(n); G.newRun(); G.startSprint(n);
+    const S = G.S, cfg = G.engagementCfg(n);
+    const designed = Object.fromEntries(cfg.hidden.map(h => [h[0], h[1]]));
+    const hidden = [...S.racks.filter(a => a && a.hidden), ...S.wave.filter(w => w.hidden).map(w => ({name: w.e[0], tier: w.e[1]}))];
+    check(hidden.length === cfg.hidden.length, `client ${n}: ${hidden.length} hidden of ${cfg.hidden.length}`);
+    for (const h of hidden) check(designed[h.name] === h.tier, `client ${n}: ${h.name} is ${h.tier}, designed ${designed[h.name]}`);
+    const counted = {};
+    for (const a of S.racks.filter(Boolean)) counted[a.tier] = (counted[a.tier] || 0) + 1;
+    for (const w of S.wave) { const t = w.hidden ? w.e[1] : w.e[2]; counted[t] = (counted[t] || 0) + 1; }
+    for (const t of ["bronze", "silver", "gold"]) check((counted[t] || 0) === (S.tierTot[t] || 0), `client ${n}: ${t} total ${S.tierTot[t]} vs ${counted[t]}`);
+  }
+});
+test("hidden-server licenses come due 20–90 seconds after the server appears", () => {
+  for (let s = 1; s <= 20; s++) {
+    const S = fresh({reveal: false, s});
+    for (const a of S.racks.filter(x => x && x.hidden)) {
+      const due = a.hiddenLicenseDue - S.time;
+      check(due >= 20 && due <= 90, `license due in ${due.toFixed(1)}s`);
+    }
+  }
+});
+test("a hidden server stays hidden until investigated or burned out, and burnout reveals it", () => {
+  const S = fresh({reveal: false});
+  const h = S.racks.find(a => a && a.hidden); check(h, "no hidden server on client 1");
+  for (let k = 0; k < 100; k++) G.tickOnPrem(0.05);
+  check(h.hidden, "revealed without investigation or outage");
+  h.fire = 99.9; G.tickOnPrem(0.1);
+  check(!h.hidden && h.down, "burnout did not reveal it");
+});
+
+/* ---------- runner ---------- */
+async function run() {
+  const out = document.getElementById("out"), sum = document.getElementById("sum");
+  const results = [];
+  try {
+    SRC = await fetch("../lift-and-shift.html", {cache: "no-store"}).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); });
+  } catch (e) {
+    sum.textContent = `Could not load ../lift-and-shift.html (${e.message}). Serve the repo root over HTTP.`; sum.className = "bad"; document.title = "FAIL load"; return;
+  }
+  if (!SRC.includes(HOOK)) { sum.textContent = "The game's start-up line changed; update HOOK in tests/regression.html."; sum.className = "bad"; document.title = "FAIL hook"; return; }
+  const record = (name, ok, detail = "") => {
+    results.push({name, ok, detail});
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="${ok ? "pass" : "fail"}">${ok ? "PASS" : "FAIL"}</span> ${name}${detail ? ` <span class="detail">— ${detail}</span>` : ""}`;
+    out.appendChild(li);
+  };
+  const runOne = t => { let ok = true, detail = ""; try { t.fn(); } catch (e) { ok = false; detail = e.message; } record(t.name, ok, detail); };
+  // the syntax check needs no running game, so it always runs first
+  runOne(tests[0]);
+  const frame = document.getElementById("game");
+  await new Promise(res => { frame.onload = res; frame.srcdoc = SRC.replace(HOOK, EXPOSE); });
+  W = frame.contentWindow; G = W.__G;
+  if (!G) record("the game starts inside the test frame", false, "it did not start; see the console");
+  else {
+    const realRandom = W.Math.random;
+    for (const t of tests.slice(1)) { runOne(t); W.Math.random = realRandom; }
+  }
+  const failed = results.filter(r => !r.ok).length;
+  sum.textContent = failed ? `${failed} of ${results.length} failed` : `All ${results.length} passed`;
+  sum.className = failed ? "bad" : "ok";
+  document.title = failed ? `FAIL ${failed}/${results.length}` : `PASS ${results.length}/${results.length}`;
+  window.__RESULTS = results;
+}
+run();
+</script>
+</body>
+</html>

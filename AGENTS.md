@@ -62,6 +62,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 - Update tutorial text, controls, descriptions, and README whenever behavior changes. Do not leave contradictory instructions.
 - Preserve pause, sound controls, keyboard/touch interaction, and reduced-motion behavior.
 - Use meaningful deterministic regression checks for accounting and state transitions. Validate full JavaScript syntax.
+- Run `tests/regression.html` (served over HTTP) before pushing `main`; it must read `PASS`. Add or update checks there when you change a rule it covers, instead of writing throwaway scripts.
 - Test patching early/mid/late in a cycle; covered/uncovered expiry; incident completion; failed/successful cutover accounting; freeze duration/cooldown/charge use; and escalation pickup/return/relocation when relevant.
 - Browser-playtest visual and input changes. Source inspection or syntax checks alone do not establish that a UI looks or plays correctly.
 - Do not refresh or restart a user's active test run unnecessarily. Use a separate tab for your checks.
@@ -73,5 +74,5 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 Infer intent from the game's teaching purpose and the user's latest corrections. If a clarification changes the model, correct it directly. Do not keep obsolete implementations merely because they were previously proposed. Ask only when a consequential ambiguity remains; otherwise implement the smallest coherent change and show how it matches the requested behavior.
 
 ### Hidden-server discovery
-Hidden servers require investigation or an outage to reveal them; never reveal based on migration progress. All three tiers are possible, and tier totals must match the actual servers. Asset Inventory speeds investigation instead of bypassing it. Escalations can target hidden racks and their fires continue growing while hidden. Reveal on burnout before applying normal outage handling. License conditions on discovery can already be expired or near expiry; charge expired liability once and preserve the normal countdown for upcoming renewals.
+Hidden servers require investigation or an outage to reveal them; never reveal based on migration progress. The three handmade clients keep their designed hidden tiers; generated clients (4+) can roll any of the three tiers. Tier totals must match the actual servers. Asset Inventory speeds investigation instead of bypassing it. Escalations can target hidden racks and their fires continue growing while hidden. Reveal on burnout before applying normal outage handling. License conditions on discovery can already be expired or near expiry; charge expired liability once and preserve the normal countdown for upcoming renewals.
 
