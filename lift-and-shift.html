@@ -548,7 +548,7 @@ const MOODS={
   work2:{bpm:104,swing:0.18,chords:[[52,55,59],[48,52,55],[55,59,62],[50,54,57]],bass:[0,3,6,10,12],bassUp:[6,12],arp:[2,6,10,14],hat:[0,2,4,6,8,10,12,14],kick:[0,7,10],snare:[4,12],lead:"triangle",arpVol:0.018,
     mel:[[[0,71,3],[3,74,1],[4,71,2],[6,69,2],[8,67,4],[12,64,4]],[[0,67,2],[2,69,2],[4,71,4],[10,67,2],[12,64,4]],
          [[0,74,3],[3,71,1],[4,74,2],[6,76,2],[8,74,4],[12,71,2],[14,69,2]],[[0,69,6],[6,66,2],[8,69,4],[12,62,4]]]},
-  tense2:{bpm:126,swing:0.08,chords:[[52,55,59],[48,52,55],[55,59,62],[50,54,57]],bass:[0,2,4,6,8,10,12,14],hop:true,arp:[0,2,4,6,8,10,12,14],hat:[0,2,4,6,8,10,12,14],kick:[0,4,8,12],snare:[4,12],lead:"sawtooth",arpVol:0.016,melLead:"square",melVol:0.034},
+  tense2:{bpm:126,swing:0.06,chords:[[52,55,59],[48,52,55],[55,59,62],[50,54,57]],bass:[0,2,4,6,8,10,12,14],hop:true,arp:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],hat:[0,2,4,6,8,10,12,14],kick:[0,8,10],snare:[4,12],lead:"square",arpVol:0.024,melLead:"sawtooth",melVol:0.03},
   alert2:{bpm:146,chords:[[52,55,59],[48,52,55],[55,59,62],[47,51,54]],bass:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],hop:true,arp:[0,3,6,8,11,14],hat:[2,6,10,14],kick:[0,4,8,12],snare:[4,12],lead:"sawtooth",arpVol:0.02,melLead:"square",melVol:0.034,
     mel:[[[0,76,2],[2,79,2],[4,76,2],[6,74,2],[8,76,4],[12,71,4]],[[0,72,2],[2,76,2],[4,72,2],[6,71,2],[8,72,4],[12,67,4]],
          [[0,74,2],[2,79,2],[4,74,2],[6,76,2],[8,79,4],[12,74,4]],[[0,75,2],[2,78,2],[4,75,2],[6,71,2],[8,75,4],[12,78,4]]]},
@@ -556,7 +556,7 @@ const MOODS={
   work3:{bpm:94,swing:0.14,chords:[[62,66,69],[59,62,66],[55,59,62],[57,61,64]],bass:[0,7,10],arp:[4,12],hat:[2,6,10,14],kick:[0,7,10],snare:[4,12],lead:"triangle",pad:true,padVol:0.02,arpLen:2,arpVol:0.02,melLead:"sine",melVol:0.06,
     mel:[[[0,74,4],[4,76,2],[6,78,6],[12,76,4]],[[0,74,6],[6,71,2],[8,73,4],[12,74,4]],
          [[0,71,4],[4,74,4],[8,79,6],[14,78,2]],[[0,76,8],[8,73,4],[12,69,4]]]},
-  tense3:{bpm:118,swing:0.06,chords:[[62,66,69],[59,62,66],[55,59,62],[57,61,64]],bass:[0,3,6,8,11,14],bassUp:[3,11],arp:[0,2,4,6,8,10,12,14],hat:[0,2,4,6,8,10,12,14],kick:[0,4,8,12],snare:[4,12],lead:"triangle",arpVol:0.02,melLead:"triangle",melVol:0.058},
+  tense3:{bpm:120,chords:[[62,66,69],[59,62,66],[55,59,62],[57,61,64]],bass:[0,2,4,6,8,10,12,14],bassUp:[2,6,10,14],arp:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],hat:[0,2,4,6,8,10,12,14],kick:[0,8,10],snare:[4,12],lead:"square",arpVol:0.024,melLead:"triangle",melVol:0.05},
   alert3:{bpm:138,chords:[[62,65,69],[58,62,65],[55,59,62],[57,61,64]],bass:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],hop:true,arp:[0,3,6,8,11,14],hat:[2,6,10,14],kick:[0,4,8,12],snare:[4,12],lead:"sawtooth",arpVol:0.02,melLead:"square",melVol:0.034,
     mel:[[[0,74,2],[2,77,2],[4,81,4],[8,77,2],[10,74,2],[12,77,4]],[[0,74,2],[2,77,2],[4,82,4],[8,77,2],[10,74,2],[12,70,4]],
          [[0,74,2],[2,79,2],[4,83,4],[8,79,2],[10,74,2],[12,79,4]],[[0,73,2],[2,76,2],[4,81,6],[10,76,2],[12,73,4]]]},
@@ -575,24 +575,35 @@ function mDrum(kind,t){
   s.connect(f);f.connect(g);g.connect(MUS.filt);s.start(t,Math.random()*0.5);s.stop(t+0.15);
 }
 function scheduleStep(step,t){
-  const M=MOODS[MUS.mood],s=step%16,bar=Math.floor(step/16)%4,ch=M.chords[bar],sx=60/M.bpm/4;
+  const M=MOODS[MUS.mood],s=step%16,bar=Math.floor(step/16)%4,ch=M.chords[bar],hot=moodHot(),sx=60/moodBpm()/4;
   if(M.swing&&s%2)t+=sx*M.swing; // swung 16ths: the off-beats land a little late
   if(M.pad&&s===0)ch.forEach(n=>mNote(mtof(n),t,sx*16,"sine",M.padVol||0.025));
   if(M.bass.includes(s))mNote(mtof(ch[0]-24+((M.hop&&s%2)||(M.bassUp&&M.bassUp.includes(s))?12:0)),t,sx*(M.bass.length>8?0.9:1.8),"triangle",0.13);
   if(M.arp.includes(s)){const idx=M.arp.indexOf(s);mNote(mtof(ch[idx%3]+(idx%6>=3?12:0)),t,sx*(M.arpLen||1.1),M.lead,M.arpVol||0.03);}
-  if(M.mel)for(const[st,n,len]of M.mel[bar])if(st===s)mNote(mtof(n),t,sx*len*0.92,M.melLead||"triangle",M.melVol||0.045);
-  if(M.kick.includes(s))mDrum("kick",t);
-  if(M.snare.includes(s))mDrum("snare",t);
-  if(M.hat.includes(s))mDrum("hat",t);
+  if(M.mel)for(const[st,n,len]of M.mel[bar])if(st===s){mNote(mtof(n),t,sx*len*0.92,M.melLead||"triangle",M.melVol||0.045);if(hot)mNote(mtof(n+12),t,sx*len*0.92,"triangle",0.016);}
+  // on fire: extra kick, a snare fill at the end of the phrase, and hats on every sixteenth
+  if(M.kick.includes(s)||(hot&&s===14))mDrum("kick",t);
+  if(M.snare.includes(s)||(hot&&bar===3&&s>=13))mDrum("snare",t);
+  if(M.hat.includes(s)||hot)mDrum("hat",t);
 }
+/* How worried the music should be. 0 = all fine. 1 = trouble is close: VP on your tail, escalation in flight, queue or inbox
+   almost full, a leak about to breach. 2 = it's happening: something on fire or offline, or the error budget nearly gone. */
+function musicHeat(){
+  if(mode!=="play"||!S)return 0;
+  if(S.racks.some(a=>a&&a.fire>0)||downCount()>0||S.err/S.errMax<0.4)return 2;
+  if(S.atk.length||S.users.some(u=>u.hunter)||S.tk.length>=ticketLimit()-1||importantMail().length>=inboxLimit()-1||S.cloud.some(a=>a&&a.leakOn&&a.leak>60)||overdue()>0)return 1;
+  return 0;
+}
+const moodLevel=m=>m.startsWith("alert")?2:m.startsWith("tense")?1:0;
+const moodHot=()=>MUS.heat>=2&&MUS.mood.startsWith("tense");
+const moodBpm=()=>MOODS[MUS.mood].bpm+(moodHot()?8:0);
 function wantMood(){
   if(mode==="celebrate")return"victory";
   if(mode!=="play"||!S)return"calm";
   const set=SONG_SETS[((S.songOffset||0)+Math.max(0,S.sprint-1))%SONG_SETS.length];
   if(S.alert)return set[2];
   if(modId()==="donut")return"donut";
-  const trouble=downCount()>0||S.cloud.some(a=>a&&a.leakOn&&a.leak>60)||S.tk.length>=4||overdue()>0||S.err/S.errMax<0.4;
-  return trouble?set[1]:set[0];
+  return musicHeat()?set[1]:set[0];
 }
 function musicTick(){
   if(stale())return;
@@ -603,8 +614,13 @@ function musicTick(){
   if(!MUS.on){MUS.next=c.currentTime+0.05;return;}
   if(MUS.next<c.currentTime)MUS.next=c.currentTime+0.05;
   while(MUS.next<c.currentTime+0.15){
-    if(MUS.step%16===0)MUS.mood=wantMood(); // change mood on the bar line
-    scheduleStep(MUS.step,MUS.next);MUS.next+=60/MOODS[MUS.mood].bpm/4;MUS.step++;
+    if(MUS.step%8===0){
+      const w=wantMood(),up=moodLevel(w)-moodLevel(MUS.mood);MUS.heat=musicHeat();
+      if(up>0)MUS.raised=MUS.step;
+      // ramp up on the half bar; drop back only on a bar line and after 2 bars, so it doesn't flicker
+      if(up>0||(MUS.step%16===0&&(up===0||mode!=="play"||MUS.step-(MUS.raised||0)>=32)))MUS.mood=w;
+    }
+    scheduleStep(MUS.step,MUS.next);MUS.next+=60/moodBpm()/4;MUS.step++;
   }
 }
 function startMusic(){

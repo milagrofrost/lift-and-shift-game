@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
+  "musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -303,6 +303,18 @@ test("the joystick moves the player, and releasing it stops them", () => {
 });
 
 /* ---------- music ---------- */
+test("music intensity follows VPs, escalations, queues and fires", () => {
+  const S = fresh(); S.err = S.errMax; S.time = 0;
+  check(G.musicHeat() === 0, `calm heat ${G.musicHeat()}`);
+  S.users = [{hunter: true}]; check(G.musicHeat() === 1, "VP on your tail did not raise the music"); S.users = [];
+  S.atk = [{}]; check(G.musicHeat() === 1, "incoming escalation did not raise the music"); S.atk = [];
+  S.tk = [{}, {}, {}, {}]; check(G.musicHeat() === 1, "nearly full queue did not raise the music"); S.tk = [];
+  const a = firstRack(S); a.fire = 30; check(G.musicHeat() === 2, "fire did not raise the music to the top tier"); a.fire = 0;
+  a.down = true; check(G.musicHeat() === 2, "outage did not raise the music to the top tier"); a.down = false;
+  S.users = [{hunter: true}]; S.sprint = 2; S.songOffset = 0; S.alert = false;
+  check(G.wantMood() === G.SONG_SETS[1][1], `client 2 under pressure played ${G.wantMood()}`); S.users = [];
+  check(G.wantMood() === G.SONG_SETS[1][0], "client 2 did not return to its normal song");
+});
 test("each client plays the next song set, and every song is defined", () => {
   const S = fresh(); check(G.SONG_SETS && G.SONG_SETS.length >= 3, "fewer than 3 song sets");
   for (const set of G.SONG_SETS) for (const m of set) check(G.MOODS[m] && G.MOODS[m].chords.length === 4, `song ${m} missing or malformed`);
