@@ -399,7 +399,7 @@ const UPGRADES=[
   {id:"portal",name:"Self-Service Portal",icon:"🙋",cost:2,max:3,desc:"Users reset their own passwords. 15% fewer tickets per level."},
   {id:"autopatch",name:"Cloud Auto-Patching",icon:"🩹",cost:5,sec:true,desc:"Cloud apps get patched automatically, so they never drift into riskier states, and new leaks are 20% less likely. Covered apps show a green shield."},
   {id:"pipeline",name:"CI/CD Pipeline",icon:"🏭",cost:6,max:3,desc:"Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud. No walking: about 6 seconds (3 with Terraform), with +10% odds from automated tests. Each level adds a lane, so more jobs can run at once."},
-  {id:"bluegreen",name:"Blue-Green Cutovers",icon:"🔀",cost:6,desc:"Run old and new side by side. On-prem stays live until cloud success. Failed cloud deployments remain gray; hold E there to retry without a cutover outage."},
+  {id:"bluegreen",name:"Blue-Green Cutovers",icon:"🔀",cost:6,desc:"Run old and new side by side. You carry a see-through copy while the original stays live in its rack, so moving it costs no downtime. The original still takes fires and escalations, and if it goes offline the copy is canceled. Failed cloud deployments stay gray; hold E there to retry."},
   {id:"statuspage",name:"Status Page",icon:"📣",cost:3,desc:"During a red alert, users check the status page instead of grabbing you. (Execs you ignored still come find you.)"},
   {id:"postmortem",name:"Blameless Postmortems",icon:"📝",cost:3,desc:"Learn from every incident. Each red alert you resolve gives back half the story point it cost."},
   {id:"oncall",name:"On-Call Rotation",icon:"📟",cost:3,desc:"You're not the only hero anymore. Energy regenerates 50% faster."},
@@ -980,8 +980,8 @@ function drawManager(){
   tx(`MANAGER${M.state==="guard"?" · ON GUARD":M.state==="chat"?" · CHATTING":M.state==="patch"?" · \"HELPING\"":""}`,x,y+26,8,C.amber,{font:DISP,weight:700});
 }
 function tickUsers(dt){
+  const P=S.p;if(P.userImm>0)P.userImm-=dt;if(P.ghost>0)P.ghost-=dt; // your own timers keep running during a freeze
   if(freezeActive())return;
-  const P=S.p;if(P.userImm>0)P.userImm-=dt;if(P.ghost>0)P.ghost-=dt;
   if(P.heldBy&&!S.users.includes(P.heldBy)&&P.stun<=0)P.heldBy=null; // the person holding you is gone
   // new users wander in over time, so the hallway never stays empty for long
   S.userT-=dt;
@@ -1282,7 +1282,8 @@ function addApp(entry,hidden,counted){
   const slot=pick(free),[name,heavy,tier,licBase]=hidden?[entry[0],0,entry[1],0]:entry;
   const maxT=rand(42,65);
   const a=S.racks[slot]={name,heavy:heavy||0,tier,licBase:licBase||0,slot,maxT,timer:maxT*rand(.55,1),fire:0,spreadT:3,down:false,prog:0,hidden,botIgnore:0,lic:0};
-  if(hidden){a.licBase=ri(15,45);a.hiddenLicenseDue=S.time+rand(-15,30);}
+  // hidden servers carry a license; find one quickly and you can beat the renewal
+  if(hidden){a.licBase=ri(15,45);a.hiddenLicenseDue=S.time+rand(20,90);}
   if(!counted){S.totalApps++;S.tierTot[tier]=(S.tierTot[tier]||0)+1;}
   return a;
 }
@@ -1407,6 +1408,22 @@ S.movedT[a.tier]=(S.movedT[a.tier]||0)+1;S.ss.mig++;S.ss.att++;
   const o=a.orig||a;if(o.touchT!=null){S.ss.leadSum+=S.time-o.touchT;S.ss.leadN++;o.touchT=null;}}
 // DORA: time to restore = how long a server stayed offline
 function noteRestored(a){if(a.downT!=null){S.ss.mttrSum+=S.time-a.downT;S.ss.mttrN++;a.downT=null;}}
+/* Blue-green: what you carry (or pipeline) is a copy. The original stays live in its rack, still taking fires and
+   escalations, until the cloud copy comes up. */
+const liveCopy=a=>!!a&&S.racks[a.slot]===a;
+// you have to stand on the spot you're putting a server into
+const DROP_REACH=38;
+const slotUnder=()=>{let bi=-1,bd=DROP_REACH;S.cloud.forEach((c,i)=>{if(c)return;const d=dist(S.p,SLOTS[i]);if(d<bd){bd=d;bi=i;}});return bi;};
+const rackUnder=()=>{let bi=-1,bd=DROP_REACH+6;S.racks.forEach((r,i)=>{if(r)return;const d=dist(S.p,RACKS[i]);if(d<bd){bd=d;bi=i;}});return bi;};
+// put a carried original back on-prem, in its old rack if that's still free
+function returnToRack(a){if(S.racks[a.slot]===a)return;if(S.racks[a.slot]){const k=S.racks.findIndex(x=>!x);if(k>=0)a.slot=k;}S.racks[a.slot]=a;}
+// an on-prem original that goes offline cancels any copy of it in flight (carried, pipelined, or staged in the cloud)
+function cancelDeadCopies(){
+  const cancel=(a,pos)=>{fl(pos,"Copy canceled",C.danger);toast(`🔀 ${a.name} went offline on-prem, so its cloud copy was canceled. Bring it back up and migrate again.`);};
+  S.cloud.forEach((c,i)=>{if(c&&c.staged&&c.orig.down){S.cloud[i]=null;cancel(c.orig,SLOTS[i]);}});
+  S.pipe=S.pipe.filter(j=>{if(liveCopy(j.a)&&j.a.down){cancel(j.a,RACKS[j.a.slot]);return false;}return true;});
+  for(const b of S.bots)if(b.carry&&liveCopy(b.carry)&&b.carry.down){cancel(b.carry,b);b.carry=null;b.slot=-1;}
+}
 const migrationBusy=a=>S.carry===a||S.bots.some(b=>b.carry===a)||(S.pipe||[]).some(j=>j.a===a)||S.cloud.some(c=>c&&c.staged&&c.orig===a);
 function activateCloud(c){
   const a=c.orig;
@@ -1415,9 +1432,9 @@ function activateCloud(c){
   if(S.racks[a.slot]===a)S.racks[a.slot]=null;
 }
 function migrate(a,i,byBot,bonus=0){
-  const p=Math.min(1,successChance(a.tier)+bonus),ok=Math.random()<p&&(!S.upgrades.bluegreen||(!a.down&&!a.fire));
+  const p=Math.min(1,successChance(a.tier)+bonus),ok=Math.random()<p;
   if(!ok)S.ss.att++;
-  const staged=!ok&&!!S.upgrades.bluegreen;
+  const staged=!ok&&liveCopy(a);
   S.cloud[i]={name:a.name,tier:a.tier,leak:0,leakOn:false,grace:7+8*retro("baseline"),tfT:0,breach:false,prog:0,spreadT:0,down:!ok&&!staged,staged,rb:0,orig:a,downT:!ok&&!staged?S.time:null};
   if(staged){S.run.fails++;sfx("migrateFail");toast(`🔀 ${a.name}: cloud deployment failed. On-prem remains live. Hold E at the gray cloud deployment to retry.`);return;}
   if(!ok){S.run.fails++;sfx("migrateFail");
@@ -1441,8 +1458,11 @@ function doGrab(){
   if(S.alert){fl(P,"RED ALERT: fix the incident first",C.danger);return;}
   if(S.carry){
     const z=zoneOf(P.x),a=S.carry;
-    if(z===2){const i=nearestEmptySlot(P.x,P.y);if(i<0){toast("☁️ The cloud is full.");return;}S.carry=null;migrate(a,i,false);}
-    else if(z===0){S.racks[a.slot]=a;S.carry=null;fl(RACKS[a.slot],"Put back",C.muted);sfx("putback");}
+    if(z===2){const i=slotUnder();if(i<0){fl(P,S.cloud.some(c=>!c)?"Stand on an empty cloud slot":"☁️ The cloud is full",C.amber);return;}S.carry=null;migrate(a,i,false);}
+    else if(z===0){
+      if(liveCopy(a)){S.carry=null;fl(RACKS[a.slot],"Copy discarded",C.muted);sfx("putback");}
+      else{const i=rackUnder();if(i<0){fl(P,"Stand on an empty rack to put it down",C.amber);return;}a.slot=i;S.racks[i]=a;S.carry=null;fl(RACKS[i],"Put back",C.muted);sfx("putback");}
+    }
     else fl(P,"Not in the hallway!",C.amber);
     return;
   }
@@ -1511,7 +1531,7 @@ function doFix(dt){
   }
   if(f.kind==="cloudrestore"){
     // retry the cutover: hold for the tier's time, then roll the current success chance. Free, so never a lockout.
-    if(f.a.staged&&(f.a.orig.down||f.a.orig.fire>0)){S.fixP=0;return;}
+    if(f.a.staged&&f.a.orig.down){S.fixP=0;return;}
     const need=cloudRebuild(f.a.tier);f.a.prog+=dt;S.fixNeed=need;S.fixP=f.a.prog;
     if(f.a.prog<need)return;
     f.a.prog=0;S.fixP=0;S.fixLock=true;const p=successChance(f.a.tier);
@@ -1719,11 +1739,11 @@ function patchBot(b,dt,ai,sp){
 }
 function moverBot(b,dt,ai,sp){
   if(S.frozen&&!b.carry){b.tgt=null;b.work=0;goTo(b,480,470,sp*0.5,dt);return;}
-  if(S.frozen&&b.carry){const a=b.carry;b.slot=-1;if(goTo(b,RACKS[a.slot].x,RACKS[a.slot].y+44,sp,dt)){S.racks[a.slot]=a;b.carry=null;}return;}
+  if(S.frozen&&b.carry){const a=b.carry;b.slot=-1;if(liveCopy(a)){b.carry=null;return;}if(goTo(b,RACKS[a.slot].x,RACKS[a.slot].y+44,sp,dt)){returnToRack(a);b.carry=null;}return;}
   if(b.carry){
     const a=b.carry;
     if(b.slot<0||S.cloud[b.slot])b.slot=nearestEmptySlot(606,280);
-    if(b.slot<0){if(goTo(b,RACKS[a.slot].x,RACKS[a.slot].y+44,sp,dt)){S.racks[a.slot]=a;b.carry=null;}return;}
+    if(b.slot<0){if(liveCopy(a)){b.carry=null;return;}if(goTo(b,RACKS[a.slot].x,RACKS[a.slot].y+44,sp,dt)){returnToRack(a);b.carry=null;}return;}
     const s=SLOTS[b.slot];
     if(!goTo(b,s.x,s.y+38,sp*0.8,dt))return;
     b.work+=dt;if(b.work<(ai?0.3:0.8))return;
@@ -1749,7 +1769,10 @@ function moverBot(b,dt,ai,sp){
 }
 function buildPrompt(){
   const P=S.p,parts=[];
-  if(S.carry){const z=zoneOf(P.x);parts.push(z===2?`Space: migrate ${S.carry.name} (${Math.round(successChance(S.carry.tier)*100)}%)`:z===0?"Space: put it back":"Carry it to the cloud →");}
+  if(S.carry){const z=zoneOf(P.x),a=S.carry,copy=liveCopy(a),pct=Math.round(successChance(a.tier)*100);
+    if(z===2)parts.push(slotUnder()>=0?`Space: ${copy?"deploy the copy of":"migrate"} ${a.name} (${pct}%)`:S.cloud.some(c=>!c)?"Walk onto an empty cloud slot":"☁️ The cloud is full");
+    else if(z===0)parts.push(copy?"Space: discard the copy":rackUnder()>=0?"Space: put it down here":"Walk onto an empty rack to put it down");
+    else parts.push(copy?"Carry the copy to the cloud → (on-prem stays live)":"Carry it to the cloud →");}
   else{
     const g=grabTarget();if(g&&g.fire===0&&!g.down&&!S.alert)parts.push(S.frozen?"⛔ Can't move: a server is offline":pipeLanes()>0?`Space: ${freePipelineLane()>=0?"pipeline":"carry (pipeline busy)"} · ${pipeDur()}s pipeline (${Math.round(Math.min(1,successChance(g.tier)+0.1)*100)}%)`:`Space: grab (${Math.round(successChance(g.tier)*100)}% cutover)`);
     const rb=rollbackTarget();if(rb)parts.push(`Hold Space: roll back (${ROLLBACK_TIME}s)`);
@@ -1781,7 +1804,7 @@ function update(dt){
   // red alert: any gold server offline or any cloud breach
   const crit=critList(),was=S.alert;S.alert=crit.length>0;
   if(S.alert&&!was){
-    if(S.carry){S.racks[S.carry.slot]=S.carry;S.carry=null;fl(P,"Dropped everything",C.danger);}
+    if(S.carry){const copy=liveCopy(S.carry);returnToRack(S.carry);S.carry=null;fl(P,copy?"Copy discarded":"Dropped everything",C.danger);}
     toast(`🚨 RED ALERT: ${crit.map(c=>c.a.name).join(", ")}. Nothing else works until it's fixed. Incident fixes cost no energy.`);unplanned(1,"alert");
   }
   if(S.alert){S.sirenT=(S.sirenT||0)-dt;if(S.sirenT<=0){S.sirenT=1.6;sfx("siren");}}else S.sirenT=0;
@@ -1793,7 +1816,7 @@ function update(dt){
   // change freeze: no server moves while any on-prem server is offline
   const frozen=downCount()>0;
   if(frozen&&!S.frozen){
-    if(S.carry){S.racks[S.carry.slot]=S.carry;S.carry=null;fl(P,"Put it back: a server is offline",C.danger);}
+    if(S.carry){const copy=liveCopy(S.carry);returnToRack(S.carry);S.carry=null;fl(P,copy?"Copy discarded: a server is offline":"Put it back: a server is offline",C.danger);}
     toast("⛔ A server is offline. No migrations until it's back up.");
   }
   S.frozen=frozen;
@@ -1806,8 +1829,8 @@ function update(dt){
   tickPipeline(dt);
   // a server being moved is in its cutover window: it counts as down at half the normal rate
   {const moving=[];if(S.carry)moving.push(S.carry);S.bots.forEach(b=>{if(b.carry)moving.push(b.carry);});S.pipe.forEach(j=>moving.push(j.a));
-   for(const a of moving){if(S.upgrades.bluegreen)continue;S.err-=TIER[a.tier].sla*0.5*dt;spend("downtime",TIER[a.tier].drain*0.5*dt);}}
-  tickOnPrem(dt);tickCloud(dt);observeTick();spawns(dt);tickHazards(dt);
+   for(const a of moving){if(liveCopy(a))continue;S.err-=TIER[a.tier].sla*0.5*dt;spend("downtime",TIER[a.tier].drain*0.5*dt);}}
+  tickOnPrem(dt);cancelDeadCopies();tickCloud(dt);observeTick();spawns(dt);tickHazards(dt);
   const ai=aiOn();for(const b of S.bots){b.flash=Math.max(0,b.flash-dt);(b.kind==="patch"?patchBot:moverBot)(b,dt,ai,ai?170:85);}
   S.fl=S.fl.filter(f=>(f.t+=dt)<f.life);
   S.fx=S.fx.filter(f=>(f.t+=dt)<f.life);if(S.shake>0)S.shake-=dt;
@@ -1868,7 +1891,8 @@ function drawPipeline(){
   }
   for(const j of S.pipe){
     const y=236+j.lane*44,f=Math.min(1,j.t/j.dur),x=322+(640-322)*f;
-    ctx.fillStyle="#b9874f";rr(x-16,y-12,32,22,3);ctx.fill();ctx.fillStyle="#efdcae";ctx.fillRect(x-2,y-12,4,22);
+    if(liveCopy(j.a)){ctx.globalAlpha=.45;ctx.fillStyle="#7fd4ff";rr(x-16,y-12,32,22,3);ctx.fill();ctx.globalAlpha=1;ctx.strokeStyle="#7fd4ff";ctx.lineWidth=1;rr(x-16,y-12,32,22,3);ctx.stroke();}
+    else{ctx.fillStyle="#b9874f";rr(x-16,y-12,32,22,3);ctx.fill();ctx.fillStyle="#efdcae";ctx.fillRect(x-2,y-12,4,22);}
     tx(j.a.name,x,y-20,8.5,C.ink,{max:80,weight:600});
     bar(x-16,y+13,32,3,f,C.leak,"rgba(0,0,0,.4)");
   }
@@ -1876,7 +1900,8 @@ function drawPipeline(){
 function drawRack(i,a){
   const p=RACKS[i],x=p.x-34,y=p.y-33,w=68,h=66;
   if(!a){ctx.setLineDash([4,4]);ctx.strokeStyle="rgba(255,255,255,.09)";ctx.lineWidth=1;rr(x,y,w,h,6);ctx.stroke();ctx.setLineDash([]);
-    if((S.pipe||[]).some(j=>j.a.slot===i))tx("IN PIPELINE",p.x,p.y,9,C.leak,{font:DISP,weight:700});
+    if(S.carry&&!liveCopy(S.carry)&&zoneOf(S.p.x)===0&&rackUnder()===i){ctx.strokeStyle=C.amber;ctx.lineWidth=2;ctx.setLineDash([6,4]);rr(x,y,w,h,6);ctx.stroke();ctx.setLineDash([]);tx("PUT DOWN",p.x,y+9,8.5,C.amber,{font:DISP,weight:700});}
+    if((S.pipe||[]).some(j=>j.a.slot===i&&!liveCopy(j.a)))tx("IN PIPELINE",p.x,p.y,9,C.leak,{font:DISP,weight:700});
     return;}
   if(a.hidden){ctx.fillStyle="#1d1817";rr(x,y,w,h,6);ctx.fill();ctx.setLineDash([3,3]);ctx.strokeStyle=C.muted;ctx.stroke();ctx.setLineDash([]);
     if(a.fire>0)em("🔥",p.x+20,p.y-22,18);
@@ -1924,6 +1949,11 @@ function drawRack(i,a){
     const pulse=0.6+0.4*Math.sin(S.t*8);ctx.strokeStyle=`rgba(255,93,77,${pulse})`;ctx.lineWidth=2;ctx.setLineDash([4,3]);rr(x-3,y-3,w+6,h+6,7);ctx.stroke();ctx.setLineDash([]);
     ctx.fillStyle="rgba(150,20,15,.92)";rr(x+2,y-12,w-4,13,3);ctx.fill();tx("⚠ AUTOMATION ERROR",p.x,y-5.5,7.5,"#fff",{font:DISP,weight:700,max:w-8});
   }
+  if(migrationBusy(a)){
+    // blue-green: a copy of this server is on its way to (or waiting in) the cloud; this one stays live
+    ctx.strokeStyle="#7fd4ff";ctx.lineWidth=1.5;ctx.setLineDash([3,3]);rr(x-2,y-2,w+4,h+4,7);ctx.stroke();ctx.setLineDash([]);
+    if(!(a.fire>0)){const staged=S.cloud.some(c=>c&&c.staged&&c.orig===a);ctx.fillStyle="rgba(12,40,56,.92)";rr(x+2,y-12,w-4,13,3);ctx.fill();tx(staged?"⧉ STAGED IN CLOUD":"⧉ COPYING",p.x,y-5.5,7.5,"#bfeaff",{font:DISP,weight:700,max:w-8});}
+  }
   if(a.fire>0){em("🔥",p.x+(Math.sin(S.t*20)*1.5),p.y-12,18+a.fire*0.18);bar(x,y-9,w,5,a.fire/100,C.danger,"#3a1d1a");}
   drawLicense(a,p,y+h);
 }
@@ -1937,7 +1967,9 @@ function drawLicense(a,p,bottom){
 }
 function drawSlot(i,a){
   const p=SLOTS[i],x=p.x-32,y=p.y-31,w=64,h=62;
-  if(!a){ctx.setLineDash([4,4]);ctx.strokeStyle="rgba(29,64,88,.28)";ctx.lineWidth=1;rr(x,y,w,h,14);ctx.stroke();ctx.setLineDash([]);return;}
+  if(!a){ctx.setLineDash([4,4]);ctx.strokeStyle="rgba(29,64,88,.28)";ctx.lineWidth=1;rr(x,y,w,h,14);ctx.stroke();ctx.setLineDash([]);
+    if(S.carry&&zoneOf(S.p.x)===2&&slotUnder()===i){ctx.fillStyle="rgba(255,181,71,.16)";rr(x,y,w,h,14);ctx.fill();ctx.strokeStyle=C.amber;ctx.lineWidth=2.5;ctx.setLineDash([6,4]);rr(x,y,w,h,14);ctx.stroke();ctx.setLineDash([]);tx("DROP HERE",p.x,y+9,8.5,"#8a5a00",{font:DISP,weight:700});}
+    return;}
   const T=TIER[a.tier||"bronze"];
   if(a.staged){
     ctx.fillStyle="#87939b";rr(x,y,w,h,14);ctx.fill();
@@ -2055,11 +2087,18 @@ function drawPlayer(){
   }
   if(P.stun>0&&!P.heldBy)em("💫",P.x,P.y-22,14);
   let top=P.y-30;
-  if(S.carry){
+  if(S.carry&&liveCopy(S.carry)){
+    // blue-green: a see-through copy; the real server is still running in its rack
+    ctx.globalAlpha=.4;ctx.fillStyle="#7fd4ff";rr(P.x-21,P.y-15,42,30,4);ctx.fill();ctx.globalAlpha=1;
+    ctx.strokeStyle="#7fd4ff";ctx.lineWidth=1.5;ctx.setLineDash([4,3]);rr(P.x-21,P.y-15,42,30,4);ctx.stroke();ctx.setLineDash([]);
+    tx("COPY",P.x,P.y,9,"#dff4ff",{font:DISP,weight:700});
+  }else if(S.carry){
     // the box sits on top of you (you can still see yourself through it), and the dashed ring is your bigger hitbox
     ctx.globalAlpha=.72;ctx.fillStyle="#b9874f";rr(P.x-21,P.y-15,42,30,4);ctx.fill();
     ctx.fillStyle="#efdcae";ctx.fillRect(P.x-3,P.y-15,6,30);ctx.globalAlpha=1;
     ctx.strokeStyle="#7a5530";ctx.lineWidth=1.5;rr(P.x-21,P.y-15,42,30,4);ctx.stroke();
+  }
+  if(S.carry){
     ctx.strokeStyle=C.amber;ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.beginPath();ctx.arc(P.x,P.y,PR_CARRY,0,7);ctx.stroke();ctx.setLineDash([]);
     ctx.font=`600 10.5px ${MONO}`;const w=Math.min(ctx.measureText(S.carry.name).width,90)+14;
     ctx.fillStyle="#3a2f20";rr(P.x-w/2,P.y-44,w,17,4);ctx.fill();tx(S.carry.name,P.x,P.y-35.5,10.5,C.amber,{max:90,weight:600});
@@ -2153,7 +2192,7 @@ let DIFF="normal";try{const d=localStorage.getItem("liftshift-diff");if(d&&DIFFS
 function titleScreen(){
   mode="title";let best=null;try{const s=localStorage.getItem("liftshift-best");best=s===null?null:+s;}catch(e){}
   const opts=Object.entries(DIFFS).map(([k,d])=>`<button class="diff ${k===DIFF?"on":""}" data-diff="${k}" aria-pressed="${k===DIFF}"><b>${d.label}</b><span>${d.desc}</span><small>First client: ${d.counts[0][0]} servers + ${d.counts[0][1]} hidden</small></button>`).join("");
-  show(`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><div class="eyebrow">A cloud migration game · prototype</div><small style="margin-left:auto;text-align:right;color:var(--muted);font-size:10px">Last updated <time datetime="2026-11-08T12:56:00-05:00">Nov 8, 2026 · 12:56 PM ET</time></small></div>
+  show(`<div class="eyebrow">A cloud migration game · prototype</div>
   <h1>Lift <span>&amp;</span> Shift</h1>
   <p><b>You told them you'd done this before. You have not.</b> You're the newest hire at Lift &amp; Shift Consulting. An endless line of clients, each with a bigger server room than the last, and you start with zero automation. Get everything to the cloud without getting fired, and see how far your career goes.</p>
   <h3>Difficulty</h3>
@@ -2167,9 +2206,9 @@ function titleScreen(){
   ${(()=>{let bc=0;try{bc=+(localStorage.getItem("liftshift-clients")||0);}catch(e){}return bc||best!==null?`<p style="font-size:12.5px;color:var(--muted)">${bc?`Longest career: ${bc} client${bc>1?"s":""}. `:""}${best!==null?`Best retirement: ${money(best)} total IT spend.`:""}</p>`:"";})()}`);
 }
 const TUT=[
-  {i:"📦",t:"Your job",b:"The client's server room is on the left, the cloud is on the right, and the hallway is in between. Walk to a rack, press <kbd>Space</kbd> to pick up the app, carry it to the cloud, and press <kbd>Space</kbd> to drop it in. Move with <kbd>WASD</kbd> or the arrow keys.",tip:"An engagement ends when the server room is empty. There's no clock that cuts you off."},
+  {i:"📦",t:"Your job",b:"The client's server room is on the left, the cloud is on the right, and the hallway is in between. Walk to a rack, press <kbd>Space</kbd> to pick up the app, carry it to the cloud, stand on an empty cloud slot, and press <kbd>Space</kbd> to drop it in. Move with <kbd>WASD</kbd> or the arrow keys.",tip:"An engagement ends when the server room is empty. There's no clock that cuts you off."},
   {i:"🎲",t:"Bronze first",b:"Every rack shows its odds of coming up in the cloud. Bronze is easy. Gold starts around 15%. Each bronze you move raises silver's odds, and moving bronze and silver raises gold's, up to 100%.",tip:"If a cutover fails, the app sits offline in the cloud. Hold <kbd>E</kbd> to retry, or hold <kbd>Space</kbd> to roll it back."},
-  {i:"⏳",t:"Keep the old stuff alive",b:"Each on-prem server has a compliance timer. Hold <kbd>E</kbd> to patch it, which costs energy and comes back shorter every time. Migrating stops the clock for good.",tip:"Energy refills slowly by itself, faster when you migrate, and with ☕ coffee."},
+  {i:"⏳",t:"Keep the old stuff alive",b:"Each on-prem server has a compliance timer. Hold <kbd>E</kbd> to patch it. A patch costs energy and covers it until the current cycle ends; then it needs another. Migrating stops the clock for good.",tip:"Energy refills slowly by itself, faster when you migrate, and with ☕ coffee."},
   {i:"🎫",t:"Tickets and email",b:"Tickets pile up at the desk at the bottom of the hallway; emails pile up in the inbox at the top. Each has a bar with 5 slots. When the ticket bar fills, tickets start escalating and starting server fires; escalations slow by 75% during outages or breaches. When the inbox fills, a VP comes hunting for you. Hold <kbd>E</kbd> at either one to work it down.",tip:"Standing at the inbox answering keeps the VP off you. Vendor spam doesn't fill the bar and goes away by itself."},
   {i:"🔥",t:"Fires and outages",b:"Hold <kbd>E</kbd> on a fire to put it out. If it burns through, the server goes offline: hold <kbd>E</kbd> to bring it back up. While anything is offline, nothing can be moved. A gold server offline sets off a red alert.",tip:"Bringing servers back up never costs energy, so you can't get locked out."},
   {i:"💧",t:"The cloud isn't safe either",b:"Cloud apps spring leaks that flash redder as they get worse. Seal them with <kbd>E</kbd>. A leak you ignore becomes a breach, which spreads to the app next door and triggers a red alert.",tip:"Security upgrades like Policy as Code, Vulnerability Scanner and Secrets Manager make leaks rarer."},
@@ -2193,7 +2232,7 @@ const NOTES=[
   ["Bronze first","Cutover odds climb as you move easier servers first.","Real migrations run in waves. Low-risk pilot workloads come first so the team builds runbooks, tooling and confidence before touching the crown jewels."],
   ["Rollback","A failed cutover can always be rolled back.","Every production cutover needs a tested back-out plan. The best migration teams decide in advance when to roll back, so nobody has to be a hero at 3am."],
   ["Uptime error budget","You get fired for too much downtime, not for spending money.","Site reliability engineering sets a reliability target and treats the allowed downtime as a budget. Spend it on progress, and stop taking risks when it runs low."],
-  ["Blue-green cutovers","With the upgrade, on-prem stays live and a failed cloud deployment stays gray for retry.","Running the old and new environments side by side means rollback is just flipping traffic back. It turns a scary cutover into a reversible one."],
+  ["Blue-green cutovers","With the upgrade, you carry a copy while on-prem stays live, and a failed cloud deployment stays gray for retry.","Running the old and new environments side by side means rollback is just flipping traffic back. It turns a scary cutover into a reversible one."],
   ["Status page","With the upgrade, users stop grabbing you during red alerts.","During an incident, proactive communication cuts the flood of \"is it down?\" questions, so the people fixing it can keep fixing it."],
   ["Blameless postmortems","With the upgrade, each resolved red alert gives back a story point.","Teams that write blameless postmortems turn incidents into lessons and fixes, instead of repeating the same outage next month."],
   ["On-call rotation","With the upgrade, your energy comes back 50% faster.","One person carrying every page burns out. A sustainable rotation keeps the team rested enough to respond well."],
@@ -2206,8 +2245,8 @@ const NOTES=[
   ["Unplanned work","Incidents eat next sprint's story points.","Firefighting steals capacity from improvement work. It's one of the core ideas behind DevOps: unplanned work is the enemy of planned work."],
   ["Velocity doesn't bank","Unspent story points disappear.","Story points are a planning tool, not a currency. A team's capacity is what it is each sprint, and you can't save it up."],
   ["Hidden servers","The client always forgot a few.","Shadow IT and out-of-date asset inventories (CMDBs) are why discovery is never complete. Somewhere there's always a box under someone's desk that payroll depends on."],
-  ["Escalations consume capacity","Ignored tickets can start fires and consume improvement capacity.","Ignored tickets can start server fires. During outages or breaches, escalation slows to give you recovery time."],
-  ["Patch or migrate","Patching costs energy and the timer comes back shorter.","Patching old systems is technical debt: it buys time but never removes the problem. Migrating or modernizing does."],
+  ["Tickets become fires","Ignored tickets escalate and start fires. During an outage or breach they slow down so you can recover.","Small problems you ignore turn into outages. Keeping the queue under control is real reliability work."],
+  ["Patch or migrate","A patch only covers the current cycle, so every server keeps costing energy until it's migrated.","Patching old systems is technical debt: it buys time but never removes the problem. Migrating or modernizing does."],
   ["License renewals","Move licensed servers before they renew.","License true-ups and renewal dates drive real migration timelines. Missing one can cost a year of fees for software you were about to retire."],
   ["Drift and auto-patching","Cloud apps get riskier the longer they go unpatched, until you buy Cloud Auto-Patching.","Moving to the cloud doesn't make a workload secure by itself. Unpatched images and configuration drift pile up quietly, and automated patching is what keeps a growing fleet from rotting."],
   ["CI/CD pipeline","The pipeline moves servers for you, in parallel lanes, with tests that raise the odds.","Continuous delivery automates the path to production. Runners are limited, deploys still have a window, and automated tests lower the change failure rate."],
@@ -2237,16 +2276,17 @@ function howToPlay(){
   <p>Each engagement is one client's server room. Carry every app to the cloud, keep things up while you do, and don't get breached. There's no clock that cuts you off; the engagement ends when the room is empty. Between clients you get an improvement sprint to build tools you'll bring to every client after. Clients never stop coming: they get bigger and busier, and big ones arrive in waves from their other building. Retire whenever you like from the review screen. Money is your score: IT always costs money, so the goal is the least negative total.</p>
   <p style="font-size:13.5px;color:var(--muted)">You get fired if the <b style="color:var(--ink)">uptime error budget</b> runs out (offline servers burn it) or <b style="color:var(--ink)">security</b> hits zero (breaches and failed audits drain it). Security carries over between clients, but each improvement sprint's security review gives back 25, and 20 seconds without a breach or failed audit starts a slow recovery.</p>
   <div class="legend">
-    <div><span class="ic">📦</span><span><b>Migrate.</b> Space to grab an app, carry it to the cloud, Space to drop. Migrating earns energy, and cloud apps cost less to run than on-prem servers.</span></div>
+    <div><span class="ic">📦</span><span><b>Migrate.</b> Space to grab an app, carry it to the cloud, stand on an empty cloud slot and press Space to drop it. To put one back, stand on an empty rack; an escalation chasing that server will follow it there. Migrating earns energy, and cloud apps cost less to run than on-prem servers.</span></div>
     <div><span class="ic">🎲</span><span><b>Cutover odds.</b> Each rack shows its chance of coming up in the cloud. Bronze starts high, gold starts around 15%. Moving bronze raises silver's odds; moving bronze and silver raises gold's, up to 100% once they're all moved. A failed cutover lands offline in the cloud: hold E to retry at the same odds (3s bronze, 5s silver, 8s gold), or hold Space to roll it back on-prem.</span></div>
     <div><span class="ic">📜</span><span><b>License renewal.</b> Some servers show a renewal countdown. Migrate them before it hits zero or you pay for another year. Gold licenses come due later, so you have time to build experience. Answering a finance email buys the closest one 20 more seconds.</span></div>
-    <div><span class="ic">⏳</span><span><b>Compliance timer.</b> Hold E to patch (costs energy; covers the current cycle without restarting its countdown. Migrating while covered halves new-leak risk for the first 30 seconds after successful cutover. Covered cycles have a green bar and checkmark. When the cycle ends, a fresh uncovered cycle begins), or migrate it to stop the clock for good. If one runs out, the audit fails: $12k and 4 security, and the server goes under remediation with a fresh timer.</span></div>
+    <div><span class="ic">⏳</span><span><b>Compliance timer.</b> Every on-prem server runs a compliance cycle. Hold E to patch it: it costs energy and covers the rest of that cycle (green bar, ✓ COVERED). When the cycle ends, a new uncovered one starts and needs another patch. If an uncovered cycle runs out, the audit fails: $12k and 4 security, and a fresh cycle starts. Migrating stops the clock for good, and a server migrated while covered is half as likely to leak for its first 30 seconds in the cloud.</span></div>
     <div><span class="ic">🔥</span><span><b>Fire.</b> Escalated tickets start fires. Escalations run 75% slower during any outage or active breach. Change freezes pause escalations, fire growth and spread. Hold E to put one out. If it burns all the way, the server goes offline, burning your uptime budget until you hold E to bring it back up. While any server is offline, nothing can be moved.</span></div>
     <div><span class="ic">🥇</span><span><b>Tiers.</b> Gold, silver and bronze servers. Gold takes longest to bring back up (5s) and costs the most while it's down.</span></div>
     <div><span class="ic">🚨</span><span><b>Red alert.</b> A gold server offline or any cloud breach. You drop everything and can only fix incidents until it's over. Incident fixes never cost energy.</span></div>
     <div><span class="ic">💧</span><span><b>Cloud leak.</b> Hold E to seal it by hand (it costs energy; security upgrades make leaks rarer). Ignore it and it becomes a breach that spreads to the next app every 10 seconds. Unpatched cloud apps drift: the longer since one was last patched (sealed or contained), the more often it leaks, up to twice as often. Cloud Auto-Patching stops the drift.</span></div>
     <div><span class="ic">📧</span><span><b>Email inbox.</b> At the top of the hallway, with a 5-slot bar. ⚖️ legal, 💰 finance and 👔 exec emails fill it; 📣 vendor spam doesn't and disappears by itself. When the bar is full, fines trickle in and a VP comes hunting you, again and again, until you answer some. While you're at the inbox answering, the VP won't interrupt. Answering a finance email also pushes back the closest license renewal.</span></div>
-    <div><span class="ic">🎫</span><span><b>Ticket queue.</b> At the bottom of the hallway, with a 5-slot bar. Hold E there to close tickets. When the bar is full it flashes red and tickets escalate 🚨 one at a time, each starting a server fire and costing half an improvement point, until you work it down. Escalations continue 75% slower during outages and breaches, and pause during focus time and change freezes. Buy an Emergency Freeze Window between clients and use F or the Freeze button. Managers automatically freeze critical incidents for 10/14/18 seconds, with 60/50/40-second cooldowns. Without a manager, incident grace lasts 4 seconds with a 60-second cooldown. Downtime and breach damage still count.</span></div>
+    <div><span class="ic">🎫</span><span><b>Ticket queue.</b> At the bottom of the hallway, with a 5-slot bar. Hold E there to close tickets. When the bar fills, it flashes red and tickets escalate 🚨 one at a time until you work it down. Each one sets a server on fire and costs half a story point. During an outage or breach they come 75% slower; focus time and change freezes pause them.</span></div>
+    <div><span class="ic">❄</span><span><b>Change freeze.</b> Users, new tickets and email, escalations, fire growth and breach spread all stop. Downtime and breach damage still count, so a freeze buys time, it doesn't fix anything. Every incident gets a short 4-second freeze (once a minute). A manager makes it 10/14/18 seconds and lets it return sooner (60/50/40s). The Emergency Freeze Window upgrade gives you one 12-second freeze on F or the Freeze button.</span></div>
     <div><span class="ic">👤</span><span><b>Users.</b> They wander the hallway. Bump into one and you're stuck for a "quick question." The better dressed, the longer: an intern holds you 1 second, the CIO almost 5.</span></div>
     <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
     <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at half rate.</span></div>
@@ -2370,7 +2410,7 @@ function showEnd(reason){
 /* ---------- giving up: a randomly generated resignation letter + how much you sucked ---------- */
 function runStats(){
   const t={...S.run};for(const k of["mig","audits","breaches","lost","unplanned"])t[k]+=S.ss[k];
-  t.left=S.racks.filter(Boolean).length+(S.carry?1:0)+S.cloud.filter(a=>a&&a.down).length;
+  t.left=S.racks.filter(Boolean).length+(S.carry&&!liveCopy(S.carry)?1:0)+S.cloud.filter(a=>a&&a.down).length;
   t.spend=-S.budget;t.secLost=100-Math.max(0,S.security);t.upLeft=Math.round(clamp(S.err/S.errMax,0,1)*100);
   return t;
 }
@@ -2383,7 +2423,7 @@ function suckRows(t){
     ["Failed cutovers",t.fails,4,"Gold first, huh?"],
     ["Rollbacks",t.rollbacks,3,"Two steps forward, one step back."],
     ["Missed legal/finance/exec emails",t.missed,3,"Inbox zero, but backwards."],
-    ["Tickets left to escalate",t.esc,2,"They consumed service budget and improvement capacity."],
+    ["Tickets left to escalate",t.esc,2,"They set the building on fire."],
     ["Seconds held in the hallway",Math.round(t.heldT),0.5,"Quick questions are never quick."],
     ["Vendor emails you answered",t.vendor,2,"Why. Just why."],
     ["Security lost",Math.round(t.secLost),0.25,""],

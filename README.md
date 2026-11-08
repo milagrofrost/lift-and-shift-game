@@ -61,13 +61,13 @@ Google Fonts supplies optional fonts; system font fallbacks are included. Sound 
 | Input | Action |
 | --- | --- |
 | WASD or arrow keys | Move |
-| Space / J | Grab or drop; hold near a failed cloud cutover to roll back |
+| Space / J | Grab, or drop while standing on an empty cloud slot or rack; hold near a failed cloud cutover to roll back |
 | Hold E / K | Contextual work: patch, firefight, restore, contain, investigate, answer, or close |
 | P / Escape | Pause or resume |
 | M | Toggle sound effects |
 | Music button | Toggle music |
 
-Touch controls are available on supported layouts. Tutorial, How to play, and Why it works this way explain the mechanics in-game. The pipeline upgrade adds a hold-Space action at a rack.
+Touch controls are available on supported layouts. Tutorial, How to play, and Why it works this way explain the mechanics in-game. With the pipeline upgrade, Space at a rack sends it down a free lane (or you carry it if every lane is busy).
 
 ## Development status
 
@@ -82,8 +82,8 @@ Play at **https://las.milagrofrost.com**. Cloudflare Pages automatically deploys
 Read [AGENTS.md](AGENTS.md) before making changes. It records the teaching goals, agreed gameplay direction, branch expectations, and validation guidelines. Preserve the relationship between mechanics and the operational lesson they are intended to teach. Explain balance changes and test their interactions instead of treating isolated functions as the whole game.
 
 ### Blue-green staging
-Blue-green keeps the original server online until successful cutover. Failed cloud deployments stay gray; hold E there to retry. Restore or extinguish the source first if needed. Migrating a currently patched server reduces new-leak risk by 50% for the first 30 seconds after cutover.
+With Blue-Green Cutovers, you carry (or pipeline) a see-through copy while the original stays online in its rack until a successful cutover retires it. The original can still catch fire and take escalations while the copy is in flight; if it goes offline, the copy is canceled and you restore it and migrate again. Failed cloud deployments stay gray; hold E there to retry. Migrating a currently patched server reduces new-leak risk by 50% for the first 30 seconds after cutover.
 
 ### Hidden-server discovery
-Unknown racks require investigation (hold E for 6 seconds; 3 with Asset Inventory). They can be bronze, silver or gold. Discovery can expose an already-expired license with renewal liability, or a license close to expiry. Escalations can attack hidden racks; a resulting outage reveals the server. Migration progress never reveals them automatically.
+Unknown racks require investigation (hold E for 6 seconds; 3 with Asset Inventory). They can be bronze, silver or gold. Discovery can expose an already-expired license with renewal liability, or a license close to expiry. Investigate quickly and you can beat the renewal; leave it, or let an outage find it, and the license has probably already renewed. Escalations can attack hidden racks; a resulting outage reveals the server. Migration progress never reveals them automatically.
 
