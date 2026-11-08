@@ -54,6 +54,10 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 
 - The AI Agent amplifies existing practices. With no foundations for a job, it keeps its base level odds; each relevant upgrade improves that job only (patching: Patch Bot, Runbooks, Observability). Foundations shift results toward success; they do not add a penalty or stop tokens being billed.
 
+### Uptime recovery
+
+- The uptime budget recovers slowly only while nothing is offline or breached: up to half the budget by default. Redefine "Uptime" raises the rate and cap; managers raise the rate. A manager's server visit is an inspection that takes the server offline half the time.
+
 ### Career and balance
 
 - Short successful careers and early retirement fit the job-jumping satire. Do not automatically redesign scoring to punish them.

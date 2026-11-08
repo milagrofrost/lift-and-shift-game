@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
+  "uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -172,6 +172,30 @@ test("escalations run at half speed during fires and quarter speed during outage
   S = fresh(); firstRack(S).fire = 30; S.racks.filter(a => a && !a.hidden)[1].down = true; e0 = S.ss.esc; S.escT = 1;
   runQueue(S, 3.8); check(S.ss.esc === e0, "outage rate did not take precedence over the fire rate");
   runQueue(S, 0.4); check(S.ss.esc === e0 + 1, "escalation stalled during an outage");
+});
+
+/* ---------- uptime recovery and the manager ---------- */
+test("uptime recovers only while nothing is down or breached, and stops at its cap", () => {
+  const S = fresh(); S.err = S.errMax * 0.1;
+  check(near(G.uptimeRegen(), S.errMax * 0.002), `base rate ${G.uptimeRegen()}`);
+  const a = firstRack(S); a.down = true; check(G.uptimeRegen() === 0, "recovered during an outage"); a.down = false;
+  S.cloud[0] = {name: "x", tier: "bronze", breach: true}; check(G.uptimeRegen() === 0, "recovered during a breach"); S.cloud[0] = null;
+  S.err = S.errMax * 0.5; check(G.uptimeRegen() === 0, "recovered past half the budget");
+  S.err = S.errMax * 0.8; const before = S.err; S.users = []; G.update(0.05); check(S.err <= before, "update raised uptime above the cap");
+});
+test("Redefine Uptime raises the rate and cap; a manager raises the rate", () => {
+  const S = fresh(); S.err = S.errMax * 0.1;
+  const base = G.uptimeRegen();
+  S.upgrades.spin = 3; check(G.uptimeRegen() > base && near(G.uptimeCap(), S.errMax * 0.95), `spin cap ${G.uptimeCap()}`);
+  S.upgrades.spin = 0; S.upgrades.manager = 1; check(G.uptimeRegen() > base && near(G.uptimeCap(), S.errMax * 0.5), "manager changed the wrong thing");
+});
+test("a manager looking at a server takes it offline half the time", () => {
+  for (const [roll, breaks] of [[0.4, true], [0.6, false]]) {
+    const S = fresh(); S.upgrades.manager = 1; const a = firstRack(S), p = G.RACKS[a.slot];
+    S.mgr = {x: p.x, y: p.y + 44, state: "patch", tgt: a, work: 1.99, dec: 5, say: "", sayT: 0, wx: 480, wy: 300};
+    fixedRandom(roll); G.tickManager(0.05);
+    check(a.down === breaks && S.mgr.state === "idle", `roll ${roll}: down ${a.down}, state ${S.mgr.state}`);
+  }
 });
 
 /* ---------- blue-green ---------- */

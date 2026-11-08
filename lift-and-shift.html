@@ -365,6 +365,10 @@ const TIER={
 };
 // Uptime error budget per sprint. Offline servers burn it (gold 3/s, silver 2/s, bronze 1/s). Empty = fired.
 const ERR_BUDGET=150;
+/* The error budget slowly recovers while nothing is offline or breached, as old downtime rolls out of the window.
+   Base: 0.2% of the budget per second, up to half. Redefining "Uptime" and your manager speed it up; the upgrade raises the cap. */
+const uptimeCap=()=>S.errMax*Math.min(1,0.5+0.15*lvl("spin"));
+const uptimeRegen=()=>downCount()>0||S.cloud.some(a=>a&&a.breach)||S.err>=uptimeCap()?0:S.errMax*(0.002+0.0015*lvl("spin")+0.0007*lvl("manager"));
 // A patch covers the current cycle; its deadline never moves.
 const patchDue=a=>!a.covered;
 function applyPatch(a){
@@ -438,13 +442,14 @@ const UPGRADES=[
   {id:"autopatch",name:"Cloud Auto-Patching",icon:"🩹",cost:5,sec:true,desc:"Cloud apps get patched automatically, so they never drift into riskier states, and new leaks are 20% less likely. Covered apps show a green shield."},
   {id:"pipeline",name:"CI/CD Pipeline",icon:"🏭",cost:6,max:3,desc:"Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud. No walking: about 6 seconds (3 with Terraform), with +10% odds from automated tests. Each level adds a lane, so more jobs can run at once."},
   {id:"bluegreen",name:"Blue-Green Cutovers",icon:"🔀",cost:6,desc:"Run old and new side by side. You carry a see-through copy while the original stays live in its rack, so moving it costs no downtime. The original still takes fires and escalations, and if it goes offline the copy is canceled. Failed cloud deployments stay gray; hold E there to retry."},
+  {id:"spin",name:"Redefine \"Uptime\"",icon:"🎤",cost:3,max:3,desc:"Leadership skills. That outage was a \"planned degradation event.\" Your uptime recovers faster while nothing is down, and can recover further: up to 65%, 80%, then 95% of the budget."},
   {id:"statuspage",name:"Status Page",icon:"📣",cost:3,desc:"During a red alert, users check the status page instead of grabbing you. (Execs you ignored still come find you.)"},
   {id:"postmortem",name:"Blameless Postmortems",icon:"📝",cost:3,desc:"Learn from every incident. Each red alert you resolve gives back half the story point it cost."},
   {id:"oncall",name:"On-Call Rotation",icon:"📟",cost:3,desc:"You're not the only hero anymore. Energy regenerates 50% faster."},
   {id:"observe",name:"Observability",icon:"📈",cost:4,desc:"Early warnings: racks about to fail compliance and leaks about to breach get a pulsing ring and an alert."},
   {id:"snacks",name:"Snack Budget",icon:"🍩",cost:2,max:3,desc:"Finance approved more donuts and coffee. Pickups show up at 35% shorter intervals per level, and one more can be out at a time."},
   {id:"vendor",name:"Vendor Negotiation",icon:"🤝",cost:2,max:3,desc:"License renewals cost 20% less per level."},
-  {id:"manager",name:"A Manager Who Fights for You",icon:"👔",cost:5,max:3,desc:"All levels automatically call a change freeze for gold outages or breaches (10/14/18 seconds; cooldown 60/50/40 seconds). Level 1: answers your email, but chats with users and sometimes tries to patch a server himself (it goes offline). Level 2: focuses on email and rarely touches servers. Level 3: also stands guard at your doorway and shoves users out of your way as you cross the hallway."},
+  {id:"manager",name:"A Manager Who Fights for You",icon:"👔",cost:5,max:3,desc:"All levels automatically call a change freeze for gold outages or breaches (10/14/18 seconds; cooldown 60/50/40 seconds). They also speed up uptime recovery. Level 1: answers your email, but chats with users and sometimes wanders over to look at a server (half the time, it goes offline). Level 2: focuses on email and rarely touches servers. Level 3: also stands guard at your doorway and shoves users out of your way as you cross the hallway."},
   {id:"agent",name:"AI Agent",icon:"🧠",cost:6,max:4,ai:true,req:()=>S.career.length>=3,desc:"Answers email, closes tickets, patches servers and seals leaks, fast, anywhere. Every attempt costs tokens. L1 pilot: 50% right, 25% does nothing, 25% breaks something. L2 better instructions: 70/20/10. L3 agentic workflows: 85/12/3. L4 guardrails and evals: harmful actions get blocked. It amplifies what you already have: with good foundations for a job, it's right far more often."},
   {id:"chatbot",name:"AI Chatbots",icon:"💬",cost:4,max:2,ai:true,desc:"A chatbot roams the hallway, chats up users and resolves them. A user being chatted up can't grab you. Sometimes they just want a human. Each level adds a bot."},
 ];
@@ -897,7 +902,8 @@ function drawTempBubble(){const T=S.temp;if(T&&T.sayT>0)smallBubble(T.say,T.x,T.
 const MGR_LINES={
   email:["Reply-all, done.","I'll loop in legal.","Per my email... oh, that's me.","Inbox zero, baby."],
   chat:["Did you see the game last night?","Let's circle back on that.","Quick sync? Great.","How are the kids?"],
-  patch:["I used to be technical, you know.","How hard can patching be?","Let me just click this..."],
+  patch:["I used to be technical, you know.","Let me just take a look.","Is this one supposed to blink?"],
+  fine:["Looks fine to me.","Yep. That's a server.","Good talk, server."],
   oops:["Huh. It's never done that before.","That's... not great.","Was it supposed to beep?"],
   guard:["Let them through!","Not now, Gary!","Book a meeting!","She's busy, folks!","Out of the way!"],
 };
@@ -1054,8 +1060,11 @@ function tickManager(dt){
     const a=M.tgt;if(!a||S.racks[a.slot]!==a||a.down||a.hidden){M.state="idle";return;}
     const p=RACKS[a.slot];if(!goTo(M,p.x,p.y+44,sp,dt))return;
     M.work+=dt;
-    if(M.work>=2){sfx("offline");a.down=true;a.downT=S.time;a.fire=0;a.prog=0;S.ss.lost++;fl(p,"OFFLINE",C.danger);mgrSay("oops");
-      toast(`👔 Your manager tried to patch ${a.name} himself. It's offline now.`);M.state="idle";M.dec=2;}
+    if(M.work>=2){
+      if(Math.random()<0.5){sfx("offline");a.down=true;a.downT=S.time;a.fire=0;a.prog=0;S.ss.lost++;fl(p,"OFFLINE",C.danger);mgrSay("oops");
+        toast(`👔 Your manager looked at ${a.name}. It's offline now.`);}
+      else mgrSay("fine");
+      M.state="idle";M.dec=2;}
     return;
   }
   if(M.state==="chat"){
@@ -1077,7 +1086,7 @@ function drawManager(){
   ctx.fillStyle="#d8c9a8";rr(x+9,y+2,8,11,1);ctx.fill();ctx.fillStyle="#8a6d3b";ctx.fillRect(x+11,y+1,4,2);
   if(M.state==="guard"){ctx.strokeStyle="rgba(255,181,71,.55)";ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(x,y,24,0,7);ctx.stroke();ctx.setLineDash([]);}
   if(M.state==="email"||M.state==="patch"){ctx.strokeStyle=C.amber;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(x,y,20,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,M.work/(M.state==="patch"?2:1.2)));ctx.stroke();}
-  tx(`MANAGER${M.state==="guard"?" · ON GUARD":M.state==="chat"?" · CHATTING":M.state==="patch"?" · \"HELPING\"":""}`,x,y+26,8,C.amber,{font:DISP,weight:700});
+  tx(`MANAGER${M.state==="guard"?" · ON GUARD":M.state==="chat"?" · CHATTING":M.state==="patch"?" · JUST LOOKING":""}`,x,y+26,8,C.amber,{font:DISP,weight:700});
 }
 function tickUsers(dt){
   const P=S.p;if(P.userImm>0)P.userImm-=dt;if(P.ghost>0)P.ghost-=dt; // your own timers keep running during a freeze
@@ -1967,6 +1976,7 @@ function update(dt){
   buildPrompt();
   // running costs: on-prem servers cost more per second than cloud apps, so migrating lowers the burn rate
   spend("run",burnRate()*dt);
+  S.err=Math.max(S.err,Math.min(uptimeCap(),S.err+uptimeRegen()*dt));
   if(S.err<=0)return showEnd("uptime");
   if(S.security<=0)return showEnd("security");
   // engagement done: the client's server room is empty and nothing is stuck offline in the cloud
@@ -2283,6 +2293,7 @@ function setBar(id,frac,label,level,flash){
 }
 const lvlOf=f=>f>0.6?"ok":f>0.3?"warn":"bad";
 function healthBars(){
+  $("hb-up").querySelector("small").textContent=uptimeRegen()>0?"Recovering · empty = fired":"Empty = fired";
   const up=S.err/S.errMax;setBar("hb-up",up,`${Math.max(0,Math.ceil(up*100))}%`,lvlOf(up),up<0.2);
   const sec=Math.max(0,S.security)/100;setBar("hb-sec",sec,`${Math.round(Math.max(0,S.security))}`,lvlOf(sec),sec<0.3);
   const d=dayNum(),late=overdue(),lf=d/S.cdays;
@@ -2363,7 +2374,7 @@ function tutorial(i){
 const NOTES=[
   ["Bronze first","Cutover odds climb as you move easier servers first.","Real migrations run in waves. Low-risk pilot workloads come first so the team builds runbooks, tooling and confidence before touching the crown jewels."],
   ["Rollback","A failed cutover can always be rolled back.","Every production cutover needs a tested back-out plan. The best migration teams decide in advance when to roll back, so nobody has to be a hero at 3am."],
-  ["Uptime error budget","You get fired for too much downtime, not for spending money.","Site reliability engineering sets a reliability target and treats the allowed downtime as a budget. Spend it on progress, and stop taking risks when it runs low."],
+  ["Uptime error budget","You get fired for too much downtime, not for spending money.","Site reliability engineering sets a reliability target and treats the allowed downtime as a budget. Spend it on progress, and stop taking risks when it runs low. Real error budgets are measured over a rolling window, so they recover as old incidents age out, and yes, sometimes as someone redefines the metric."],
   ["Blue-green cutovers","With the upgrade, you carry a copy while on-prem stays live, and a failed cloud deployment stays gray for retry.","Running the old and new environments side by side means rollback is just flipping traffic back. It turns a scary cutover into a reversible one."],
   ["Status page","With the upgrade, users stop grabbing you during red alerts.","During an incident, proactive communication cuts the flood of \"is it down?\" questions, so the people fixing it can keep fixing it."],
   ["Blameless postmortems","With the upgrade, each resolved red alert gives back a story point.","Teams that write blameless postmortems turn incidents into lessons and fixes, instead of repeating the same outage next month."],
@@ -2407,7 +2418,7 @@ function howToPlay(){
   mode="title";
   show(`<div class="eyebrow">How to play</div><h2>The full reference</h2>
   <p>Each engagement is one client's server room. Carry every app to the cloud, keep things up while you do, and don't get breached. There's no clock that cuts you off; the engagement ends when the room is empty. Between clients you get an improvement sprint to build tools you'll bring to every client after. Clients never stop coming: they get bigger and busier, and big ones arrive in waves from their other building. Retire whenever you like from the review screen. Money is your score: IT always costs money, so the goal is the least negative total.</p>
-  <p style="font-size:13.5px;color:var(--muted)">You get fired if the <b style="color:var(--ink)">uptime error budget</b> runs out (offline servers burn it) or <b style="color:var(--ink)">security</b> hits zero (breaches and failed audits drain it). Security carries over between clients, but each improvement sprint's security review gives back 25, and 20 seconds without a breach or failed audit starts a slow recovery.</p>
+  <p style="font-size:13.5px;color:var(--muted)">You get fired if the <b style="color:var(--ink)">uptime error budget</b> runs out (offline servers burn it; it slowly recovers to half while nothing is down or breached) or <b style="color:var(--ink)">security</b> hits zero (breaches and failed audits drain it). Security carries over between clients, but each improvement sprint's security review gives back 25, and 20 seconds without a breach or failed audit starts a slow recovery.</p>
   <div class="legend">
     <div><span class="ic">📦</span><span><b>Migrate.</b> Space to grab an app, carry it to the cloud, stand on an empty cloud slot and press Space to drop it. To put one back, stand on an empty rack; an escalation chasing that server will follow it there. Migrating earns energy, and cloud apps cost less to run than on-prem servers.</span></div>
     <div><span class="ic">🎲</span><span><b>Cutover odds.</b> Each rack shows its chance of coming up in the cloud. Bronze starts high, gold starts around 15%. Moving bronze raises silver's odds; moving bronze and silver raises gold's, up to 100% once they're all moved. A failed cutover lands offline in the cloud: hold E to retry at the same odds (3s bronze, 5s silver, 8s gold), or hold Space to roll it back on-prem.</span></div>
@@ -2427,7 +2438,7 @@ function howToPlay(){
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and a 4-second speed boost (you glow). 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
     <div><span class="ic">🤖</span><span><b>Patch Bot (upgrade).</b> Patches overdue servers for you, but never fights fires. Level 1 succeeds 50% of the time, level 2 66%, level 3 90%. A failed patch leaves a red AUTOMATION ERROR on the rack: patch it yourself to clear it, or if its compliance timer runs out, the audit fails and the error resets so the bot can try again.</span></div>
     <div><span class="ic">🧠</span><span><b>AI Agent (upgrade, after client 3).</b> A fast purple agent that answers email, closes tickets, patches servers and seals leaks. Every attempt costs tokens. At level 1 only half its work is right; the rest does nothing (while claiming success) or breaks something. Levels 2–4 add better instructions, agentic workflows and finally guardrails that block harmful actions. It also amplifies the practices you already have. Patching improves with Patch Bot, Runbooks and Observability; tickets with Self-Service Portal and Runbooks; email with your Manager and Status Page; leaks with Policy as Code, Vulnerability Scanner and Cloud Auto-Patching. The shop shows its odds for each job and what's missing. Check its ✓ / ✗ marks.</span></div>
-    <div><span class="ic">👔</span><span><b>Your manager (upgrade).</b> Level 1 answers your email, but chats with users and sometimes tries to patch a server himself, which takes it offline. Level 2 sticks to email. Level 3 also guards your doorway and shoves users out of your way as you cross the hallway.</span></div>
+    <div><span class="ic">👔</span><span><b>Your manager (upgrade).</b> Level 1 answers your email, but chats with users and sometimes wanders over to look at a server. Half the time, just looking takes it offline. Every level speeds up uptime recovery. Level 2 sticks to email. Level 3 also guards your doorway and shoves users out of your way as you cross the hallway.</span></div>
     <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, then quits. Users ignore them, 15% of their patches take a server down, and some only want snacks. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds. <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
     <div><span class="ic">❓</span><span><b>Unknown rack.</b> The client forgot to mention these. Hold E on one to investigate (6 seconds, free) and you'll find it with a healthy timer. Hidden servers never reveal themselves through migration progress. From client 4 on they can be any tier, even gold. They may come with an expired or approaching license. Escalations can ignite unknown racks; going offline reveals them. Asset Inventory cuts investigation time to 3 seconds.</span></div>
   </div>
