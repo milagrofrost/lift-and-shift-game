@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "tickTemp,devRun,devSet,DEV,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
+  "tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -153,6 +153,23 @@ test("a forced put-back never overwrites a rack someone else now uses", () => {
   const intruder = {...a, name: "Intruder", slot}; S.racks[slot] = intruder;
   S.racks.find(x => x && x !== intruder).down = true; G.update(0.05);
   check(S.racks[slot] === intruder && S.racks.includes(a) && !S.carry, "carried server overwrote a rack or was lost");
+});
+
+/* ---------- chatbots ---------- */
+test("two chatbots never fight over one user, and the conversation finishes", () => {
+  const S = fresh(); S.upgrades.chatbot = 2; const u = {x: 480, y: 300, rank: 0}; S.users = [u]; G.spawnChatbots();
+  S.cbots.forEach(c => { c.x = 480; c.y = 300; });
+  fixedRandom(0.5); G.tickChatbots(0.05);
+  const owner = u.chat; check(owner, "no bot started the conversation");
+  for (let k = 0; k < 20; k++) G.tickChatbots(0.05);
+  check(u.chat === owner && owner.chatT > 0.9, `conversation restarted: chatT ${owner.chatT}`);
+  check(S.cbots.filter(c => c.tgt === u).length === 1, "second bot kept targeting the same user");
+  for (let k = 0; k < 40 && !u.gone; k++) G.tickChatbots(0.05);
+  check(u.gone, "the user was never resolved");
+});
+test("respawning chatbots releases anyone they were talking to", () => {
+  const S = fresh(); S.upgrades.chatbot = 1; const u = {x: 480, y: 300, rank: 0, chat: {}}; S.users = [u];
+  G.spawnChatbots(); check(!u.chat, "user left frozen by a bot that no longer exists");
 });
 
 /* ---------- temp workers ---------- */

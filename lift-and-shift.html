@@ -733,19 +733,20 @@ function spawnUsers(){
    A user mid-chat is frozen and can't grab you. ~15% of the time the user wants a human and walks off. */
 const BOT_LINES=["Have you tried turning it off and on?","Here's a KB article!","I can help with that!","Ticket auto-resolved ✅","Is there anything else?","Let me summarize that…"];
 const HUMAN_LINES=["I want to talk to a human!","AGENT. AGENT. AGENT.","That's not what I asked."];
-function spawnChatbots(){S.cbots=[];for(let k=0;k<lvl("chatbot");k++)S.cbots.push({x:430+k*100,y:300,tgt:null,chatT:0,need:0,line:"",cool:0,hx:430+k*100,hy:300});}
+function spawnChatbots(){S.users.forEach(u=>{u.chat=null;});S.cbots=[];for(let k=0;k<lvl("chatbot");k++)S.cbots.push({x:430+k*100,y:300,tgt:null,chatT:0,need:0,line:"",cool:0,hx:430+k*100,hy:300});}
 function tickChatbots(dt){
   for(const c of S.cbots){
     if(c.cool>0)c.cool-=dt;
     if(c.tgt&&(c.tgt.gone||!S.users.includes(c.tgt)||S.p.heldBy===c.tgt)){if(c.tgt.chat===c)c.tgt.chat=null;c.tgt=null;}
     if(!c.tgt&&c.cool<=0){
       let best=null,bd=1e9;
-      for(const u of S.users){if(u.chat||u.hunter||S.p.heldBy===u||(u.noBot||0)>S.t)continue;const d=dist(u,c);if(d<bd){bd=d;best=u;}}
+      for(const u of S.users){if(u.chat||u.hunter||S.p.heldBy===u||(u.noBot||0)>S.t||S.cbots.some(o=>o!==c&&o.tgt===u))continue;const d=dist(u,c);if(d<bd){bd=d;best=u;}}
       c.tgt=best;
     }
     if(!c.tgt){c.wT=(c.wT||0)-dt;if(c.wT<=0){c.wT=rand(2,4);c.hx=rand(395,565);c.hy=rand(130,450);}goTo(c,c.hx,c.hy,60,dt);continue;}
     const u=c.tgt;
     if(u.chat!==c){
+      if(u.chat){c.tgt=null;continue;} // another bot got there first; never talk over it
       if(goTo(c,u.x+(c.x<u.x?-24:24),u.y,115,dt)||dist(c,u)<34){u.chat=c;c.chatT=0;c.need=1.6+u.rank*0.6;c.line=pick(BOT_LINES);u.line=pick(RANKS[u.rank].lines);c.swap=1.1;}
       continue;
     }
