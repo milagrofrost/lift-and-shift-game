@@ -442,7 +442,7 @@ function tickFreeze(dt){
 const UPGRADES=[
   {id:"freezecharge",name:"Emergency Freeze Window",icon:"❄",cost:3,desc:"One charge: press F or click Freeze to pause users, arrivals and incident spread for 12 seconds. Repurchase after use. Extends an active freeze, up to 30 seconds."},
   {id:"terraform",name:"Terraform the cloud",icon:"⚙️",cost:8,desc:"Infrastructure as code. Retrying a failed cutover takes 1–2 seconds instead of 3–8, and consistent builds give every cutover +10% odds."},
-  {id:"moverbot",name:"Mover Bot",icon:"🦾",cost:8,desc:"Moves on-prem apps to the cloud by itself and finds a free cloud slot on its own. Slow but steady, and it sends them down a free CI/CD lane when there is one."},
+  {id:"moverbot",name:"Mover Bot",icon:"🦾",cost:8,desc:"Moves on-prem apps to the cloud by itself and finds a free cloud slot on its own. Slow but steady. Once you have a CI/CD pipeline it only uses the pipeline and waits for a free lane."},
   {id:"patchbot",name:"Patch Bot",icon:"🤖",cost:5,max:3,desc:"Walks the server room patching the most overdue app. It doesn't fight fires; that's your job. Success rate 50% at level 1, 66% at level 2, 90% at level 3. A failed patch leaves an automation error you have to fix by hand."},
   {id:"finops",name:"FinOps Dashboard",icon:"📊",cost:5,desc:"Cloud running costs and egress fees drop 40%, and license renewals cost 25% less."},
   {id:"runbooks",name:"Runbooks",icon:"📄",cost:3,desc:"Patching and firefighting cost 40% less energy, and fires go out faster."},
@@ -1911,6 +1911,8 @@ function moverBot(b,dt,ai,sp){
     }else migrate(a,b.slot,true);
     b.slot=-1;return;
   }
+  // once there is a pipeline the bot only uses it, and waits for a free lane; carrying by hand is the player's faster option
+  if(pipeLanes()>0&&freePipelineLane()<0){b.tgt=null;b.work=0;goTo(b,480,470,sp*0.5,dt);return;}
   if(!validRack(b.tgt)||migrationBusy(b.tgt)||b.tgt.fire>0||b.tgt.down){
     b.tgt=null;b.work=0;let best=null,sc=9;
     // the mover bot plays it safe: highest cutover odds first, then the most overdue
@@ -1922,7 +1924,7 @@ function moverBot(b,dt,ai,sp){
   if(!goTo(b,p.x,p.y+44,sp,dt))return;
   b.work+=dt;if(b.work<(ai?0.4:1.0))return;
   b.work=0;const a=b.tgt;if(a.touchT==null)a.touchT=S.time;if(!S.upgrades.bluegreen)S.racks[a.slot]=null;b.tgt=null;
-  // a free CI/CD lane beats walking; otherwise carry it over
+  // with a pipeline, the bot always sends servers down a lane; without one, it carries them
   const lane=freePipelineLane();
   if(lane>=0){S.pipe.push({a,t:0,dur:pipeDur(),lane,byBot:true});sfx("grab");fl(p,"🦾 Into the pipeline",C.leak);return;}
   b.carry=a;b.slot=nearestEmptySlot(606,280);
@@ -2459,7 +2461,7 @@ function howToPlay(){
     <div><span class="ic">❄</span><span><b>Change freeze.</b> Users, new tickets and email, escalations, fire growth and breach spread all stop. Downtime and breach damage still count, so a freeze buys time, it doesn't fix anything. Every incident gets a short 4-second freeze (once a minute). A manager makes it 10/14/18 seconds and lets it return sooner (60/50/40s). The Emergency Freeze Window upgrade gives you one 12-second freeze on F or the Freeze button.</span></div>
     <div><span class="ic">👤</span><span><b>Users.</b> They wander the hallway. Bump into one and you're stuck for a "quick question." The better dressed, the longer: an intern holds you 1 second, the CIO almost 5.</span></div>
     <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
-    <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. The Mover Bot uses free lanes too. The pipeline and the Mover Bot find a free cloud slot on their own; only you have to walk to one. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at half rate.</span></div>
+    <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. Once you have a pipeline, the Mover Bot only uses it and waits for a free lane; carry servers yourself to go faster. The pipeline and the Mover Bot find a free cloud slot on their own; only you have to walk to one. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at half rate.</span></div>
     <div><span class="ic">📅</span><span><b>Lease target.</b> Each client's data center lease has a target day. Going late never ends the game, but on-prem costs rise 10% per overdue day and the client's rating drops.</span></div>
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and a 4-second speed boost (you glow). 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
     <div><span class="ic">🤖</span><span><b>Patch Bot (upgrade).</b> Patches overdue servers for you, but never fights fires. Level 1 succeeds 50% of the time, level 2 66%, level 3 90%. A failed patch leaves a red AUTOMATION ERROR on the rack: patch it yourself to clear it, or if its compliance timer runs out, the audit fails and the error resets so the bot can try again.</span></div>
