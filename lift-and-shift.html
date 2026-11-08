@@ -222,6 +222,7 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
     <span>hold <kbd>E</kbd> fix: fire, patch, leak, ticket</span>
     <span><kbd>P</kbd> pause</span>
     <span><kbd>M</kbd> mute</span>
+    <button id="freeze" class="sndbtn" type="button">❄ Freeze (F)</button>
     <button id="mus" class="sndbtn" type="button" aria-pressed="true">🎵 Music on</button>
     <button id="snd" class="sndbtn" type="button" aria-pressed="true" style="margin-left:0">🔊 Sound on</button>
   </div>
@@ -326,6 +327,14 @@ const TIER={
 };
 // Uptime error budget per sprint. Offline servers burn it (gold 3/s, silver 2/s, bronze 1/s). Empty = fired.
 const ERR_BUDGET=150;
+// A patch covers the current cycle; its deadline never moves.
+const patchDue=a=>!a.covered;
+function applyPatch(a){
+  if(!patchDue(a)&&!a.botErr)return false;
+  a.covered=true;
+  a.botErr=false;return true;
+}
+const engagementReady=()=>!S.racks.some(Boolean)&&!S.pipe.length&&!S.carry&&!S.bots.some(b=>b.carry)&&!S.cloud.some(a=>a&&(a.down||a.breach));
 // Money is the score: total IT spend starts at $0 and only goes down. Least negative wins.
 const COST_LABELS={run:"Running costs",downtime:"SLA penalties (downtime)",breach:"Breach-of-contract fines",license:"License renewals",email:"Missed email penalties",audits:"Failed audits",fires:"Fire damage",other:"Egress fees and other",ai:"AI tokens",savings:"Decommissioned hardware"};
 // [license renewal cost in $k] for servers that have one
@@ -353,7 +362,26 @@ const leakChanceMult=()=>Math.pow(0.8,lvl("pac"))*Math.pow(0.85,lvl("scanner"))*
 const upCost=u=>u.cost+(u.max?lvl(u.id):0);
 // during a red alert the hallway panics: users run around and shout these
 const ALERT_LINES=["Oh my God, we're all gonna die!","Think of my stocks!","What about my stocks?!","Nobody's fixing my printer!","Is this why my printer is broken?","I KNEW the cloud was a fad!","Should I unplug something?!","Who touched production?!","I'm telling the CEO!","Is it the hackers?!","My fantasy league is down!","Can I still expense lunch?","I only clicked one link!","Have you tried turning it off?!","Are we on the news?","Save the spreadsheets!","Is the Wi-Fi part of this?","I'm updating my LinkedIn.","Does this mean no Friday donuts?","Abandon ship!"];
+const freezeActive=()=>!!(S&&S.freezeT>0);
+function startFreeze(seconds){
+  S.freezeT=Math.min(30,(S.freezeT||0)+seconds);S.thawWarned=false;
+  if(S.p.heldBy){S.p.heldBy=null;S.p.stun=0;}
+  S.p.userImm=Math.max(S.p.userImm||0,seconds);
+  toast(`❄ Change freeze: ${Math.ceil(S.freezeT)}s. Contain the incident; downtime still counts.`);
+}
+function useFreeze(){if(mode!=="play"||!S.upgrades.freezecharge)return;S.upgrades.freezecharge=false;startFreeze(12);}
+function tickFreeze(dt){
+  S.freezeT=Math.max(0,(S.freezeT||0)-dt);S.freezeCooldown=Math.max(0,(S.freezeCooldown||0)-dt);
+  if(S.freezeT>0&&S.freezeT<=3&&!S.thawWarned){S.thawWarned=true;toast("❄ Change freeze ends in 3 seconds.");}
+  const critical=critList().length>0;
+  if(critical&&!S.freezeIncident){
+    S.freezeIncident=true;
+    if(!S.freezeCooldown){const level=lvl("manager");startFreeze(level?[0,10,14,18][level]:4);S.freezeCooldown=level?[0,60,50,40][level]:60;}
+  }
+  if(!critical)S.freezeIncident=false;
+}
 const UPGRADES=[
+  {id:"freezecharge",name:"Emergency Freeze Window",icon:"❄",cost:3,desc:"One charge: press F or click Freeze to pause users, arrivals and incident spread for 12 seconds. Repurchase after use. Extends an active freeze, up to 30 seconds."},
   {id:"terraform",name:"Terraform the cloud",icon:"⚙️",cost:8,desc:"Infrastructure as code. Retrying a failed cutover takes 1–2 seconds instead of 3–8, and consistent builds give every cutover +10% odds."},
   {id:"moverbot",name:"Mover Bot",icon:"🦾",cost:8,desc:"Carries on-prem apps to the cloud by itself. Slow but steady."},
   {id:"patchbot",name:"Patch Bot",icon:"🤖",cost:5,max:3,desc:"Walks the server room patching the most overdue app. It doesn't fight fires; that's your job. Success rate 50% at level 1, 66% at level 2, 90% at level 3. A failed patch leaves an automation error you have to fix by hand."},
@@ -376,9 +404,9 @@ const UPGRADES=[
   {id:"postmortem",name:"Blameless Postmortems",icon:"📝",cost:3,desc:"Learn from every incident. Each red alert you resolve gives back half the story point it cost."},
   {id:"oncall",name:"On-Call Rotation",icon:"📟",cost:3,desc:"You're not the only hero anymore. Energy regenerates 50% faster."},
   {id:"observe",name:"Observability",icon:"📈",cost:4,desc:"Early warnings: racks about to fail compliance and leaks about to breach get a pulsing ring and an alert."},
-  {id:"snacks",name:"Snack Budget",icon:"🍩",cost:2,max:3,desc:"Finance approved more donuts and coffee. Pickups show up about 35% more often per level, and one more can be out at a time."},
+  {id:"snacks",name:"Snack Budget",icon:"🍩",cost:2,max:3,desc:"Finance approved more donuts and coffee. Pickups show up at 35% shorter intervals per level, and one more can be out at a time."},
   {id:"vendor",name:"Vendor Negotiation",icon:"🤝",cost:2,max:3,desc:"License renewals cost 20% less per level."},
-  {id:"manager",name:"A Manager Who Fights for You",icon:"👔",cost:5,max:3,desc:"Level 1: answers your email, but chats with users and sometimes tries to patch a server himself (it goes offline). Level 2: focuses on email and rarely touches servers. Level 3: also stands guard at your doorway and shoves users out of your way as you cross the hallway."},
+  {id:"manager",name:"A Manager Who Fights for You",icon:"👔",cost:5,max:3,desc:"All levels automatically call a change freeze for gold outages or breaches (10/14/18 seconds; cooldown 60/50/40 seconds). Level 1: answers your email, but chats with users and sometimes tries to patch a server himself (it goes offline). Level 2: focuses on email and rarely touches servers. Level 3: also stands guard at your doorway and shoves users out of your way as you cross the hallway."},
   {id:"agent",name:"AI Agent",icon:"🧠",cost:6,max:4,ai:true,req:()=>S.career.length>=3,desc:"Answers email, closes tickets, patches servers and seals leaks, fast, anywhere. Every attempt costs tokens. L1 pilot: 50% right, 25% does nothing, 25% breaks something. L2 better instructions: 70/20/10. L3 agentic workflows: 85/12/3. L4 guardrails and evals: harmful actions get blocked."},
   {id:"chatbot",name:"AI Chatbots",icon:"💬",cost:4,max:2,ai:true,desc:"A chatbot roams the hallway, chats up users and resolves them. A user being chatted up can't grab you. Sometimes they just want a human. Each level adds a bot."},
 ];
@@ -717,13 +745,13 @@ function tickTemp(dt){
     else{T.wT-=dt;if(T.wT<=0){T.wT=rand(2,4);T.wx=rand(395,565);T.wy=rand(140,440);}goTo(T,T.wx,T.wy,60,dt);}
     return;
   }
-  const ok=g=>g&&(g.kind==="desk"?S.tk.length>0:validRack(g.a)&&(g.kind==="fire"?g.a.fire>0:g.kind==="restore"?g.a.down:(!g.a.down&&g.a.fire===0&&g.a.timer<g.a.maxT*0.6)));
+  const ok=g=>g&&(g.kind==="desk"?S.tk.length>0:validRack(g.a)&&(g.kind==="fire"?g.a.fire>0:g.kind==="restore"?g.a.down:(!g.a.down&&g.a.fire===0&&patchDue(g.a))));
   if(!ok(T.tgt)){
     T.tgt=null;T.work=0;const rs=S.racks.filter(a=>a&&!a.hidden);let f;
     if((f=rs.filter(a=>a.fire>0).sort((a,b)=>b.fire-a.fire)[0]))T.tgt={kind:"fire",a:f};
     else if((f=rs.find(a=>a.down)))T.tgt={kind:"restore",a:f};
     else if(S.tk.length)T.tgt={kind:"desk"};
-    else if((f=rs.filter(a=>!a.down&&a.fire===0&&a.timer<a.maxT*0.6).sort((a,b)=>a.timer/a.maxT-b.timer/b.maxT)[0]))T.tgt={kind:"patch",a:f};
+    else if((f=rs.filter(a=>!a.down&&a.fire===0&&patchDue(a)).sort((a,b)=>a.timer/a.maxT-b.timer/b.maxT)[0]))T.tgt={kind:"patch",a:f};
   }
   if(!T.tgt){goTo(T,480,400,60,dt);return;}
   const g=T.tgt,pos=g.kind==="desk"?{x:DESK.x,y:DESK.y-42}:{x:RACKS[g.a.slot].x,y:RACKS[g.a.slot].y+44};
@@ -735,7 +763,7 @@ function tickTemp(dt){
   if(T.work>=2.2){
     T.work=0;const a=g.a;T.tgt=null;
     if(Math.random()<0.15){sfx("offline");a.down=true;a.downT=S.time;a.fire=0;a.prog=0;S.ss.lost++;tempSay("Was it supposed to beep like that?");toast(`🧑‍💼 ${T.name} patched ${a.name}... and took it offline.`);fl(RACKS[a.slot],"OFFLINE",C.danger);}
-    else{a.maxT=Math.max(22,a.maxT*0.92);a.timer=a.maxT;fl(RACKS[a.slot],`${T.name}: patched`,C.ok);}
+    else{applyPatch(a);fl(RACKS[a.slot],`${T.name}: patched`,C.ok);}
   }
 }
 function drawSpecialIcon(kind,x,y){
@@ -810,7 +838,7 @@ function agentPick(){
   if(leak&&leak.a.leak>25)return{kind:"leak",a:leak.a,i:leak.i,x:SLOTS[leak.i].x,y:SLOTS[leak.i].y+38};
   if(S.tk.length>=2)return{kind:"ticket",x:480,y:470};
   if(imp.length>=2)return{kind:"email",x:480,y:98};
-  const pr=racks.filter(a=>a.timer<a.maxT*0.5||a.botErr).sort((p,q)=>p.timer/p.maxT-q.timer/q.maxT)[0];
+  const pr=racks.filter(a=>!a.covered&&(a.timer<a.maxT*0.5||a.botErr)).sort((p,q)=>p.timer/p.maxT-q.timer/q.maxT)[0];
   if(pr)return{kind:"patch",a:pr,x:RACKS[pr.slot].x,y:RACKS[pr.slot].y+44};
   if(S.tk.length)return{kind:"ticket",x:480,y:470};
   if(imp.length)return{kind:"email",x:480,y:98};
@@ -818,7 +846,7 @@ function agentPick(){
 }
 function agentValid(j){
   if(j.kind==="leak")return S.cloud[j.i]===j.a&&j.a.leakOn&&!j.a.breach;
-  if(j.kind==="patch")return S.racks[j.a.slot]===j.a&&!j.a.down&&j.a.fire===0;
+  if(j.kind==="patch")return S.racks[j.a.slot]===j.a&&!j.a.covered&&!j.a.down&&j.a.fire===0;
   if(j.kind==="ticket")return S.tk.length>0;
   return importantMail().length>0;
 }
@@ -838,7 +866,7 @@ function tickAgent(dt){
   if(out==="ok"){st.ok++;
     if(j.kind==="email"){const m=importantMail().reduce((a,b)=>b.age>a.age?b:a);S.em=S.em.filter(x=>x!==m);}
     else if(j.kind==="ticket")S.tk.shift();
-    else if(j.kind==="patch"){j.a.botErr=false;j.a.maxT=Math.max(22,j.a.maxT*0.92);j.a.timer=j.a.maxT;}
+    else if(j.kind==="patch"){applyPatch(j.a);}
     else{j.a.leakOn=false;j.a.leak=0;j.a.grace=4;j.a.age=0;}
     if(j.a)j.a.agentMark={k:"ok",t:S.t};if(Math.random()<0.3)agentSay("Done!");
   }else if(out==="nop"){st.nop++;if(j.a)j.a.agentMark={k:"nop",t:S.t};agentSay(pick(["Done! Confidence: 98%.","Task complete! ✨","I've handled it.","All set!"]));}
@@ -889,7 +917,7 @@ function agentBlock(){
 function spawnManager(){S.mgr=lvl("manager")?{x:480,y:300,state:"idle",tgt:null,work:0,dec:0.5,say:"",sayT:0,wx:480,wy:300}:null;}
 function mgrSay(k){const M=S.mgr;if(M&&!(M.sayT>0.6)){M.say=pick(MGR_LINES[k]);M.sayT=2.2;}}
 function mgrGuardSpot(){const P=S.p,z=zoneOf(P.x);if(z===0)return{x:386,y:clamp(P.y,215,345)};if(z===2)return{x:574,y:clamp(P.y,215,345)};return{x:P.x+(P.x<480?28:-28),y:P.y-26};}
-function mgrShove(u,dt){
+function mgrShove(u,dt){if(freezeActive())return;
   const M=S.mgr;if(!M||M.state!=="guard"||u.hunter)return false;
   const P=S.p,near=dist(M,P)<140,dU=dist(u,P);
   if(near&&dU<85){const d=dU||1;u.x+=(u.x-P.x)/d*170*dt;u.y+=(u.y-P.y)/d*170*dt;u.x=clamp(u.x,382,578);u.y=clamp(u.y,60,H-60);if(Math.random()<dt*0.8)mgrSay("guard");return true;}
@@ -952,6 +980,7 @@ function drawManager(){
   tx(`MANAGER${M.state==="guard"?" · ON GUARD":M.state==="chat"?" · CHATTING":M.state==="patch"?" · \"HELPING\"":""}`,x,y+26,8,C.amber,{font:DISP,weight:700});
 }
 function tickUsers(dt){
+  if(freezeActive())return;
   const P=S.p;if(P.userImm>0)P.userImm-=dt;if(P.ghost>0)P.ghost-=dt;
   if(P.heldBy&&!S.users.includes(P.heldBy)&&P.stun<=0)P.heldBy=null; // the person holding you is gone
   // new users wander in over time, so the hallway never stays empty for long
@@ -1031,7 +1060,7 @@ function drawFx(dt){
 }
 /* Observability: warn before things break. A rack under 25% compliance time or a leak over 60% gets a
    pulsing amber ring, and the first time each one crosses the line you get an alert toast. */
-const atRisk=a=>a&&!a.hidden&&!a.down&&a.timer/a.maxT<0.25;
+const atRisk=a=>a&&!a.hidden&&!a.down&&!a.covered&&a.timer/a.maxT<0.25;
 const leakRisk=a=>a&&a.leakOn&&a.leak>60;
 function observeTick(){
   if(!S.upgrades.observe)return;
@@ -1219,9 +1248,11 @@ addEventListener("pointerdown",()=>{if(AU.on)audio();},{passive:true});
 addEventListener("keydown",()=>{if(AU.on)audio();});
 document.getElementById("snd").addEventListener("click",()=>{audio();setSound(!AU.on);});
 setSound(AU.on);
+$("freeze").addEventListener("click",useFreeze);
 document.getElementById("mus").addEventListener("click",()=>{audio();setMusic(!MUS.on);});
 setMusic(MUS.on);
 addEventListener("keydown",e=>{
+  if(e.code==="KeyF"&&!e.repeat){useFreeze();return;}
   if(e.code==="KeyM"&&!e.repeat){setSound(!AU.on);toast(AU.on?"🔊 Sound on":"🔇 Sound off");return;}
   if(e.code==="KeyP"||e.code==="Escape"){if(mode==="play"||mode==="paused"){e.preventDefault();togglePause();}return;}
   const k=MAP[e.code];if(!k||mode!=="play")return;
@@ -1268,9 +1299,10 @@ function startSprint(n){
   if(S.ss)for(const k of["mig","audits","breaches","lost","unplanned"])S.run[k]+=S.ss[k]; // roll the last engagement into career totals
   S.sprint=n;const c=client();
   const ec=engagementCfg(n);
-  S.time=0;S.mod=c.trait;S.errMax=ec.err;S.cdays=ec.days;
+  S.time=0;S.freezeT=0;S.freezeIncident=false;S.mod=c.trait;S.errMax=ec.err;S.cdays=ec.days;
   S.racks=Array(12).fill(null);S.cloud=Array(16).fill(null);S.tierTot={};S.movedT={};S.totalApps=0;S.rival=0;S.lz=0;S.wave=[];
   // everything this client has, in order; the first 12 go in the room, the rest wait for later waves
+  const tierOrder={bronze:0,silver:1,gold:2}; ec.apps.sort((a,b)=>tierOrder[a[2]]-tierOrder[b[2]]); ec.hidden.sort((a,b)=>tierOrder[a[1]]-tierOrder[b[1]]);
   const all=[...ec.apps.map(e=>({e,hidden:false})),...ec.hidden.map(e=>({e,hidden:true}))];
   const first=all.length>12?[...all.slice(0,12-Math.min(2,ec.hidden.length)),...all.filter(x=>x.hidden).slice(0,Math.min(2,ec.hidden.length))]:all;
   S.wave=all.filter(x=>!first.includes(x));
@@ -1367,7 +1399,13 @@ function baseChance(tier){
   if(b>=1&&s>=1&&(S.tierTot.bronze||0)+(S.tierTot.silver||0)>0)return 1;
   return Math.min(0.95,0.15+0.05*cb+0.80*(0.35*b+0.65*s));
 }
-function cutoverOK(a){S.movedT[a.tier]=(S.movedT[a.tier]||0)+1;S.ss.mig++;S.ss.att++;
+function cutoverOK(a){
+  const original=a.orig||a;
+  if(!original.savingsCredited){
+    spend("savings",-4);original.savingsCredited=true;
+    if(original.lic>0){S.avoided=(S.avoided||0)+licCost(original);original.lic=0;}
+  }
+S.movedT[a.tier]=(S.movedT[a.tier]||0)+1;S.ss.mig++;S.ss.att++;
   const o=a.orig||a;if(o.touchT!=null){S.ss.leadSum+=S.time-o.touchT;S.ss.leadN++;o.touchT=null;}}
 // DORA: time to restore = how long a server stayed offline
 function noteRestored(a){if(a.downT!=null){S.ss.mttrSum+=S.time-a.downT;S.ss.mttrN++;a.downT=null;}}
@@ -1382,8 +1420,6 @@ function migrate(a,i,byBot,bonus=0){
     return;
   }
   S.cloud[i]={name:a.name,tier:a.tier,leak:0,leakOn:false,grace:7+8*retro("baseline"),tfT:0,breach:false,prog:0,spreadT:0,down:!ok,rb:0,orig:a,downT:ok?null:S.time};
-  if(a.lic>0){S.avoided=(S.avoided||0)+licCost(a);toast(`📜 Moved ${a.name} before its license renewed. Saved $${licCost(a)}k.`);a.lic=0;}
-  spend("savings",-4);
   if(!ok){S.run.fails++;sfx("migrateFail");
     fl(SLOTS[i],`CUTOVER FAILED (${Math.round(p*100)}%)`,C.danger);
     toast(`💥 ${a.name}'s cutover failed. It's offline in the cloud: hold E to retry (${cloudRebuild(a.tier)}s, ${Math.round(p*100)}%) or hold Space to roll back.`);
@@ -1397,7 +1433,7 @@ function rollbackTarget(){if(S.carry)return null;let best=null,bd=56;S.cloud.for
 function doRollback(i){
   const c=S.cloud[i],app=c.orig;let slot=S.racks[app.slot]?S.racks.findIndex(x=>!x):app.slot;
   if(slot<0){toast("⛔ No free rack to roll back into.");c.rb=0;return;}
-  S.run.rollbacks++;S.cloud[i]=null;app.slot=slot;app.down=false;app.fire=0;app.prog=0;app.timer=Math.max(app.timer,app.maxT*0.5);S.racks[slot]=app;
+  noteRestored(c);S.run.rollbacks++;S.cloud[i]=null;app.slot=slot;app.down=false;app.fire=0;app.prog=0;app.timer=Math.max(app.timer,app.maxT*0.5);S.racks[slot]=app;
   fl(RACKS[slot],"Rolled back",C.amber);toast(`↩️ Rolled ${app.name} back on-prem. It's online again. Try again when the odds are better.`);
 }
 function doGrab(){
@@ -1449,7 +1485,7 @@ function fixTarget(){
     if(a.hidden){take({kind:"discover",a,pos:RACKS[i],key:"d"+i},d);return;}
     if(a.down)take({kind:"restore",a,pos:RACKS[i],key:"r"+i},d);
     else if(a.fire>0)take({kind:"fire",a,pos:RACKS[i],key:"f"+i},d);
-    else if(a.timer<a.maxT*0.95)take({kind:"patch",a,pos:RACKS[i],key:"p"+i},d);});
+    else if(patchDue(a))take({kind:"patch",a,pos:RACKS[i],key:"p"+i},d);});
   S.cloud.forEach((a,i)=>{if(!a)return;const d=dist(P,SLOTS[i]);if(d>=56)return;
     if(a.down){take({kind:"cloudrestore",a,i,pos:SLOTS[i],key:"c"+i},d);return;}
     if(a.breach)take({kind:"breach",a,i,pos:SLOTS[i],key:"b"+i},d);
@@ -1501,11 +1537,12 @@ function doFix(dt){
     return;
   }
   const need=f.kind==="patch"?0.8:f.kind==="leak"?1.3:f.kind==="email"?0.7:0.6,c=fixCost(f);
+  if(f.kind==="patch"&&!patchDue(f.a)&&!f.a.botErr){S.fixP=0;return;}
   if(S.energy<c){warn();S.fixP=0;return;}
   S.fixNeed=need;S.fixP+=dt;
   if(S.fixP<need)return;
   S.energy-=c;S.fixP=0;S.fixKey=null;
-  if(f.kind==="patch"){sfx("patch");f.a.botErr=false;f.a.maxT=Math.max(22,f.a.maxT*0.92);f.a.timer=f.a.maxT;fl(f.pos,"Patched (timer shorter next time)",C.ok);}
+  if(f.kind==="patch"){sfx("patch");applyPatch(f.a);fl(f.pos,"✓ Covered this cycle",C.ok);}
   else if(f.kind==="leak"){sfx("sealed");f.a.age=0;f.a.leakOn=false;f.a.leak=0;f.a.grace=4;fl(f.pos,"Sealed by hand",C.ok);}
   else if(f.kind==="email"){sfx("sent");S.em=S.em.filter(x=>x!==f.m);if(f.m.type==="vendor")S.run.vendor++;
     // answering a finance email negotiates a 20s extension on the license closest to renewing
@@ -1521,16 +1558,18 @@ function tickOnPrem(dt){
     if(a.hidden||a.down)continue;
     a.timer-=dt*rate;
     if(a.lic>0&&!a.down){a.lic-=dt;if(a.lic<=0){a.lic=0;const c=licCost(a);spend("license",c);fl(posOf(a),`📜 −$${c}k`,C.danger);toast(`📜 ${a.name}'s license auto-renewed before you moved it. −$${c}k.`);}}
-    if(a.timer<=0){if(a.botErr){a.botErr=false;fl(posOf(a),"🤖 automation error reset",C.muted);} // after a failed audit the bot gets another try
+    if(a.timer<=0&&a.covered){a.covered=false;a.timer=a.maxT;}
+    else if(a.timer<=0){if(a.botErr){a.botErr=false;fl(posOf(a),"🤖 automation error reset",C.muted);} // after a failed audit the bot gets another try
       a.timer=a.maxT;spend("audits",12);sfx("audit");secHit("audit",4);S.ss.audits++;unplanned(1,"audit");
-      toast(`📋 Audit failed: ${a.name} fell out of compliance. −$12k, −6 security.`);fl(posOf(a),"AUDIT FAIL",C.danger);}
+      toast(`📋 Audit failed: ${a.name} fell out of compliance. −$12k, −4 security.`);fl(posOf(a),"AUDIT FAIL",C.danger);}
   }
   for(let i=0;i<12;i++){
     const a=S.racks[i];if(!a||a.hidden)continue;
     if(a.down){spend("downtime",TIER[a.tier].drain*dt);S.err-=TIER[a.tier].sla*dt;continue;} // SLA penalty + error budget burn while offline
     if(a.fire>0){
+      if(freezeActive())continue;
       a.fire+=6*dt*Math.pow(0.8,lvl("suppress"));spend("fires",0.35*dt);a.spreadT-=dt;
-      if(a.fire>=50&&a.spreadT<=0){a.spreadT=3;if(Math.random()<0.35){const n=neighbors(i).map(j=>S.racks[j]).filter(b=>b&&!b.hidden&&!b.down&&b.fire===0);if(n.length){const b=pick(n);b.fire=6;b.spreadT=3;toast(`🔥 The fire spread to ${b.name}.`);}}}
+      if(a.fire>=50&&a.spreadT<=0){a.spreadT=3;if(Math.random()<(downCount()>0?0.10:0.35)){const n=neighbors(i).map(j=>S.racks[j]).filter(b=>b&&!b.hidden&&!b.down&&b.fire===0);if(n.length){const b=pick(n);b.fire=6;b.spreadT=3;toast(`🔥 The fire spread to ${b.name}.`);}}}
       if(a.fire>=100){sfx("offline");a.fire=0;a.down=true;a.downT=S.time;a.prog=0;spend("fires",5);S.ss.lost++;
         toast(a.tier==="gold"?`💀 ${a.name} (gold) burned out and went offline. RED ALERT.`:`💀 ${a.name} burned out and went offline. Hold E on it to bring it back up.`);
         fl(RACKS[i],"OFFLINE",C.danger);}
@@ -1557,13 +1596,14 @@ function tickCloud(dt){
     if(a.down){spend("downtime",TIER[a.tier].drain*dt);S.err-=TIER[a.tier].sla*dt;return;} // failed cutover: offline in the cloud
     if(a.breach){
       // a breach stays until contained, drains security, and spreads to one neighbor at a time
-      secHit("breach",0.5*dt);spend("breach",0.4*dt);a.spreadT-=dt;
+      secHit("breach",0.5*dt);spend("breach",0.4*dt);if(freezeActive())return;a.spreadT-=dt;
       if(a.spreadT<=0){a.spreadT=spreadTime();const n=cloudNeighbors(i).filter(j=>S.cloud[j]&&!S.cloud[j].breach&&!S.cloud[j].down);if(n.length)breach(pick(n),a.name,i);}
       return;
     }
     // drift: an unpatched cloud app gets riskier over time (up to 2x after ~3 min). Auto-patching keeps it fresh.
     if(S.upgrades.autopatch)a.age=0;else a.age=(a.age||0)+dt;
     if(!a.leakOn){if(a.grace>0){a.grace-=dt;return;}if(Math.random()<lc*driftMult(a)*dt){a.leakOn=true;a.leak=4;a.tfT=0;}return;}
+    if(freezeActive())return;
     a.leak+=3.6*dt*Math.pow(0.85,lvl("scanner"));
     if(a.leak>=100)breach(i,null);
   });
@@ -1581,10 +1621,12 @@ function breach(i,from,fromIdx){
   toast(from?`🔓 The breach spread from ${from} to ${a.name}. RED ALERT.`:`🔓 ${a.name} leaked long enough to get breached. RED ALERT.`);
 }
 function spawns(dt){
+  if(!freezeActive()){
   if(!(S.focus>0))S.emT-=dt; // headphones: nothing new arrives while you're in focus mode
   if(S.emT<=0){S.emT=rand(7,11)/(modId()==="contract"?2:1)/haz();const k=pickEmailType();sfx("email");S.em.push({type:k,age:0,life:EMAIL[k].life});fl(INBOX,"+1 email",C.muted);}
   if(!(S.focus>0))S.tkT-=dt;
   if(S.tkT<=0){S.tkT=rand(6,9)/(modId()==="storm"?2:modId()==="hospital"?1.5:1)/Math.pow(0.85,lvl("portal"))/haz();S.tk.push({age:0});sfx("ticket");fl(DESK,"+1 ticket",C.muted);}
+  }
   S.stT-=dt;
   // snack budget: more coffee and donuts, more often
   const donutShop=modId()==="donut";
@@ -1592,6 +1634,7 @@ function spawns(dt){
 }
 function tickHazards(dt){
   const P=S.p;
+  if(!freezeActive()){
   // inbox: important mail piles up; vendor spam quietly expires. A full inbox sends a VP after you (again and
   // again) and costs fines until you answer some. While you're at the inbox answering, the VP won't interrupt.
   for(const m of S.em){if(S.focus>0)continue;m.age+=dt;if(m.type==="vendor"&&m.age>=m.life)m.dead=true;}
@@ -1599,26 +1642,42 @@ function tickHazards(dt){
   const inboxFull=importantMail().length>=inboxLimit();
   if(inboxFull&&!(S.focus>0)){spend("email",0.3*dt);S.huntT=(S.huntT||0)-dt;if(!S.users.some(u=>u.hunter)&&S.huntT<=0){S.huntT=6;spawnHunter();}}
   else if(!inboxFull){S.huntT=2;for(const u of S.users)if(u.hunter&&S.p.heldBy!==u&&!u.gone){u.gone=true;fl(u,"Thanks for the reply.",C.ok);}}
-  // tickets wait in the queue; an expired one escalates and flies off to set a server on fire
-  // during a red alert nobody escalates the printer ticket, so the queue stops aging
-  // ticket queue: when it's full, tickets escalate one at a time (each sets a server on fire) until you work it down.
-  // Paused during red alerts and focus time.
-  if(S.tk.length>=ticketLimit()&&!S.alert&&!(S.focus>0)){S.escT=(S.escT==null?2:S.escT)-dt;if(S.escT<=0){S.escT=5;S.tk.shift();launchEscalation();}}
+  // Escalations start fires; active incidents slow escalation pressure.
+  // During outages or breaches escalation runs at one quarter speed.
+  // ticket queue: when it's full, tickets escalate one at a time (each starts a fire) until you work it down.
+  // Paused during focus time and explicit change freezes.
+  if(S.tk.length>=ticketLimit()&&!(S.focus>0)){S.escT=(S.escT==null?2:S.escT)-dt*(downCount()>0||S.cloud.some(a=>a&&a.breach)?0.25:1);if(S.escT<=0){S.escT=5;S.tk.shift();launchEscalation();}}
   else S.escT=2;
-  for(const e of S.atk){
-    if(e.a&&(!validRack(e.a)||e.a.down))e.a=null;
-    if(!e.a){const opts=S.racks.filter(a=>a&&!a.hidden&&!a.down);if(!opts.length){e.dead=true;spend("other",4);fl(e,"😡 −$4k",C.danger);continue;}e.a=pick(opts.filter(a=>a.fire===0).length?opts.filter(a=>a.fire===0):opts);}
-    const p=RACKS[e.a.slot],dx=p.x-e.x,dy=p.y-e.y,d=Math.hypot(dx,dy);
-    if(d<10){e.dead=true;sfx("fireStart");e.a.fire=Math.max(e.a.fire,20);e.a.spreadT=3;fl(p,"🚨 ESCALATED",C.danger);
-      toast(`🚨 An ignored ticket escalated and set ${e.a.name} on fire.`);continue;}
-    e.x+=dx/d*220*dt;e.y+=dy/d*220*dt;
-  }
+  for(const e of S.atk)tickEscalation(e,dt);
   S.atk=S.atk.filter(e=>!e.dead);
+  } // end unfrozen queue processing
   // pickups: coffee = energy + a short speed boost; donut = users leave you alone for a bit
   for(const s of S.st){s.life-=dt;if(dist(s,P)<26){s.dead=true;
     if(s.kind==="coffee"){sfx("coffee");S.energy=Math.min(100,S.energy+15);P.boost=4;fl(s,"☕ +15⚡ and a speed boost",C.amber);}
     else{sfx("donut");P.ghost=DONUT_TIME;fl(s,"🍩 Mouth full: users can't stop you",C.amber);}}}
   S.st=S.st.filter(s=>!s.dead&&s.life>0);
+}
+function tickEscalation(e,dt){
+  // Target identity survives carrying, pipelines, failed cutovers and rollback.
+  if(!e.a){
+    const opts=onPremApps().filter(a=>!a.hidden);
+    if(!opts.length)return;
+    e.a=pick(opts.filter(a=>!a.down&&a.fire===0).length?opts.filter(a=>!a.down&&a.fire===0):opts);
+    e.waitAt={...RACKS[e.a.slot]};
+  }
+  // A successful migration retires the original server; a failed one may return.
+  if(e.a.savingsCredited){e.dead=true;return;}
+  const present=validRack(e.a);
+  if(present)e.waitAt={...RACKS[e.a.slot]};
+  const p=e.waitAt||(e.waitAt={...RACKS[e.a.slot]});
+  const dx=p.x-e.x,dy=p.y-e.y,d=Math.hypot(dx,dy);
+  e.waiting=!present||e.a.down;
+  if(d<10){
+    if(e.waiting)return;
+    e.dead=true;sfx("fireStart");e.a.fire=Math.max(e.a.fire,20);e.a.spreadT=3;
+    fl(p,"🚨 ESCALATED",C.danger);toast(`🚨 An ignored ticket escalated and set ${e.a.name} on fire.`);return;
+  }
+  const step=Math.min(d,220*dt);e.x+=dx/d*step;e.y+=dy/d*step;
 }
 function validRack(a){return a&&!a.hidden&&S.racks[a.slot]===a;}
 /* Patch Bot: patches only (fires and outages are your job). Each level raises its success rate: 50% / 66% / 90%.
@@ -1626,10 +1685,10 @@ function validRack(a){return a&&!a.hidden&&S.racks[a.slot]===a;}
 const BOT_PATCH_OK=[0,0.5,0.66,0.9];
 function patchBot(b,dt,ai,sp){
   const ok=a=>a&&!a.hidden&&!a.down&&a.fire===0&&!a.botErr&&S.racks[a.slot]===a;
-  if(!ok(b.tgt)||b.tgt.timer>b.tgt.maxT*0.75){
+  if(!ok(b.tgt)||!patchDue(b.tgt)){
     b.tgt=null;b.work=0;let best=null,sc=0;
     S.racks.forEach(a=>{if(!ok(a)||a.botIgnore>S.t||S.bots.some(o=>o!==b&&o.tgt===a))return;
-      const s=a.timer<a.maxT*0.6?1-a.timer/a.maxT:0;if(s>sc){sc=s;best=a;}});
+      const s=patchDue(a)?1-a.timer/a.maxT:0;if(s>sc){sc=s;best=a;}});
     b.tgt=best;
     if(best){const need=ai?0.7:1.8;b.need=need;b.fail=Math.random()>BOT_PATCH_OK[Math.max(1,lvl("patchbot"))];b.failAt=need*rand(0.1,0.95);}
   }
@@ -1645,7 +1704,7 @@ function patchBot(b,dt,ai,sp){
   if(b.work<b.need)return;
   b.work=0;b.tgt=null;
   if(ai&&Math.random()<errRate()){a.botIgnore=S.t+14;b.flash=1.5;fl(p,"✅ Patched!",C.ok);toast(`🤖 Patch Bot says ${a.name} is patched. It isn't. Check the timer.`);}
-  else{a.maxT=Math.max(22,a.maxT*0.92);a.timer=a.maxT;fl(p,"🤖 patched",C.ok);}
+  else{applyPatch(a);fl(p,"🤖 patched",C.ok);}
 }
 function moverBot(b,dt,ai,sp){
   if(S.frozen&&!b.carry){b.tgt=null;b.work=0;goTo(b,480,470,sp*0.5,dt);return;}
@@ -1675,7 +1734,7 @@ function moverBot(b,dt,ai,sp){
   const p=RACKS[b.tgt.slot];
   if(!goTo(b,p.x,p.y+44,sp,dt))return;
   b.work+=dt;if(b.work<(ai?0.4:1.0))return;
-  b.work=0;const a=b.tgt;S.racks[a.slot]=null;b.carry=a;b.tgt=null;b.slot=nearestEmptySlot(606,280);
+  b.work=0;const a=b.tgt;if(a.touchT==null)a.touchT=S.time;S.racks[a.slot]=null;b.carry=a;b.tgt=null;b.slot=nearestEmptySlot(606,280);
 }
 function buildPrompt(){
   const P=S.p,parts=[];
@@ -1707,7 +1766,7 @@ function update(dt){
   if(S.carry)sp*=S.carry.heavy===2?0.5:S.carry.heavy?0.62:0.78;
   if(P.stun>0)sp=0;
   moveEnt(P,mx/m*sp*dt,my/m*sp*dt,playerR());
-  tickUsers(dt);tickShouts(dt);tickChatbots(dt);tickSpecials(dt);tickTemp(dt);tickManager(dt);tickAgent(dt);
+  tickFreeze(dt);tickUsers(dt);tickShouts(dt);if(!freezeActive())tickChatbots(dt);tickSpecials(dt);tickTemp(dt);tickManager(dt);tickAgent(dt);
   // red alert: any gold server offline or any cloud breach
   const crit=critList(),was=S.alert;S.alert=crit.length>0;
   if(S.alert&&!was){
@@ -1751,11 +1810,12 @@ function update(dt){
   // running costs: on-prem servers cost more per second than cloud apps, so migrating lowers the burn rate
   spend("run",burnRate()*dt);
   if(S.err<=0)return showEnd("uptime");
+  if(S.security<=0)return showEnd("security");
   // engagement done: the client's server room is empty and nothing is stuck offline in the cloud
-  if(!S.racks.some(Boolean)&&!S.pipe.length&&!S.carry&&!S.bots.some(b=>b.carry)&&!S.cloud.some(a=>a&&a.down)){
+  if(engagementReady()){
     if(S.wave.length)deliverWave();else return startCelebration();
   }
-  if(S.security<=0)return showEnd("security");
+  
 }
 
 /* ---------- drawing ---------- */
@@ -1845,8 +1905,9 @@ function drawRack(i,a){
   tx(T.label,x+w-5,y+12,7.5,T.c,{align:"right",weight:600});
   em("🖥️",p.x,p.y-6,22);
   tx(a.name,p.x,p.y+15,10.5,C.ink,{max:w-8,weight:600});
-  bar(x+6,y+h-10,w-12,5,r,ratioColor(r),"#1a252d");
-  tx(`${Math.ceil(a.timer)}s${a.heavy?(a.heavy===2?" · HEAVY×2":" · HEAVY"):""}`,p.x,y+h+9,10,ratioColor(r),{weight:600});
+  bar(x+6,y+h-10,w-12,5,r,a.covered?C.ok:ratioColor(r),"#1a252d");
+  if(!a.covered&&r<=0.5&&!a.fire){ctx.beginPath();ctx.arc(p.x,p.y,43+(RM?0:2*Math.sin(S.t*3)),0,Math.PI*2);ctx.strokeStyle=r<=0.25?C.danger:C.amber;ctx.lineWidth=1.5;ctx.stroke();}
+  tx(a.covered?"✓ COVERED":`${Math.ceil(a.timer)}s`,p.x,y+h+9,10,a.covered?C.ok:ratioColor(r),{weight:600});
   if(a.botErr){
     // the Patch Bot gave up on this one: a human has to patch it
     const pulse=0.6+0.4*Math.sin(S.t*8);ctx.strokeStyle=`rgba(255,93,77,${pulse})`;ctx.lineWidth=2;ctx.setLineDash([4,3]);rr(x-3,y-3,w+6,h+6,7);ctx.stroke();ctx.setLineDash([]);
@@ -1990,6 +2051,10 @@ function draw(){
   ctx.save();
   if(S.shake>0&&!RM){const m=S.shake*14;ctx.translate((Math.random()-.5)*m,(Math.random()-.5)*m);}
   drawFloor();
+  if(freezeActive()){
+    ctx.fillStyle="rgba(150,220,255,.09)";ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle="#a6e5ff";ctx.lineWidth=6;ctx.strokeRect(3,3,W-6,H-6);
+  }
   drawPipeline();
   S.racks.forEach((a,i)=>drawRack(i,a));
   S.cloud.forEach((a,i)=>drawSlot(i,a));
@@ -1999,8 +2064,8 @@ function draw(){
   drawInbox();
   for(const s of S.st)drawPickup(s);
   drawDesk();
-  for(const e of S.atk){ctx.fillStyle="rgba(255,93,77,.3)";ctx.beginPath();ctx.arc(e.x,e.y,18+3*Math.sin(S.t*14),0,7);ctx.fill();em("🚨",e.x,e.y,22);tx("ESCALATION",e.x,e.y+20,8.5,C.danger,{weight:600});}
-  for(const u of S.users)drawUser(u);
+  for(const e of S.atk){ctx.fillStyle="rgba(255,93,77,.3)";ctx.beginPath();ctx.arc(e.x,e.y,18+3*Math.sin(S.t*14),0,7);ctx.fill();em("🚨",e.x,e.y,22);tx(e.waiting?"WAITING":"ESCALATION",e.x,e.y+20,8.5,C.danger,{weight:600});}
+  for(const u of S.users){drawUser(u);if(freezeActive()){ctx.fillStyle="rgba(180,230,255,.3)";rr(u.x-17,u.y-24,34,47,8);ctx.fill();}}
   for(const c of S.cbots)drawChatbot(c);
   drawSpecials();
   drawManager();
@@ -2015,6 +2080,7 @@ function draw(){
   drawTempBubble();
   drawShouts();
   if(S.alert)drawAlert();
+  if(freezeActive()){ctx.fillStyle="#163947";rr(W/2-170,30,340,28,6);ctx.fill();tx(`❄ CHANGE FREEZE · ${Math.ceil(S.freezeT)}s${S.freezeT<=3?" · THAWING":""}`,W/2,44,14,"#bcecff",{weight:700});}
   for(const f of S.fl){ctx.globalAlpha=1-f.t/f.life;tx(f.text,f.x,f.y-f.t*26,11,f.color,{weight:600});ctx.globalAlpha=1;}
   if(mode==="celebrate")drawCelebration();
   ctx.restore();
@@ -2039,6 +2105,8 @@ function healthBars(){
   const cap=capNext();setBar("hb-pts",cap/15,`${cap} pts`,cap>=10?"ok":cap>=7?"warn":"bad",cap<=5);
 }
 function hud(){
+  $("freeze").disabled=mode!=="play"||!S.upgrades.freezecharge;
+  $("freeze").textContent=S.upgrades.freezecharge?"❄ Freeze (F) · 1 charge":"❄ Freeze · buy between clients";
   if(!S)return;
   const c=client(),late=overdue();
   $("h-sprint").textContent=`#${S.sprint}`;
@@ -2080,7 +2148,7 @@ const TUT=[
   {i:"📦",t:"Your job",b:"The client's server room is on the left, the cloud is on the right, and the hallway is in between. Walk to a rack, press <kbd>Space</kbd> to pick up the app, carry it to the cloud, and press <kbd>Space</kbd> to drop it in. Move with <kbd>WASD</kbd> or the arrow keys.",tip:"An engagement ends when the server room is empty. There's no clock that cuts you off."},
   {i:"🎲",t:"Bronze first",b:"Every rack shows its odds of coming up in the cloud. Bronze is easy. Gold starts around 15%. Each bronze you move raises silver's odds, and moving bronze and silver raises gold's, up to 100%.",tip:"If a cutover fails, the app sits offline in the cloud. Hold <kbd>E</kbd> to retry, or hold <kbd>Space</kbd> to roll it back."},
   {i:"⏳",t:"Keep the old stuff alive",b:"Each on-prem server has a compliance timer. Hold <kbd>E</kbd> to patch it, which costs energy and comes back shorter every time. Migrating stops the clock for good.",tip:"Energy refills slowly by itself, faster when you migrate, and with ☕ coffee."},
-  {i:"🎫",t:"Tickets and email",b:"Tickets pile up at the desk at the bottom of the hallway; emails pile up in the inbox at the top. Each has a bar with 5 slots. When the ticket bar fills, tickets start escalating and setting servers on fire. When the inbox fills, a VP comes hunting for you. Hold <kbd>E</kbd> at either one to work it down.",tip:"Standing at the inbox answering keeps the VP off you. Vendor spam doesn't fill the bar and goes away by itself."},
+  {i:"🎫",t:"Tickets and email",b:"Tickets pile up at the desk at the bottom of the hallway; emails pile up in the inbox at the top. Each has a bar with 5 slots. When the ticket bar fills, tickets start escalating and starting server fires; escalations slow by 75% during outages or breaches. When the inbox fills, a VP comes hunting for you. Hold <kbd>E</kbd> at either one to work it down.",tip:"Standing at the inbox answering keeps the VP off you. Vendor spam doesn't fill the bar and goes away by itself."},
   {i:"🔥",t:"Fires and outages",b:"Hold <kbd>E</kbd> on a fire to put it out. If it burns through, the server goes offline: hold <kbd>E</kbd> to bring it back up. While anything is offline, nothing can be moved. A gold server offline sets off a red alert.",tip:"Bringing servers back up never costs energy, so you can't get locked out."},
   {i:"💧",t:"The cloud isn't safe either",b:"Cloud apps spring leaks that flash redder as they get worse. Seal them with <kbd>E</kbd>. A leak you ignore becomes a breach, which spreads to the app next door and triggers a red alert.",tip:"Security upgrades like Policy as Code, Vulnerability Scanner and Secrets Manager make leaks rarer."},
   {i:"👤",t:"People",b:"Users wander the hallway. Bump into one and you're stuck for a \"quick question\". The better dressed they are, the longer it takes. Grab a 🍩 donut and they can't stop you for a few seconds.",tip:"Later you can buy AI chatbots to keep users busy for you."},
@@ -2116,7 +2184,7 @@ const NOTES=[
   ["Unplanned work","Incidents eat next sprint's story points.","Firefighting steals capacity from improvement work. It's one of the core ideas behind DevOps: unplanned work is the enemy of planned work."],
   ["Velocity doesn't bank","Unspent story points disappear.","Story points are a planning tool, not a currency. A team's capacity is what it is each sprint, and you can't save it up."],
   ["Hidden servers","The client always forgot a few.","Shadow IT and out-of-date asset inventories (CMDBs) are why discovery is never complete. Somewhere there's always a box under someone's desk that payroll depends on."],
-  ["Tickets become fires","Ignored tickets escalate and start fires.","Small problems you ignore turn into outages. Keeping the queue under control is real reliability work."],
+  ["Escalations consume capacity","Ignored tickets can start fires and consume improvement capacity.","Ignored tickets can start server fires. During outages or breaches, escalation slows to give you recovery time."],
   ["Patch or migrate","Patching costs energy and the timer comes back shorter.","Patching old systems is technical debt: it buys time but never removes the problem. Migrating or modernizing does."],
   ["License renewals","Move licensed servers before they renew.","License true-ups and renewal dates drive real migration timelines. Missing one can cost a year of fees for software you were about to retire."],
   ["Drift and auto-patching","Cloud apps get riskier the longer they go unpatched, until you buy Cloud Auto-Patching.","Moving to the cloud doesn't make a workload secure by itself. Unpatched images and configuration drift pile up quietly, and automated patching is what keeps a growing fleet from rotting."],
@@ -2150,13 +2218,13 @@ function howToPlay(){
     <div><span class="ic">📦</span><span><b>Migrate.</b> Space to grab an app, carry it to the cloud, Space to drop. Migrating earns energy, and cloud apps cost less to run than on-prem servers.</span></div>
     <div><span class="ic">🎲</span><span><b>Cutover odds.</b> Each rack shows its chance of coming up in the cloud. Bronze starts high, gold starts around 15%. Moving bronze raises silver's odds; moving bronze and silver raises gold's, up to 100% once they're all moved. A failed cutover lands offline in the cloud: hold E to retry at the same odds (3s bronze, 5s silver, 8s gold), or hold Space to roll it back on-prem.</span></div>
     <div><span class="ic">📜</span><span><b>License renewal.</b> Some servers show a renewal countdown. Migrate them before it hits zero or you pay for another year. Gold licenses come due later, so you have time to build experience. Answering a finance email buys the closest one 20 more seconds.</span></div>
-    <div><span class="ic">⏳</span><span><b>Compliance timer.</b> Hold E to patch (costs energy, and the timer comes back shorter), or migrate it to stop the clock for good. If one runs out, the audit fails: $12k and 4 security, and the server goes under remediation with a fresh timer.</span></div>
-    <div><span class="ic">🔥</span><span><b>Fire.</b> Only escalated tickets start fires. Hold E to put one out. If it burns all the way, the server goes offline, burning your uptime budget until you hold E to bring it back up. While any server is offline, nothing can be moved.</span></div>
+    <div><span class="ic">⏳</span><span><b>Compliance timer.</b> Hold E to patch (costs energy; covers the current cycle without restarting its countdown. Covered cycles have a green bar and checkmark. When the cycle ends, a fresh uncovered cycle begins), or migrate it to stop the clock for good. If one runs out, the audit fails: $12k and 4 security, and the server goes under remediation with a fresh timer.</span></div>
+    <div><span class="ic">🔥</span><span><b>Fire.</b> Escalated tickets start fires. Escalations run 75% slower during any outage or active breach. Change freezes pause escalations, fire growth and spread. Hold E to put one out. If it burns all the way, the server goes offline, burning your uptime budget until you hold E to bring it back up. While any server is offline, nothing can be moved.</span></div>
     <div><span class="ic">🥇</span><span><b>Tiers.</b> Gold, silver and bronze servers. Gold takes longest to bring back up (5s) and costs the most while it's down.</span></div>
     <div><span class="ic">🚨</span><span><b>Red alert.</b> A gold server offline or any cloud breach. You drop everything and can only fix incidents until it's over. Incident fixes never cost energy.</span></div>
     <div><span class="ic">💧</span><span><b>Cloud leak.</b> Hold E to seal it by hand (it costs energy; security upgrades make leaks rarer). Ignore it and it becomes a breach that spreads to the next app every 10 seconds. Unpatched cloud apps drift: the longer since one was last patched (sealed or contained), the more often it leaks, up to twice as often. Cloud Auto-Patching stops the drift.</span></div>
     <div><span class="ic">📧</span><span><b>Email inbox.</b> At the top of the hallway, with a 5-slot bar. ⚖️ legal, 💰 finance and 👔 exec emails fill it; 📣 vendor spam doesn't and disappears by itself. When the bar is full, fines trickle in and a VP comes hunting you, again and again, until you answer some. While you're at the inbox answering, the VP won't interrupt. Answering a finance email also pushes back the closest license renewal.</span></div>
-    <div><span class="ic">🎫</span><span><b>Ticket queue.</b> At the bottom of the hallway, with a 5-slot bar. Hold E there to close tickets. When the bar is full it flashes red and tickets escalate 🚨 one at a time, each setting a server on fire, until you work it down. The queue pauses during red alerts and focus time.</span></div>
+    <div><span class="ic">🎫</span><span><b>Ticket queue.</b> At the bottom of the hallway, with a 5-slot bar. Hold E there to close tickets. When the bar is full it flashes red and tickets escalate 🚨 one at a time, each starting a server fire and costing half an improvement point, until you work it down. Escalations continue 75% slower during outages and breaches, and pause during focus time and change freezes. Buy an Emergency Freeze Window between clients and use F or the Freeze button. Managers automatically freeze critical incidents for 10/14/18 seconds, with 60/50/40-second cooldowns. Without a manager, incident grace lasts 4 seconds with a 60-second cooldown. Downtime and breach damage still count.</span></div>
     <div><span class="ic">👤</span><span><b>Users.</b> They wander the hallway. Bump into one and you're stuck for a "quick question." The better dressed, the longer: an intern holds you 1 second, the CIO almost 5.</span></div>
     <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
     <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Hold Space at a rack to send it down a conveyor to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at half rate.</span></div>
@@ -2293,7 +2361,7 @@ function suckRows(t){
     ["Failed cutovers",t.fails,4,"Gold first, huh?"],
     ["Rollbacks",t.rollbacks,3,"Two steps forward, one step back."],
     ["Missed legal/finance/exec emails",t.missed,3,"Inbox zero, but backwards."],
-    ["Tickets left to escalate",t.esc,2,"They set the building on fire."],
+    ["Tickets left to escalate",t.esc,2,"They consumed service budget and improvement capacity."],
     ["Seconds held in the hallway",Math.round(t.heldT),0.5,"Quick questions are never quick."],
     ["Vendor emails you answered",t.vendor,2,"Why. Just why."],
     ["Security lost",Math.round(t.secLost),0.25,""],
