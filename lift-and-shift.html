@@ -387,7 +387,7 @@ const UPGRADES=[
   {id:"patchbot",name:"Patch Bot",icon:"🤖",cost:5,max:3,desc:"Walks the server room patching the most overdue app. It doesn't fight fires; that's your job. Success rate 50% at level 1, 66% at level 2, 90% at level 3. A failed patch leaves an automation error you have to fix by hand."},
   {id:"finops",name:"FinOps Dashboard",icon:"📊",cost:5,desc:"Cloud running costs and egress fees drop 40%, and license renewals cost 25% less."},
   {id:"runbooks",name:"Runbooks",icon:"📄",cost:3,desc:"Patching and firefighting cost 40% less energy, and fires go out faster."},
-  {id:"inventory",name:"Asset Inventory",icon:"🗂️",cost:3,desc:"Every client's forgotten servers show up on day one instead of late."},
+  {id:"inventory",name:"Asset Inventory",icon:"🗂️",cost:3,desc:"Investigations take 3 seconds instead of 6. Forgotten servers still need investigation or an outage to reveal them."},
   {id:"coffee",name:"Comfy Sneakers",icon:"👟",cost:1,desc:"Move 15% faster."},
   // stackable (max 3 levels); each level costs 1 more point than the last
   {id:"pac",name:"Policy as Code",icon:"🛡️",cost:3,max:3,sec:true,desc:"Misconfigurations get blocked before deploy. 20% fewer new cloud leaks per level."},
@@ -1281,7 +1281,8 @@ function addApp(entry,hidden,counted){
   const free=[];S.racks.forEach((a,i)=>{if(!a)free.push(i);});if(!free.length)return null;
   const slot=pick(free),[name,heavy,tier,licBase]=hidden?[entry[0],0,entry[1],0]:entry;
   const maxT=rand(42,65);
-  const a=S.racks[slot]={name,heavy:heavy||0,tier,licBase:licBase||0,slot,maxT,timer:maxT*rand(.55,1),fire:0,spreadT:3,down:false,prog:0,hidden,revealAt:0,botIgnore:0,lic:0};
+  const a=S.racks[slot]={name,heavy:heavy||0,tier,licBase:licBase||0,slot,maxT,timer:maxT*rand(.55,1),fire:0,spreadT:3,down:false,prog:0,hidden,botIgnore:0,lic:0};
+  if(hidden){a.licBase=ri(15,45);a.hiddenLicenseDue=S.time+rand(-15,30);}
   if(!counted){S.totalApps++;S.tierTot[tier]=(S.tierTot[tier]||0)+1;}
   return a;
 }
@@ -1289,9 +1290,9 @@ function addApp(entry,hidden,counted){
    the room is cleared. Healthy cloud apps are consolidated into the landing zone to free up cloud slots. */
 function deliverWave(){
   let lz=0;S.cloud.forEach((a,i)=>{if(a&&!a.staged&&!a.down&&!a.breach){S.cloud[i]=null;lz++;}});S.lz+=lz;
-  const batch=S.wave.splice(0,12),prog=0.5;
-  for(const w of batch){const a=addApp(w.e,w.hidden,true);if(a&&a.hidden)a.revealAt=S.upgrades.inventory?0:prog;}
-  const T=S.cdays*DAY;S.racks.forEach(a=>{if(a&&a.licBase&&!a.lic)a.lic=S.time+rand(0.3,0.6)*T-S.time;});
+  const batch=S.wave.splice(0,12);
+  for(const w of batch)addApp(w.e,w.hidden,true);
+  const T=S.cdays*DAY;S.racks.forEach(a=>{if(a&&!a.hidden&&a.licBase&&!a.lic)a.lic=S.time+rand(0.3,0.6)*T-S.time;});
   toast(`🚚 The movers brought another ${batch.length} servers from ${client().short}'s other building.${lz?` ${lz} healthy cloud apps were consolidated into the landing zone.`:""}`);
 }
 /* An engagement = one client's server room. Tools (upgrades, bots) carry over; the room, cloud and odds start fresh. */
@@ -1303,18 +1304,15 @@ function startSprint(n){
   S.racks=Array(12).fill(null);S.cloud=Array(16).fill(null);S.tierTot={};S.movedT={};S.totalApps=0;S.rival=0;S.lz=0;S.wave=[];
   // everything this client has, in order; the first 12 go in the room, the rest wait for later waves
   const tierOrder={bronze:0,silver:1,gold:2}; ec.apps.sort((a,b)=>tierOrder[a[2]]-tierOrder[b[2]]); ec.hidden.sort((a,b)=>tierOrder[a[1]]-tierOrder[b[1]]);
-  const all=[...ec.apps.map(e=>({e,hidden:false})),...ec.hidden.map(e=>({e,hidden:true}))];
+  const all=[...ec.apps.map(e=>({e,hidden:false})),...ec.hidden.map(e=>({e:[e[0],pick(["bronze","silver","gold"])],hidden:true}))];
   const first=all.length>12?[...all.slice(0,12-Math.min(2,ec.hidden.length)),...all.filter(x=>x.hidden).slice(0,Math.min(2,ec.hidden.length))]:all;
   S.wave=all.filter(x=>!first.includes(x));
   for(const x of all){const t=x.hidden?x.e[1]:x.e[2];S.totalApps++;S.tierTot[t]=(S.tierTot[t]||0)+1;}
   for(const x of first)addApp(x.e,x.hidden,true);
-  // hidden apps turn up as you make progress (60% and 90% of the known servers moved), not on a timer
-  const fr=[0.6,0.9];let h=0;
-  S.racks.forEach(a=>{if(a&&a.hidden)a.revealAt=S.upgrades.inventory?0:fr[h++%2];});
   Object.assign(S,{em:[],tk:[],atk:[],st:[],fl:[],fx:[],shake:0,carry:null,fix:null,fixP:0,fixKey:null,emT:4,tkT:5,stT:3,err:ec.err,alert:false,frozen:false,sp:[],spT:rand(18,28),temp:null,pipe:[],window:0,focus:0,pizza:null});
   // license deadlines (in seconds of this engagement); gold ones come due later so you can build experience first
   const T=ec.days*DAY;
-  S.racks.forEach(a=>{if(a&&a.licBase)a.lic=(a.tier==="gold"?rand(0.8,1.1):rand(0.4,0.75))*T;});
+  S.racks.forEach(a=>{if(a&&!a.hidden&&a.licBase)a.lic=(a.tier==="gold"?rand(0.8,1.1):rand(0.4,0.75))*T;});
   S.p.x=480;S.p.y=280;S.p.stun=0;S.p.inv=0;S.p.heldBy=null;S.p.userImm=0;S.p.ghost=0;S.p.boost=0;spawnUsers();spawnChatbots();spawnManager();spawnAgent();S.userT=10;
   S.bots.forEach((b,i)=>{b.x=b.kind==="patch"?180:480;b.y=520-i*10;b.tgt=null;b.carry=null;b.work=0;b.slot=-1;});
   if(retro("lunch"))S.energy=Math.min(100,S.energy+25*retro("lunch")); // team lunch: start each client fresh
@@ -1506,8 +1504,8 @@ function doFix(dt){
   if(S.fixKey!==f.key){S.fixKey=f.key;S.fixP=0;}
   if(f.kind==="discover"){
     // investigating an unknown rack: slow but free, keeps progress, and finding it early means it isn't overdue yet
-    f.a.disc=(f.a.disc||0)+dt;f.a.discT=S.t;S.fixNeed=DISCOVER_TIME;S.fixP=f.a.disc;
-    if(f.a.disc<DISCOVER_TIME)return;
+    f.a.disc=(f.a.disc||0)+dt;f.a.discT=S.t;S.fixNeed=discoverTime();S.fixP=f.a.disc;
+    if(f.a.disc<discoverTime())return;
     S.fixP=0;S.fixLock=true;sfx("discover");revealApp(f.a,true);
     return;
   }
@@ -1569,31 +1567,38 @@ function tickOnPrem(dt){
       toast(`📋 Audit failed: ${a.name} fell out of compliance. −$12k, −4 security.`);fl(posOf(a),"AUDIT FAIL",C.danger);}
   }
   for(let i=0;i<12;i++){
-    const a=S.racks[i];if(!a||a.hidden)continue;
+    const a=S.racks[i];if(!a)continue;
     if(a.down){spend("downtime",TIER[a.tier].drain*dt);S.err-=TIER[a.tier].sla*dt;continue;} // SLA penalty + error budget burn while offline
     if(a.fire>0){
       if(freezeActive())continue;
       a.fire+=6*dt*Math.pow(0.8,lvl("suppress"));spend("fires",0.35*dt);a.spreadT-=dt;
       if(a.fire>=50&&a.spreadT<=0){a.spreadT=3;if(Math.random()<(downCount()>0?0.10:0.35)){const n=neighbors(i).map(j=>S.racks[j]).filter(b=>b&&!b.hidden&&!b.down&&b.fire===0);if(n.length){const b=pick(n);b.fire=6;b.spreadT=3;toast(`🔥 The fire spread to ${b.name}.`);}}}
-      if(a.fire>=100){sfx("offline");a.fire=0;a.down=true;a.downT=S.time;a.prog=0;spend("fires",5);S.ss.lost++;
+      if(a.fire>=100){sfx("offline");a.fire=0;a.down=true;a.downT=S.time;a.prog=0;if(a.hidden)revealApp(a,false);spend("fires",5);S.ss.lost++;
         toast(a.tier==="gold"?`💀 ${a.name} (gold) burned out and went offline. RED ALERT.`:`💀 ${a.name} burned out and went offline. Hold E on it to bring it back up.`);
         fl(RACKS[i],"OFFLINE",C.danger);}
     }
   }
-  // reveal hidden apps based on progress: "there's always one more" right when you think you're done
-  const known=S.racks.filter(a=>a&&!a.hidden).length+(S.carry?1:0)+S.bots.filter(b=>b.carry).length+liveCloud()+S.cloud.filter(a=>a&&a.down).length+S.rival;
-  const prog=known?(liveCloud()+S.rival)/known:0;
-  for(const a of S.racks)if(a&&a.hidden&&prog>=a.revealAt)revealApp(a,false);
+
 }
-/* Unknown racks: hold E to investigate (6s, free). Found by you = healthy timer; surfacing on its own = nearly overdue. */
+/* Unknown racks require investigation, or reveal when an escalation fire knocks them offline. */
 const DISCOVER_TIME=6;
+const discoverTime=()=>S.upgrades.inventory?3:DISCOVER_TIME;
 const DISCOVER_LINES=["Tracing cables…","Checking the CMDB…","Asking around…","Reading sticky notes…","Pinging everything…","Opening the rack door…"];
 function revealApp(a,investigated){
-  a.hidden=false;a.disc=0;a.maxT=40;
-  if(investigated){a.timer=rand(30,40);toast(`🔍 You found "${a.name}" before it caused trouble. It's ${a.tier} tier and its compliance timer looks healthy.`);}
-  else{a.timer=rand(14,22);toast(`🔍 Found one: "${a.name}". Nobody knew it existed, and it's nearly out of compliance.`);}
+  if(!a.hidden)return;
+  a.hidden=false;a.disc=0;a.maxT=40;a.timer=investigated?rand(30,40):rand(14,22);
+  const remaining=a.hiddenLicenseDue-S.time;
+  if(remaining<=0){
+    a.lic=0;a.licenseExpired=true;const cost=licCost(a);spend("license",cost);
+    toast(`📜 Discovered ${a.name} (${a.tier}): its license already expired. Renewal liability: $${cost}k.`);
+  }else{
+    a.lic=remaining;
+    toast(`📜 Discovered ${a.name} (${a.tier}): license expires in ${Math.ceil(remaining)}s ($${licCost(a)}k).`);
+  }
+  if(!investigated)toast(`💀 An outage revealed ${a.name}. Restore it to resume migration.`);
   fl(RACKS[a.slot],"DISCOVERED",C.amber);
 }
+
 function tickCloud(dt){
   const lc=(0.0065+0.002*S.sprint)*leakChanceMult()*haz();
   S.cloud.forEach((a,i)=>{
@@ -1666,14 +1671,14 @@ function tickHazards(dt){
 function tickEscalation(e,dt){
   // Target identity survives carrying, pipelines, failed cutovers and rollback.
   if(!e.a){
-    const opts=onPremApps().filter(a=>!a.hidden);
+    const opts=onPremApps();
     if(!opts.length)return;
     e.a=pick(opts.filter(a=>!a.down&&a.fire===0).length?opts.filter(a=>!a.down&&a.fire===0):opts);
     e.waitAt={...RACKS[e.a.slot]};
   }
   // A successful migration retires the original server; a failed one may return.
   if(e.a.savingsCredited){e.dead=true;return;}
-  const present=validRack(e.a);
+  const present=S.racks[e.a.slot]===e.a;
   if(present)e.waitAt={...RACKS[e.a.slot]};
   const p=e.waitAt||(e.waitAt={...RACKS[e.a.slot]});
   const dx=p.x-e.x,dy=p.y-e.y,d=Math.hypot(dx,dy);
@@ -1681,7 +1686,7 @@ function tickEscalation(e,dt){
   if(d<10){
     if(e.waiting)return;
     e.dead=true;sfx("fireStart");e.a.fire=Math.max(e.a.fire,20);e.a.spreadT=3;
-    fl(p,"🚨 ESCALATED",C.danger);toast(`🚨 An ignored ticket escalated and set ${e.a.name} on fire.`);return;
+    fl(p,"🚨 ESCALATED",C.danger);toast(`🚨 An ignored ticket escalated and set ${e.a.hidden?"an unidentified server":e.a.name} on fire.`);return;
   }
   const step=Math.min(d,220*dt);e.x+=dx/d*step;e.y+=dy/d*step;
 }
@@ -1750,7 +1755,7 @@ function buildPrompt(){
     const rb=rollbackTarget();if(rb)parts.push(`Hold Space: roll back (${ROLLBACK_TIME}s)`);
     const f=S.fix;
     if(!f&&S.alert)parts.push("RED ALERT: go to a flashing incident");
-    if(f){if(f.kind==="discover")parts.push(`Hold E: investigate unknown server (${Math.max(0,DISCOVER_TIME-(f.a.disc||0)).toFixed(1)}s, free)`);
+    if(f){if(f.kind==="discover")parts.push(`Hold E: investigate unknown server (${Math.max(0,discoverTime()-(f.a.disc||0)).toFixed(1)}s, free)`);
       else if(f.kind==="cloudrestore")parts.push(`Hold E: retry cutover (${Math.max(0,cloudRebuild(f.a.tier)-f.a.prog).toFixed(1)}s, ${Math.round(successChance(f.a.tier)*100)}%)`);
       else if(f.kind==="restore")parts.push(`Hold E: bring back up (${Math.max(0,TIER[f.a.tier].restore-f.a.prog).toFixed(1)}s, free)`);
       else if(f.kind==="breach")parts.push(`Hold E: contain breach (${Math.max(0,containTime()-f.a.prog).toFixed(1)}s, free)`);
@@ -1874,13 +1879,14 @@ function drawRack(i,a){
     if((S.pipe||[]).some(j=>j.a.slot===i))tx("IN PIPELINE",p.x,p.y,9,C.leak,{font:DISP,weight:700});
     return;}
   if(a.hidden){ctx.fillStyle="#1d1817";rr(x,y,w,h,6);ctx.fill();ctx.setLineDash([3,3]);ctx.strokeStyle=C.muted;ctx.stroke();ctx.setLineDash([]);
+    if(a.fire>0)em("🔥",p.x+20,p.y-22,18);
     const busy=a.disc>0&&S.t-(a.discT||0)<0.15;
     tx("?",p.x,p.y-8+(busy?Math.sin(S.t*10)*2:0),26,busy?C.amber:C.muted,{font:DISP,weight:700});
     if(a.disc>0){
       tx(busy?"INVESTIGATING":"PARTLY CHECKED",p.x,p.y+14,8.5,C.amber,{font:DISP,weight:700,max:w-6});
       if(busy){ctx.font=`600 10px ${MONO}`;const s=DISCOVER_LINES[Math.floor(S.t/1.1)%DISCOVER_LINES.length],tw=ctx.measureText(s).width+10;
         ctx.fillStyle="rgba(10,16,22,.85)";rr(p.x-tw/2,y+h+3,tw,15,3);ctx.fill();tx(s,p.x,y+h+10.5,10,C.amber,{weight:600});}
-      bar(x+6,y+h-10,w-12,5,a.disc/DISCOVER_TIME,C.amber,"#2a2220");
+      bar(x+6,y+h-10,w-12,5,a.disc/discoverTime(),C.amber,"#2a2220");
     }else tx("unknown",p.x,p.y+16,9.5,C.muted);
     return;}
   const r=a.timer/a.maxT,T=TIER[a.tier];
@@ -1922,6 +1928,7 @@ function drawRack(i,a){
   drawLicense(a,p,y+h);
 }
 function drawLicense(a,p,bottom){
+  if(a.licenseExpired){tx("📜 EXPIRED · RENEWED",p.x,bottom+23,8,C.amber,{weight:600});return;}
   if(!(a.lic>0))return;
   const urgent=a.lic<12,label=`📜 renews ${Math.ceil(a.lic)}s · $${licCost(a)}k`;
   ctx.font=`600 9.5px ${MONO}`;const w=ctx.measureText(label).width+10;
@@ -2146,7 +2153,7 @@ let DIFF="normal";try{const d=localStorage.getItem("liftshift-diff");if(d&&DIFFS
 function titleScreen(){
   mode="title";let best=null;try{const s=localStorage.getItem("liftshift-best");best=s===null?null:+s;}catch(e){}
   const opts=Object.entries(DIFFS).map(([k,d])=>`<button class="diff ${k===DIFF?"on":""}" data-diff="${k}" aria-pressed="${k===DIFF}"><b>${d.label}</b><span>${d.desc}</span><small>First client: ${d.counts[0][0]} servers + ${d.counts[0][1]} hidden</small></button>`).join("");
-  show(`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><div class="eyebrow">A cloud migration game · prototype</div><small style="margin-left:auto;text-align:right;color:var(--muted);font-size:10px">Last updated <time datetime="2026-11-08T12:51:00-05:00">Nov 8, 2026 · 12:51 PM ET</time></small></div>
+  show(`<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><div class="eyebrow">A cloud migration game · prototype</div><small style="margin-left:auto;text-align:right;color:var(--muted);font-size:10px">Last updated <time datetime="2026-11-08T12:56:00-05:00">Nov 8, 2026 · 12:56 PM ET</time></small></div>
   <h1>Lift <span>&amp;</span> Shift</h1>
   <p><b>You told them you'd done this before. You have not.</b> You're the newest hire at Lift &amp; Shift Consulting. An endless line of clients, each with a bigger server room than the last, and you start with zero automation. Get everything to the cloud without getting fired, and see how far your career goes.</p>
   <h3>Difficulty</h3>
@@ -2249,7 +2256,7 @@ function howToPlay(){
     <div><span class="ic">🧠</span><span><b>AI Agent (upgrade, after client 3).</b> A fast purple agent that answers email, closes tickets, patches servers and seals leaks. Every attempt costs tokens. At level 1 only half its work is right; the rest does nothing (while claiming success) or breaks something. Levels 2–4 add better instructions, agentic workflows and finally guardrails that block harmful actions. Check its ✓ / ✗ marks.</span></div>
     <div><span class="ic">👔</span><span><b>Your manager (upgrade).</b> Level 1 answers your email, but chats with users and sometimes tries to patch a server himself, which takes it offline. Level 2 sticks to email. Level 3 also guards your doorway and shoves users out of your way as you cross the hallway.</span></div>
     <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, then quits. Users ignore them, 15% of their patches take a server down, and some only want snacks. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds. <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
-    <div><span class="ic">❓</span><span><b>Unknown rack.</b> The client forgot to mention these. Hold E on one to investigate (6 seconds, free) and you'll find it with a healthy timer. Leave it, and it turns up on its own once you've moved about 60% and 90% of the known servers, already nearly overdue.</span></div>
+    <div><span class="ic">❓</span><span><b>Unknown rack.</b> The client forgot to mention these. Hold E on one to investigate (6 seconds, free) and you'll find it with a healthy timer. Hidden servers never reveal themselves through migration progress. They may be bronze, silver or gold, with an expired or approaching license. Escalations can ignite unknown racks; going offline reveals them. Asset Inventory cuts investigation time to 3 seconds.</span></div>
   </div>
   <p style="color:var(--muted);font-size:13px">Move with WASD or arrows. Your hands are full while carrying, so you can't fix anything until you drop it.</p>
   <button class="btn" data-act="menu">Back to menu</button>`);

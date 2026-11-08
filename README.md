@@ -83,3 +83,7 @@ Read [AGENTS.md](AGENTS.md) before making changes. It records the teaching goals
 
 ### Blue-green staging
 Blue-green keeps the original server online until successful cutover. Failed cloud deployments stay gray; hold E there to retry. Restore or extinguish the source first if needed. Migrating a currently patched server reduces new-leak risk by 50% for the first 30 seconds after cutover.
+
+### Hidden-server discovery
+Unknown racks require investigation (hold E for 6 seconds; 3 with Asset Inventory). They can be bronze, silver or gold. Discovery can expose an already-expired license with renewal liability, or a license close to expiry. Escalations can attack hidden racks; a resulting outage reveals the server. Migration progress never reveals them automatically.
+

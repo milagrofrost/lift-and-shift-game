@@ -71,3 +71,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 ## Communication
 
 Infer intent from the game's teaching purpose and the user's latest corrections. If a clarification changes the model, correct it directly. Do not keep obsolete implementations merely because they were previously proposed. Ask only when a consequential ambiguity remains; otherwise implement the smallest coherent change and show how it matches the requested behavior.
+
+### Hidden-server discovery
+Hidden servers require investigation or an outage to reveal them; never reveal based on migration progress. All three tiers are possible, and tier totals must match the actual servers. Asset Inventory speeds investigation instead of bypassing it. Escalations can target hidden racks and their fires continue growing while hidden. Reveal on burnout before applying normal outage handling. License conditions on discovery can already be expired or near expiry; charge expired liability once and preserve the normal countdown for upcoming renewals.
+
