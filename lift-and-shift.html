@@ -398,7 +398,7 @@ const UPGRADES=[
   {id:"suppress",name:"Fire Suppression",icon:"🧯",cost:2,max:3,desc:"On-prem fires grow 20% slower per level."},
   {id:"portal",name:"Self-Service Portal",icon:"🙋",cost:2,max:3,desc:"Users reset their own passwords. 15% fewer tickets per level."},
   {id:"autopatch",name:"Cloud Auto-Patching",icon:"🩹",cost:5,sec:true,desc:"Cloud apps get patched automatically, so they never drift into riskier states, and new leaks are 20% less likely. Covered apps show a green shield."},
-  {id:"pipeline",name:"CI/CD Pipeline",icon:"🏭",cost:6,max:3,desc:"Hold Space at a rack to send it down a conveyor to the cloud. No walking: about 6 seconds (3 with Terraform), with +10% odds from automated tests. Each level adds a lane, so more jobs can run at once."},
+  {id:"pipeline",name:"CI/CD Pipeline",icon:"🏭",cost:6,max:3,desc:"Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud. No walking: about 6 seconds (3 with Terraform), with +10% odds from automated tests. Each level adds a lane, so more jobs can run at once."},
   {id:"bluegreen",name:"Blue-Green Cutovers",icon:"🔀",cost:6,desc:"Run old and new side by side. On-prem stays live until cloud success. Failed cloud deployments remain gray; hold E there to retry without a cutover outage."},
   {id:"statuspage",name:"Status Page",icon:"📣",cost:3,desc:"During a red alert, users check the status page instead of grabbing you. (Execs you ignored still come find you.)"},
   {id:"postmortem",name:"Blameless Postmortems",icon:"📝",cost:3,desc:"Learn from every incident. Each red alert you resolve gives back half the story point it cost."},
@@ -1311,7 +1311,7 @@ function startSprint(n){
   // hidden apps turn up as you make progress (60% and 90% of the known servers moved), not on a timer
   const fr=[0.6,0.9];let h=0;
   S.racks.forEach(a=>{if(a&&a.hidden)a.revealAt=S.upgrades.inventory?0:fr[h++%2];});
-  Object.assign(S,{em:[],tk:[],atk:[],st:[],fl:[],fx:[],shake:0,carry:null,fix:null,fixP:0,fixKey:null,emT:4,tkT:5,stT:3,err:ec.err,alert:false,frozen:false,sp:[],spT:rand(18,28),temp:null,pipe:[],spaceArmed:false,window:0,focus:0,pizza:null});
+  Object.assign(S,{em:[],tk:[],atk:[],st:[],fl:[],fx:[],shake:0,carry:null,fix:null,fixP:0,fixKey:null,emT:4,tkT:5,stT:3,err:ec.err,alert:false,frozen:false,sp:[],spT:rand(18,28),temp:null,pipe:[],window:0,focus:0,pizza:null});
   // license deadlines (in seconds of this engagement); gold ones come due later so you can build experience first
   const T=ec.days*DAY;
   S.racks.forEach(a=>{if(a&&a.licBase)a.lic=(a.tier==="gold"?rand(0.8,1.1):rand(0.4,0.75))*T;});
@@ -1454,9 +1454,11 @@ function doGrab(){
   if(g.down){fl(P,"It's offline. Hold E to bring it back up first",C.amber);return;}
   if(!S.upgrades.bluegreen)S.racks[g.slot]=null;S.carry=g;sfx("grab");if(g.touchT==null)g.touchT=S.time;
 }
-/* CI/CD pipeline: hold Space at a rack to send it down a conveyor to the cloud. No walking, ~6s (3s with Terraform),
+/* CI/CD pipeline: press Space at a rack to use a free lane, or carry if all lanes are busy. The conveyor sends it to the cloud. No walking, ~6s (3s with Terraform),
    +10% odds from automated tests. Each upgrade level is one more lane (jobs at once). */
 const pipeLanes=()=>lvl("pipeline");
+const freePipelineLane=()=>{for(let k=0;k<pipeLanes();k++)if(!S.pipe.some(j=>j.lane===k))return k;return -1;};
+function grabOrPipeline(){if(!S.carry&&grabTarget()&&freePipelineLane()>=0)sendToPipeline();else doGrab();}
 const pipeDur=()=>S.upgrades.terraform?3:6;
 function sendToPipeline(){
   const P=S.p;if(P.stun>0)return;
@@ -1465,7 +1467,7 @@ function sendToPipeline(){
   if(downCount()>0){fl(P,"Can't move servers while any are offline",C.danger);return;}
   if(g.fire>0){fl(P,"Put the fire out first",C.amber);return;}
   if(g.down){fl(P,"It's offline. Hold E to bring it back up first",C.amber);return;}
-  const used=S.pipe.map(j=>j.lane);let lane=-1;for(let k=0;k<pipeLanes();k++)if(!used.includes(k)){lane=k;break;}
+  const lane=freePipelineLane();
   if(lane<0){fl(P,"All pipeline lanes are busy",C.amber);return;}
   if(!S.upgrades.bluegreen)S.racks[g.slot]=null;if(g.touchT==null)g.touchT=S.time;
   S.pipe.push({a:g,t:0,dur:pipeDur(),lane});sfx("grab");fl(RACKS[g.slot],"🏭 Into the pipeline",C.leak);
@@ -1744,7 +1746,7 @@ function buildPrompt(){
   const P=S.p,parts=[];
   if(S.carry){const z=zoneOf(P.x);parts.push(z===2?`Space: migrate ${S.carry.name} (${Math.round(successChance(S.carry.tier)*100)}%)`:z===0?"Space: put it back":"Carry it to the cloud →");}
   else{
-    const g=grabTarget();if(g&&g.fire===0&&!g.down&&!S.alert)parts.push(S.frozen?"⛔ Can't move: a server is offline":pipeLanes()>0?`Space: carry · hold Space: pipeline ${pipeDur()}s (${Math.round(Math.min(1,successChance(g.tier)+0.1)*100)}%)`:`Space: grab (${Math.round(successChance(g.tier)*100)}% cutover)`);
+    const g=grabTarget();if(g&&g.fire===0&&!g.down&&!S.alert)parts.push(S.frozen?"⛔ Can't move: a server is offline":pipeLanes()>0?`Space: ${freePipelineLane()>=0?"pipeline":"carry (pipeline busy)"} · ${pipeDur()}s pipeline (${Math.round(Math.min(1,successChance(g.tier)+0.1)*100)}%)`:`Space: grab (${Math.round(successChance(g.tier)*100)}% cutover)`);
     const rb=rollbackTarget();if(rb)parts.push(`Hold Space: roll back (${ROLLBACK_TIME}s)`);
     const f=S.fix;
     if(!f&&S.alert)parts.push("RED ALERT: go to a flashing incident");
@@ -1794,8 +1796,7 @@ function update(dt){
   const rbt=rollbackTarget();
   if(rbt&&keys.grab&&P.stun<=0){grabPressed=false;rbt.a.rb+=dt;S.rbT=rbt;if(rbt.a.rb>=ROLLBACK_TIME)doRollback(rbt.i);}
   else{S.rbT=null;S.cloud.forEach(a=>{if(a&&a.rb&&!keys.grab)a.rb=0;});}
-  if(grabPressed){grabPressed=false;if(pipeLanes()>0&&!S.carry&&grabTarget()){S.spaceArmed=true;S.spaceT=0;}else doGrab();}
-  if(S.spaceArmed){if(keys.grab){S.spaceT+=dt;if(S.spaceT>=0.35){S.spaceArmed=false;sendToPipeline();}}else{S.spaceArmed=false;doGrab();}}
+  if(grabPressed){grabPressed=false;grabOrPipeline();}
   doFix(dt);
   tickPipeline(dt);
   // a server being moved is in its cutover window: it counts as down at half the normal rate
@@ -2241,7 +2242,7 @@ function howToPlay(){
     <div><span class="ic">🎫</span><span><b>Ticket queue.</b> At the bottom of the hallway, with a 5-slot bar. Hold E there to close tickets. When the bar is full it flashes red and tickets escalate 🚨 one at a time, each starting a server fire and costing half an improvement point, until you work it down. Escalations continue 75% slower during outages and breaches, and pause during focus time and change freezes. Buy an Emergency Freeze Window between clients and use F or the Freeze button. Managers automatically freeze critical incidents for 10/14/18 seconds, with 60/50/40-second cooldowns. Without a manager, incident grace lasts 4 seconds with a 60-second cooldown. Downtime and breach damage still count.</span></div>
     <div><span class="ic">👤</span><span><b>Users.</b> They wander the hallway. Bump into one and you're stuck for a "quick question." The better dressed, the longer: an intern holds you 1 second, the CIO almost 5.</span></div>
     <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
-    <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Hold Space at a rack to send it down a conveyor to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at half rate.</span></div>
+    <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at half rate.</span></div>
     <div><span class="ic">📅</span><span><b>Lease target.</b> Each client's data center lease has a target day. Going late never ends the game, but on-prem costs rise 10% per overdue day and the client's rating drops.</span></div>
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and a 4-second speed boost (you glow). 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
     <div><span class="ic">🤖</span><span><b>Patch Bot (upgrade).</b> Patches overdue servers for you, but never fights fires. Level 1 succeeds 50% of the time, level 2 66%, level 3 90%. A failed patch leaves a red AUTOMATION ERROR on the rack: patch it yourself to clear it, or if its compliance timer runs out, the audit fails and the error resets so the bot can try again.</span></div>
