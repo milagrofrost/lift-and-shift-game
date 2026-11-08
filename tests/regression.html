@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -153,6 +153,20 @@ test("a forced put-back never overwrites a rack someone else now uses", () => {
   const intruder = {...a, name: "Intruder", slot}; S.racks[slot] = intruder;
   S.racks.find(x => x && x !== intruder).down = true; G.update(0.05);
   check(S.racks[slot] === intruder && S.racks.includes(a) && !S.carry, "carried server overwrote a rack or was lost");
+});
+
+/* ---------- mover bot ---------- */
+test("the Mover Bot uses a free CI/CD lane and carries when every lane is busy", () => {
+  const atRack = S => { const a = firstRack(S), p = G.RACKS[a.slot], b = G.mkBot("move"); b.x = p.x; b.y = p.y + 44; b.tgt = a; b.work = 0.99; S.bots = [b]; return {a, b}; };
+  let S = fresh(); S.upgrades.pipeline = 1; let {a, b} = atRack(S);
+  G.moverBot(b, 0.05, false, 85);
+  check(S.pipe.length === 1 && S.pipe[0].a === a && S.pipe[0].byBot && !b.carry && !S.racks[a.slot], "bot did not use the free lane");
+  S = fresh(); S.upgrades.pipeline = 1; ({a, b} = atRack(S)); S.pipe = [{a: {}, t: 0, dur: 6, lane: 0}];
+  G.moverBot(b, 0.05, false, 85);
+  check(b.carry === a && S.pipe.length === 1, "bot did not fall back to carrying");
+  S = fresh(); ({a, b} = atRack(S));
+  G.moverBot(b, 0.05, false, 85);
+  check(b.carry === a && S.pipe.length === 0, "bot used a pipeline that doesn't exist");
 });
 
 /* ---------- chatbots ---------- */
