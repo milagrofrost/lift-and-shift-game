@@ -30,7 +30,8 @@
 const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
-  "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK").split(",");
+  "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
+  "wantMood,SONG_SETS,MOODS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -237,6 +238,17 @@ test("a hidden server stays hidden until investigated or burned out, and burnout
   check(h.hidden, "revealed without investigation or outage");
   h.fire = 99.9; G.tickOnPrem(0.1);
   check(!h.hidden && h.down, "burnout did not reveal it");
+});
+
+/* ---------- music ---------- */
+test("each client plays the next song set, and every song is defined", () => {
+  const S = fresh(); check(G.SONG_SETS && G.SONG_SETS.length >= 3, "fewer than 3 song sets");
+  for (const set of G.SONG_SETS) for (const m of set) check(G.MOODS[m] && G.MOODS[m].chords.length === 4, `song ${m} missing or malformed`);
+  S.songOffset = 0; S.alert = false; S.tk = [];
+  const heard = [];
+  for (let n = 1; n <= G.SONG_SETS.length + 1; n++) { S.sprint = n; heard.push(G.wantMood()); }
+  check(new Set(heard.slice(0, G.SONG_SETS.length)).size === G.SONG_SETS.length, `clients repeat a song: ${heard}`);
+  check(heard[G.SONG_SETS.length] === heard[0], `rotation does not wrap: ${heard}`);
 });
 
 /* ---------- runner ---------- */
