@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
+  "devRun,devSet,DEV,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -333,6 +333,18 @@ test("the joystick moves the player, and releasing it stops them", () => {
   const x1 = S.p.x; check(x1 > 480, "joystick did not move the player");
   G.stick.on = false; G.stick.x = 0; G.update(0.05);
   check(S.p.x === x1, "player kept moving after release");
+});
+
+/* ---------- console ---------- */
+test("the console rejects unknown commands and its tools grant upgrades for free", () => {
+  const S = fresh(); S.upgrades = {}; S.bots = []; S.points = 0;
+  G.devRun("definitely not it"); check(!G.DEV.unlocked, "unknown command unlocked the console");
+  G.devSet("manager", 2); check(S.upgrades.manager === 2 && S.mgr, "manager not granted");
+  G.devSet("patchbot", 9); check(S.upgrades.patchbot === 3 && S.bots.filter(b => b.kind === "patch").length === 1, "patch bot not capped or spawned once");
+  G.devSet("patchbot", 0); check(!S.bots.some(b => b.kind === "patch"), "patch bot not removed");
+  G.devSet("agent", 1); check(S.upgrades.agent === 1 && S.agent, "AI agent lock not bypassed");
+  G.devSet("bluegreen", 1); check(S.upgrades.bluegreen === true, "single-level upgrade not granted");
+  check(S.points === 0 && S.dev === true, "granting spent points or did not mark the run");
 });
 
 /* ---------- music ---------- */

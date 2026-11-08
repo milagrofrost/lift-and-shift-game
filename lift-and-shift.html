@@ -139,6 +139,21 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:960/560;touch-action:no
 @keyframes toast{0%{opacity:0;transform:translateY(6px)}7%{opacity:1;transform:none}82%{opacity:1}100%{opacity:0}}
 .help{font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 16px}
 kbd{font-family:var(--f-mono);font-size:11.5px;background:var(--panel-2);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;color:var(--ink)}
+#devbtn{position:fixed;left:2px;top:2px;z-index:30;width:24px;height:20px;padding:0;background:none;border:0;color:var(--muted);opacity:.28;font:11px var(--f-mono);cursor:pointer}
+#devbtn:hover,#devbtn:focus-visible{opacity:.8}
+#devterm{position:fixed;inset:0;z-index:35;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.72);padding:12px}
+#devterm[hidden]{display:none}
+.devbox{width:min(100%,680px);max-height:100%;overflow:auto;background:#05090c;border:1px solid #2f6b47;border-radius:6px;padding:10px 12px;color:#7dffa8;font:13px/1.45 var(--f-mono)}
+#devlog{white-space:pre-wrap;margin:0;min-height:3em}
+.devline{display:flex;gap:6px;align-items:center}
+#devinput{flex:1;min-width:0;background:none;border:0;outline:0;color:inherit;font:16px var(--f-mono)}
+.devmenu h4{margin:10px 0 4px;color:#b8ffd0;font:700 12px var(--f-mono)}
+.devacts{display:flex;flex-wrap:wrap;gap:5px}
+.devbox button{background:#0d2017;border:1px solid #2f6b47;color:#b8ffd0;border-radius:4px;font:12px var(--f-mono);padding:3px 8px;cursor:pointer}
+.devrow{display:flex;align-items:center;gap:6px;padding:1px 0}
+.devrow span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.devrow b{min-width:3ch;text-align:center;font-weight:600}
+.devrow button{min-width:30px}
 /* Touch controls: a see-through layer over the game. Left half is a drag-anywhere joystick, right half is big action buttons. */
 .touch{display:none;position:fixed;inset:0;z-index:10;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 @media (pointer:coarse){.touch{display:block}.touch[hidden]{display:none}}
@@ -266,6 +281,8 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
 </div>
 <div id="rotate" role="alert"><i>📱↻</i><b>Turn your phone sideways</b><span>Lift &amp; Shift plays in landscape.</span></div>
 <div class="overlay" id="overlay"></div>
+<button id="devbtn" type="button" aria-label="Console">&gt;_</button>
+<div id="devterm" hidden><div class="devbox"><pre id="devlog"></pre><div class="devline"><span>$</span><input id="devinput" aria-label="Command" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div><div class="devmenu" id="devmenu"></div></div></div>
 
 <script>
 (()=>{
@@ -1361,6 +1378,7 @@ $("freeze").addEventListener("click",useFreeze);
 document.getElementById("mus").addEventListener("click",()=>{audio();setMusic(!MUS.on);});
 setMusic(MUS.on);
 addEventListener("keydown",e=>{
+  if(!$("devterm").hidden)return;
   if(e.code==="KeyF"&&!e.repeat){useFreeze();return;}
   if(e.code==="KeyM"&&!e.repeat){setSound(!AU.on);toast(AU.on?"🔊 Sound on":"🔇 Sound off");return;}
   if(e.code==="KeyP"||e.code==="Escape"){if(mode==="play"||mode==="paused"){e.preventDefault();togglePause();}return;}
@@ -2527,7 +2545,7 @@ function showEnd(reason){
   else{title=`Retired as ${careerTitle()}`;body=`${n} client${n===1?"":"s"}, all in the cloud. Average rating ${avg.toFixed(1)} stars. Nobody ever found out about the resume.`;}
   // best score is only kept for runs that weren't cut short by getting fired
   let best=null,newBest=false;
-  try{const s=localStorage.getItem("liftshift-best");best=s===null?null:+s;if(!reason&&(best===null||S.budget>best)){newBest=true;best=S.budget;localStorage.setItem("liftshift-best",String(best));}}catch(e){}
+  try{const s=localStorage.getItem("liftshift-best");best=s===null?null:+s;if(!reason&&!S.dev&&(best===null||S.budget>best)){newBest=true;best=S.budget;localStorage.setItem("liftshift-best",String(best));}}catch(e){}
   const grade=reason?"✗":`${avg.toFixed(1)}★`;
   const ai=lvl("agent")?`<p style="font-size:13.5px;color:var(--muted)">Achievement: <b style="color:var(--ai)">Vibe Ops</b>. You finished with an AI agent on the team.</p>`:(S.bots.length===0&&!reason?`<p style="font-size:13.5px;color:var(--muted)">Achievement: <b style="color:var(--ok)">Artisanal Migration</b>. No bots, all by hand.</p>`:"");
   const rows=S.career.map(c=>`<span>${c.name}<small>Day ${c.days}${c.late?`, ${c.late} days late`:", on time"}</small></span><span class="stars sm">${stars(c.stars)}</span>`).join("");
@@ -2618,6 +2636,66 @@ function resign(){
   <div class="modcard"><b>${title}.</b> ${line}</div>
   <div class="row"><button class="btn" data-act="again">Get a new job (play again)</button><button class="btn ghost" data-act="menu">Main menu</button></div>`);
 }
+/* ---------- console ---------- */
+const DEV={unlocked:false,prev:null};
+const devHash=s=>[...s].reduce((h,c)=>((Math.imul(h,33)^c.charCodeAt(0))>>>0),5381);
+function devLog(t){const l=$("devlog");l.textContent+=`${t}\n`;l.parentElement.scrollTop=l.parentElement.scrollHeight;}
+function devSet(id,L){
+  const u=UPGRADES.find(x=>x.id===id);if(!u)return;S.dev=true;
+  L=clamp(L,0,u.max||1);S.upgrades[id]=u.max?L:L>0;
+  const script=k=>S.bots.findIndex(b=>b.kind===k&&!b.temp);
+  for(const[upg,k]of[["patchbot","patch"],["moverbot","move"]]){
+    const on=lvl(upg)>0||S.upgrades[upg]===true,i=script(k);
+    if(on&&i<0)S.bots.push(mkBot(k));else if(!on&&i>=0)S.bots.splice(i,1);
+  }
+  spawnManager();spawnAgent();spawnChatbots();
+}
+const devActive=()=>DEV.prev==="play";
+const DEV_ACTIONS={
+  "Max all upgrades":()=>UPGRADES.forEach(u=>devSet(u.id,u.max||1)),
+  "Remove all upgrades":()=>UPGRADES.forEach(u=>devSet(u.id,0)),
+  "+13 points":()=>{S.dev=true;S.points=(S.points||0)+13;},
+  "Full energy":()=>{S.dev=true;S.energy=100;},
+  "Full uptime":()=>{S.dev=true;S.err=S.errMax;},
+  "Full security":()=>{S.dev=true;S.security=100;},
+  "Clear queues":()=>{S.dev=true;S.tk=[];S.em=[];S.atk=[];},
+  "Start a fire":()=>{const r=S.racks.filter(a=>a&&!a.down&&a.fire===0);if(r.length){S.dev=true;const a=pick(r);a.fire=20;a.spreadT=3;}},
+  "Launch escalation":()=>{if(S.racks.some(Boolean)){S.dev=true;launchEscalation();}},
+  "Gold outage":()=>{const a=S.racks.find(x=>x&&x.tier==="gold"&&!x.down);if(a){S.dev=true;a.down=true;a.downT=S.time;a.fire=0;a.prog=0;}},
+  "Finish client":()=>{if(!devActive())return;S.dev=true;S.racks=Array(12).fill(null);S.wave=[];S.carry=null;S.pipe=[];S.atk=[];S.bots.forEach(b=>{b.carry=null;});
+    S.cloud=S.cloud.map(c=>c&&!c.staged?Object.assign(c,{down:false,breach:false}):null);},
+};
+function devMenu(){
+  const m=$("devmenu");if(!DEV.unlocked){m.innerHTML="";return;}
+  m.innerHTML=`<h4>Tools</h4><div class="devacts">${Object.keys(DEV_ACTIONS).map(k=>`<button type="button" data-do="${k}">${k}</button>`).join("")}</div>
+  <h4>Upgrades</h4>${UPGRADES.map(u=>{const L=u.max?lvl(u.id):(S.upgrades[u.id]?1:0),max=u.max||1;
+    return`<div class="devrow"><span>${u.icon} ${u.name}</span><button type="button" data-up="${u.id}" data-to="${L-1}">−</button><b>${L}/${max}</b><button type="button" data-up="${u.id}" data-to="${L+1}">+</button></div>`;}).join("")}`;
+}
+function devRun(raw){
+  const cmd=raw.trim().toLowerCase().replace(/\s+/g," ");if(!cmd)return;
+  if(devHash(cmd)===1903980526){DEV.unlocked=true;devLog("Access granted. Please don't tell Compliance.");devMenu();return;}
+  if(cmd==="exit"||cmd==="logout"){devClose();return;}
+  const R={help:"No manual entry. Documentation is on the roadmap.",ls:"resume_final_v7_REAL.docx  passwords.txt  do_not_delete/",whoami:S?careerTitle().toLowerCase():"nobody",pwd:"/home/definitely_qualified",uptime:"Define uptime.",date:"Q4, always."};
+  devLog(R[cmd]||`${cmd.split(" ")[0]}: command not found. Have you tried opening a ticket?`);
+}
+function devShow(){
+  DEV.prev=mode;if(mode==="play"){mode="console";resetTouch();for(const k in keys)keys[k]=false;}
+  $("devterm").hidden=false;devMenu();$("devinput").focus();
+}
+function devClose(){
+  $("devterm").hidden=true;
+  if(DEV.prev==="play")mode="play";else if(DEV.prev==="review")review();
+  DEV.prev=null;
+}
+$("devbtn").addEventListener("click",()=>{if($("devterm").hidden)devShow();else devClose();});
+$("devinput").addEventListener("keydown",e=>{e.stopPropagation();
+  if(e.key==="Enter"){const v=e.target.value;e.target.value="";devLog(`$ ${v}`);devRun(v);}
+  else if(e.key==="Escape")devClose();});
+$("devterm").addEventListener("click",e=>{
+  if(e.target===$("devterm"))return devClose();
+  const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.up)devSet(b.dataset.up,+b.dataset.to);else if(b.dataset.do)DEV_ACTIONS[b.dataset.do]();else return;
+  devMenu();});
 function togglePause(){
   if(mode==="play"){mode="paused";show(`<h2>Paused</h2><p>The fires are paused too. This is the only time that happens.</p>
     <div class="row"><button class="btn" data-act="resume">Resume</button><button class="btn ghost" data-act="restart">Restart run</button><button class="btn ghost" data-act="quit">Give up</button></div>
