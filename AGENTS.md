@@ -14,7 +14,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 
 - Inspect Git status, branch, and applicable instructions before editing. Preserve unrelated user changes.
 - `lift-and-shift.html` contains the game. No build system is required.
-- Gameplay work currently lives on `feature/maintenance-and-migration-fixes`; `main` remains the original game plus documentation until an authorized merge.
+- Gameplay revisions are merged into `main`. Cloudflare Pages deploys `main` to https://las.milagrofrost.com. Use feature branches for new work; pushing main publishes the site.
 - The design direction below describes accepted behavior, including feature-branch work. Inspect the current branch before claiming it is implemented.
 - Do not merge branches, rewrite history, publish releases, or change repository visibility without authorization.
 - Keep local machine configuration, credentials, temporary scripts, and personal paths out of commits. `.claude/` is local configuration, not part of the published game.

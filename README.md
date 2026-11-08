@@ -73,15 +73,9 @@ Touch controls are available on supported layouts. Tutorial, How to play, and Wh
 
 This is an evolving prototype implemented in one HTML file containing the interface, canvas rendering, simulation, and audio. Screenshots above show `main`.
 
-Gameplay revisions are currently on [`feature/maintenance-and-migration-fixes`](https://github.com/milagrofrost/lift-and-shift-game/tree/feature/maintenance-and-migration-fixes), including current-cycle patch coverage, stricter incident completion rules, rollback accounting, manager change freezes, and persistent escalation targeting. They are not yet merged into `main`.
+The gameplay revisions are merged into `main`, including current-cycle patch coverage, incident completion rules, rollback accounting, manager change freezes, and persistent escalation targeting.
 
-To try that version:
-
-```sh
-git switch feature/maintenance-and-migration-fixes
-```
-
-Refresh the game after switching branches. Changing branches does not update a page already running in memory.
+Play at **https://las.milagrofrost.com**. Cloudflare Pages automatically deploys pushes to `main`. The screenshots above were captured before these gameplay revisions.
 
 ## Contributing, including AI assistants
 
