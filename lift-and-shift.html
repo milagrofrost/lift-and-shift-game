@@ -399,7 +399,7 @@ const UPGRADES=[
   {id:"portal",name:"Self-Service Portal",icon:"🙋",cost:2,max:3,desc:"Users reset their own passwords. 15% fewer tickets per level."},
   {id:"autopatch",name:"Cloud Auto-Patching",icon:"🩹",cost:5,sec:true,desc:"Cloud apps get patched automatically, so they never drift into riskier states, and new leaks are 20% less likely. Covered apps show a green shield."},
   {id:"pipeline",name:"CI/CD Pipeline",icon:"🏭",cost:6,max:3,desc:"Hold Space at a rack to send it down a conveyor to the cloud. No walking: about 6 seconds (3 with Terraform), with +10% odds from automated tests. Each level adds a lane, so more jobs can run at once."},
-  {id:"bluegreen",name:"Blue-Green Cutovers",icon:"🔀",cost:6,desc:"Run old and new side by side. A failed cutover switches straight back: the server stays online on-prem instead of going offline in the cloud."},
+  {id:"bluegreen",name:"Blue-Green Cutovers",icon:"🔀",cost:6,desc:"Run old and new side by side. On-prem stays live until cloud success. Failed cloud deployments remain gray; hold E there to retry without a cutover outage."},
   {id:"statuspage",name:"Status Page",icon:"📣",cost:3,desc:"During a red alert, users check the status page instead of grabbing you. (Execs you ignored still come find you.)"},
   {id:"postmortem",name:"Blameless Postmortems",icon:"📝",cost:3,desc:"Learn from every incident. Each red alert you resolve gives back half the story point it cost."},
   {id:"oncall",name:"On-Call Rotation",icon:"📟",cost:3,desc:"You're not the only hero anymore. Energy regenerates 50% faster."},
@@ -1288,7 +1288,7 @@ function addApp(entry,hidden,counted){
 /* Big clients don't fit in one 12-rack room. The rest arrive in waves "from the client's other building" once
    the room is cleared. Healthy cloud apps are consolidated into the landing zone to free up cloud slots. */
 function deliverWave(){
-  let lz=0;S.cloud.forEach((a,i)=>{if(a&&!a.down&&!a.breach){S.cloud[i]=null;lz++;}});S.lz+=lz;
+  let lz=0;S.cloud.forEach((a,i)=>{if(a&&!a.staged&&!a.down&&!a.breach){S.cloud[i]=null;lz++;}});S.lz+=lz;
   const batch=S.wave.splice(0,12),prog=0.5;
   for(const w of batch){const a=addApp(w.e,w.hidden,true);if(a&&a.hidden)a.revealAt=S.upgrades.inventory?0:prog;}
   const T=S.cdays*DAY;S.racks.forEach(a=>{if(a&&a.licBase&&!a.lic)a.lic=S.time+rand(0.3,0.6)*T-S.time;});
@@ -1341,7 +1341,7 @@ function finishEngagement(){
 }
 function mkBot(kind,temp=false){return{kind,x:kind==="patch"?180:480,y:520,tgt:null,carry:null,work:0,slot:-1,flash:0,temp};}
 const cloudCount=()=>S.cloud.filter(Boolean).length+(S.lz||0);
-const onPremApps=()=>{const l=S.racks.filter(Boolean);if(S.carry)l.push(S.carry);S.bots.forEach(b=>{if(b.carry)l.push(b.carry);});(S.pipe||[]).forEach(j=>l.push(j.a));return l;};
+const onPremApps=()=>{const l=S.racks.filter(Boolean);if(S.carry)l.push(S.carry);S.bots.forEach(b=>{if(b.carry)l.push(b.carry);});(S.pipe||[]).forEach(j=>l.push(j.a));return [...new Set(l)];};
 const modId=()=>S.mod&&S.mod.id;
 const aiOn=()=>false; // bots are plain scripts; AI lives in the AI Agent upgrade
 const errRate=()=>S.upgrades.review?0.08:0.2;
@@ -1370,7 +1370,7 @@ function goTo(e,tx,ty,sp,dt){
 }
 
 /* ---------- actions ---------- */
-function grabTarget(){let best=null,bd=62;S.racks.forEach((a,i)=>{if(!a||a.hidden)return;const d=dist(S.p,RACKS[i]);if(d<bd){bd=d;best=a;}});return best;}
+function grabTarget(){let best=null,bd=62;S.racks.forEach((a,i)=>{if(!a||a.hidden||migrationBusy(a))return;const d=dist(S.p,RACKS[i]);if(d<bd){bd=d;best=a;}});return best;}
 function nearestEmptySlot(x,y){let bi=-1,bd=1e9;S.cloud.forEach((a,i)=>{if(a)return;const d=Math.hypot(SLOTS[i].x-x,SLOTS[i].y-y);if(d<bd){bd=d;bi=i;}});return bi;}
 /* incidents: a gold server offline, or any cloud breach. While one exists: red alert. */
 function critList(){
@@ -1381,7 +1381,7 @@ function critList(){
   return l;
 }
 const downCount=()=>S.racks.filter(a=>a&&a.down).length+S.cloud.filter(a=>a&&a.down).length;
-const liveCloud=()=>S.cloud.filter(a=>a&&!a.down).length+(S.lz||0);
+const liveCloud=()=>S.cloud.filter(a=>a&&!a.staged&&!a.down).length+(S.lz||0);
 /* Cutover success chance. Experience from moving lower tiers raises the odds of higher tiers.
    Bronze 80%→98%, silver 45%→95% (from bronze moved), gold 15%→95% (from bronze+silver moved),
    and gold hits 100% if every bronze and silver is already in the cloud. */
@@ -1409,23 +1409,25 @@ S.movedT[a.tier]=(S.movedT[a.tier]||0)+1;S.ss.mig++;S.ss.att++;
   const o=a.orig||a;if(o.touchT!=null){S.ss.leadSum+=S.time-o.touchT;S.ss.leadN++;o.touchT=null;}}
 // DORA: time to restore = how long a server stayed offline
 function noteRestored(a){if(a.downT!=null){S.ss.mttrSum+=S.time-a.downT;S.ss.mttrN++;a.downT=null;}}
+const migrationBusy=a=>S.carry===a||S.bots.some(b=>b.carry===a)||(S.pipe||[]).some(j=>j.a===a)||S.cloud.some(c=>c&&c.staged&&c.orig===a);
+function activateCloud(c){
+  const a=c.orig;
+  c.staged=false;c.down=false;c.grace=7+8*retro("baseline");
+  c.cleanStart=a.covered?30:0;
+  if(S.racks[a.slot]===a)S.racks[a.slot]=null;
+}
 function migrate(a,i,byBot,bonus=0){
-  const p=Math.min(1,successChance(a.tier)+bonus),ok=Math.random()<p;
+  const p=Math.min(1,successChance(a.tier)+bonus),ok=Math.random()<p&&(!S.upgrades.bluegreen||(!a.down&&!a.fire));
   if(!ok)S.ss.att++;
-  if(!ok&&S.upgrades.bluegreen){
-    // blue-green: the old environment never went away, so a failed cutover just switches traffic back
-    S.run.fails++;sfx("migrateFail");let slot=S.racks[a.slot]?S.racks.findIndex(x=>!x):a.slot;if(slot<0)slot=a.slot;
-    a.slot=slot;S.racks[slot]=a;fl(RACKS[slot],"🔀 Switched back",C.amber);
-    toast(`🔀 ${a.name}'s cutover failed, so blue-green switched it back. It's still online on-prem. Try again when the odds are better.`);
-    return;
-  }
-  S.cloud[i]={name:a.name,tier:a.tier,leak:0,leakOn:false,grace:7+8*retro("baseline"),tfT:0,breach:false,prog:0,spreadT:0,down:!ok,rb:0,orig:a,downT:ok?null:S.time};
+  const staged=!ok&&!!S.upgrades.bluegreen;
+  S.cloud[i]={name:a.name,tier:a.tier,leak:0,leakOn:false,grace:7+8*retro("baseline"),tfT:0,breach:false,prog:0,spreadT:0,down:!ok&&!staged,staged,rb:0,orig:a,downT:!ok&&!staged?S.time:null};
+  if(staged){S.run.fails++;sfx("migrateFail");toast(`🔀 ${a.name}: cloud deployment failed. On-prem remains live. Hold E at the gray cloud deployment to retry.`);return;}
   if(!ok){S.run.fails++;sfx("migrateFail");
     fl(SLOTS[i],`CUTOVER FAILED (${Math.round(p*100)}%)`,C.danger);
     toast(`💥 ${a.name}'s cutover failed. It's offline in the cloud: hold E to retry (${cloudRebuild(a.tier)}s, ${Math.round(p*100)}%) or hold Space to roll back.`);
     return;
   }
-  cutoverOK(a);sfx("migrateOK");
+  activateCloud(S.cloud[i]);cutoverOK(a);sfx("migrateOK");
   const e=byBot?8:18;S.energy=Math.min(100,S.energy+e);
   fl(SLOTS[i],`+${e}⚡ +$4k saved`,C.amber);
 }
@@ -1450,7 +1452,7 @@ function doGrab(){
   if(downCount()>0){fl(P,"Can't move servers while any are offline",C.danger);return;}
   if(g.fire>0){fl(P,"Put the fire out first",C.amber);return;}
   if(g.down){fl(P,"It's offline. Hold E to bring it back up first",C.amber);return;}
-  S.racks[g.slot]=null;S.carry=g;sfx("grab");if(g.touchT==null)g.touchT=S.time;
+  if(!S.upgrades.bluegreen)S.racks[g.slot]=null;S.carry=g;sfx("grab");if(g.touchT==null)g.touchT=S.time;
 }
 /* CI/CD pipeline: hold Space at a rack to send it down a conveyor to the cloud. No walking, ~6s (3s with Terraform),
    +10% odds from automated tests. Each upgrade level is one more lane (jobs at once). */
@@ -1465,7 +1467,7 @@ function sendToPipeline(){
   if(g.down){fl(P,"It's offline. Hold E to bring it back up first",C.amber);return;}
   const used=S.pipe.map(j=>j.lane);let lane=-1;for(let k=0;k<pipeLanes();k++)if(!used.includes(k)){lane=k;break;}
   if(lane<0){fl(P,"All pipeline lanes are busy",C.amber);return;}
-  S.racks[g.slot]=null;if(g.touchT==null)g.touchT=S.time;
+  if(!S.upgrades.bluegreen)S.racks[g.slot]=null;if(g.touchT==null)g.touchT=S.time;
   S.pipe.push({a:g,t:0,dur:pipeDur(),lane});sfx("grab");fl(RACKS[g.slot],"🏭 Into the pipeline",C.leak);
 }
 function tickPipeline(dt){
@@ -1487,7 +1489,7 @@ function fixTarget(){
     else if(a.fire>0)take({kind:"fire",a,pos:RACKS[i],key:"f"+i},d);
     else if(patchDue(a))take({kind:"patch",a,pos:RACKS[i],key:"p"+i},d);});
   S.cloud.forEach((a,i)=>{if(!a)return;const d=dist(P,SLOTS[i]);if(d>=56)return;
-    if(a.down){take({kind:"cloudrestore",a,i,pos:SLOTS[i],key:"c"+i},d);return;}
+    if(a.down||a.staged){take({kind:"cloudrestore",a,i,pos:SLOTS[i],key:"c"+i},d);return;}
     if(a.breach)take({kind:"breach",a,i,pos:SLOTS[i],key:"b"+i},d);
     else if(a.leakOn)take({kind:"leak",a,i,pos:SLOTS[i],key:"l"+i},d);});
   if(S.tk.length){const d=dist(P,DESK);if(d<75)take({kind:"ticket",t:S.tk[0],pos:DESK,key:"desk"},d);}
@@ -1509,10 +1511,11 @@ function doFix(dt){
   }
   if(f.kind==="cloudrestore"){
     // retry the cutover: hold for the tier's time, then roll the current success chance. Free, so never a lockout.
+    if(f.a.staged&&(f.a.orig.down||f.a.orig.fire>0)){S.fixP=0;return;}
     const need=cloudRebuild(f.a.tier);f.a.prog+=dt;S.fixNeed=need;S.fixP=f.a.prog;
     if(f.a.prog<need)return;
     f.a.prog=0;S.fixP=0;S.fixLock=true;const p=successChance(f.a.tier);
-    if(Math.random()<p){noteRestored(f.a);f.a.down=false;f.a.grace=7;cutoverOK(f.a);sfx("migrateOK");S.energy=Math.min(100,S.energy+18);fl(f.pos,"Cutover complete",C.ok);}
+    if(Math.random()<p){noteRestored(f.a);activateCloud(f.a);cutoverOK(f.a);sfx("migrateOK");S.energy=Math.min(100,S.energy+18);fl(f.pos,"Cutover complete",C.ok);}
     else{S.run.fails++;S.ss.att++;sfx("migrateFail");fl(f.pos,`Still won't start (${Math.round(p*100)}%)`,C.danger);}
     return;
   }
@@ -1592,17 +1595,18 @@ function revealApp(a,investigated){
 function tickCloud(dt){
   const lc=(0.0065+0.002*S.sprint)*leakChanceMult()*haz();
   S.cloud.forEach((a,i)=>{
-    if(!a)return;
+    if(!a||a.staged)return;
+    if(a.cleanStart>0)a.cleanStart=Math.max(0,a.cleanStart-dt);
     if(a.down){spend("downtime",TIER[a.tier].drain*dt);S.err-=TIER[a.tier].sla*dt;return;} // failed cutover: offline in the cloud
     if(a.breach){
       // a breach stays until contained, drains security, and spreads to one neighbor at a time
       secHit("breach",0.5*dt);spend("breach",0.4*dt);if(freezeActive())return;a.spreadT-=dt;
-      if(a.spreadT<=0){a.spreadT=spreadTime();const n=cloudNeighbors(i).filter(j=>S.cloud[j]&&!S.cloud[j].breach&&!S.cloud[j].down);if(n.length)breach(pick(n),a.name,i);}
+      if(a.spreadT<=0){a.spreadT=spreadTime();const n=cloudNeighbors(i).filter(j=>S.cloud[j]&&!S.cloud[j].staged&&!S.cloud[j].breach&&!S.cloud[j].down);if(n.length)breach(pick(n),a.name,i);}
       return;
     }
     // drift: an unpatched cloud app gets riskier over time (up to 2x after ~3 min). Auto-patching keeps it fresh.
     if(S.upgrades.autopatch)a.age=0;else a.age=(a.age||0)+dt;
-    if(!a.leakOn){if(a.grace>0){a.grace-=dt;return;}if(Math.random()<lc*driftMult(a)*dt){a.leakOn=true;a.leak=4;a.tfT=0;}return;}
+    if(!a.leakOn){if(a.grace>0){a.grace-=dt;return;}if(Math.random()<lc*driftMult(a)*(a.cleanStart>0?0.5:1)*dt){a.leakOn=true;a.leak=4;a.tfT=0;}return;}
     if(freezeActive())return;
     a.leak+=3.6*dt*Math.pow(0.85,lvl("scanner"));
     if(a.leak>=100)breach(i,null);
@@ -1724,17 +1728,17 @@ function moverBot(b,dt,ai,sp){
     }else migrate(a,b.slot,true);
     b.slot=-1;return;
   }
-  if(!validRack(b.tgt)||b.tgt.fire>0||b.tgt.down){
+  if(!validRack(b.tgt)||migrationBusy(b.tgt)||b.tgt.fire>0||b.tgt.down){
     b.tgt=null;b.work=0;let best=null,sc=9;
     // the mover bot plays it safe: highest cutover odds first, then the most overdue
-    S.racks.forEach(a=>{if(!a||a.hidden||a.fire>0||a.down)return;const s=-successChance(a.tier)+a.timer/a.maxT*0.01;if(s<sc){sc=s;best=a;}});
+    S.racks.forEach(a=>{if(!a||a.hidden||a.fire>0||a.down||migrationBusy(a))return;const s=-successChance(a.tier)+a.timer/a.maxT*0.01;if(s<sc){sc=s;best=a;}});
     b.tgt=best;
   }
   if(!b.tgt){goTo(b,480,470,sp*0.5,dt);return;}
   const p=RACKS[b.tgt.slot];
   if(!goTo(b,p.x,p.y+44,sp,dt))return;
   b.work+=dt;if(b.work<(ai?0.4:1.0))return;
-  b.work=0;const a=b.tgt;if(a.touchT==null)a.touchT=S.time;S.racks[a.slot]=null;b.carry=a;b.tgt=null;b.slot=nearestEmptySlot(606,280);
+  b.work=0;const a=b.tgt;if(a.touchT==null)a.touchT=S.time;if(!S.upgrades.bluegreen)S.racks[a.slot]=null;b.carry=a;b.tgt=null;b.slot=nearestEmptySlot(606,280);
 }
 function buildPrompt(){
   const P=S.p,parts=[];
@@ -1796,7 +1800,7 @@ function update(dt){
   tickPipeline(dt);
   // a server being moved is in its cutover window: it counts as down at half the normal rate
   {const moving=[];if(S.carry)moving.push(S.carry);S.bots.forEach(b=>{if(b.carry)moving.push(b.carry);});S.pipe.forEach(j=>moving.push(j.a));
-   for(const a of moving){S.err-=TIER[a.tier].sla*0.5*dt;spend("downtime",TIER[a.tier].drain*0.5*dt);}}
+   for(const a of moving){if(S.upgrades.bluegreen)continue;S.err-=TIER[a.tier].sla*0.5*dt;spend("downtime",TIER[a.tier].drain*0.5*dt);}}
   tickOnPrem(dt);tickCloud(dt);observeTick();spawns(dt);tickHazards(dt);
   const ai=aiOn();for(const b of S.bots){b.flash=Math.max(0,b.flash-dt);(b.kind==="patch"?patchBot:moverBot)(b,dt,ai,ai?170:85);}
   S.fl=S.fl.filter(f=>(f.t+=dt)<f.life);
@@ -1927,6 +1931,16 @@ function drawSlot(i,a){
   const p=SLOTS[i],x=p.x-32,y=p.y-31,w=64,h=62;
   if(!a){ctx.setLineDash([4,4]);ctx.strokeStyle="rgba(29,64,88,.28)";ctx.lineWidth=1;rr(x,y,w,h,14);ctx.stroke();ctx.setLineDash([]);return;}
   const T=TIER[a.tier||"bronze"];
+  if(a.staged){
+    ctx.fillStyle="#87939b";rr(x,y,w,h,14);ctx.fill();
+    ctx.strokeStyle="#66727b";ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+    tx("STAGED",p.x,p.y-15,10,"#263640",{weight:700});
+    tx(a.name,p.x,p.y,9,"#263640",{max:w-6});
+    tx("E: RETRY",p.x,p.y+17,9,"#263640",{weight:700});
+    tx("ON-PREM LIVE",p.x,y+h+10,8,"#365460");
+    if(a.prog>0)bar(x+4,y+h+17,w-8,4,a.prog/cloudRebuild(a.tier),C.ok,"#66727b");
+    return;
+  }
   if(a.down){
     // failed cutover: offline in the cloud. Hold E to retry, hold Space to roll back.
     ctx.fillStyle="#2b2626";rr(x,y,w,h,14);ctx.fill();
@@ -2171,7 +2185,7 @@ const NOTES=[
   ["Bronze first","Cutover odds climb as you move easier servers first.","Real migrations run in waves. Low-risk pilot workloads come first so the team builds runbooks, tooling and confidence before touching the crown jewels."],
   ["Rollback","A failed cutover can always be rolled back.","Every production cutover needs a tested back-out plan. The best migration teams decide in advance when to roll back, so nobody has to be a hero at 3am."],
   ["Uptime error budget","You get fired for too much downtime, not for spending money.","Site reliability engineering sets a reliability target and treats the allowed downtime as a budget. Spend it on progress, and stop taking risks when it runs low."],
-  ["Blue-green cutovers","With the upgrade, a failed cutover switches straight back and the server stays online.","Running the old and new environments side by side means rollback is just flipping traffic back. It turns a scary cutover into a reversible one."],
+  ["Blue-green cutovers","With the upgrade, on-prem stays live and a failed cloud deployment stays gray for retry.","Running the old and new environments side by side means rollback is just flipping traffic back. It turns a scary cutover into a reversible one."],
   ["Status page","With the upgrade, users stop grabbing you during red alerts.","During an incident, proactive communication cuts the flood of \"is it down?\" questions, so the people fixing it can keep fixing it."],
   ["Blameless postmortems","With the upgrade, each resolved red alert gives back a story point.","Teams that write blameless postmortems turn incidents into lessons and fixes, instead of repeating the same outage next month."],
   ["On-call rotation","With the upgrade, your energy comes back 50% faster.","One person carrying every page burns out. A sustainable rotation keeps the team rested enough to respond well."],
@@ -2218,7 +2232,7 @@ function howToPlay(){
     <div><span class="ic">📦</span><span><b>Migrate.</b> Space to grab an app, carry it to the cloud, Space to drop. Migrating earns energy, and cloud apps cost less to run than on-prem servers.</span></div>
     <div><span class="ic">🎲</span><span><b>Cutover odds.</b> Each rack shows its chance of coming up in the cloud. Bronze starts high, gold starts around 15%. Moving bronze raises silver's odds; moving bronze and silver raises gold's, up to 100% once they're all moved. A failed cutover lands offline in the cloud: hold E to retry at the same odds (3s bronze, 5s silver, 8s gold), or hold Space to roll it back on-prem.</span></div>
     <div><span class="ic">📜</span><span><b>License renewal.</b> Some servers show a renewal countdown. Migrate them before it hits zero or you pay for another year. Gold licenses come due later, so you have time to build experience. Answering a finance email buys the closest one 20 more seconds.</span></div>
-    <div><span class="ic">⏳</span><span><b>Compliance timer.</b> Hold E to patch (costs energy; covers the current cycle without restarting its countdown. Covered cycles have a green bar and checkmark. When the cycle ends, a fresh uncovered cycle begins), or migrate it to stop the clock for good. If one runs out, the audit fails: $12k and 4 security, and the server goes under remediation with a fresh timer.</span></div>
+    <div><span class="ic">⏳</span><span><b>Compliance timer.</b> Hold E to patch (costs energy; covers the current cycle without restarting its countdown. Migrating while covered halves new-leak risk for the first 30 seconds after successful cutover. Covered cycles have a green bar and checkmark. When the cycle ends, a fresh uncovered cycle begins), or migrate it to stop the clock for good. If one runs out, the audit fails: $12k and 4 security, and the server goes under remediation with a fresh timer.</span></div>
     <div><span class="ic">🔥</span><span><b>Fire.</b> Escalated tickets start fires. Escalations run 75% slower during any outage or active breach. Change freezes pause escalations, fire growth and spread. Hold E to put one out. If it burns all the way, the server goes offline, burning your uptime budget until you hold E to bring it back up. While any server is offline, nothing can be moved.</span></div>
     <div><span class="ic">🥇</span><span><b>Tiers.</b> Gold, silver and bronze servers. Gold takes longest to bring back up (5s) and costs the most while it's down.</span></div>
     <div><span class="ic">🚨</span><span><b>Red alert.</b> A gold server offline or any cloud breach. You drop everything and can only fix incidents until it's over. Incident fixes never cost energy.</span></div>

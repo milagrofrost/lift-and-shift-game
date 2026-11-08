@@ -80,3 +80,7 @@ Play at **https://las.milagrofrost.com**. Cloudflare Pages automatically deploys
 ## Contributing, including AI assistants
 
 Read [AGENTS.md](AGENTS.md) before making changes. It records the teaching goals, agreed gameplay direction, branch expectations, and validation guidelines. Preserve the relationship between mechanics and the operational lesson they are intended to teach. Explain balance changes and test their interactions instead of treating isolated functions as the whole game.
+
+### Blue-green staging (development branch)
+On `feature/blue-green-staging`, blue-green keeps the original server online until successful cutover. Failed cloud deployments stay gray; hold E there to retry. Restore or extinguish the source first if needed. Migrating a currently patched server reduces new-leak risk by 50% for the first 30 seconds after cutover.
+
