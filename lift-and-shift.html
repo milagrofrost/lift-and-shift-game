@@ -326,11 +326,11 @@ const TIER={
 };
 // Uptime error budget per sprint. Offline servers burn it (gold 3/s, silver 2/s, bronze 1/s). Empty = fired.
 const ERR_BUDGET=150;
-// Maintenance becomes due halfway through a cycle. Successful work banks coverage.
-const patchDue=a=>a.timer<=a.maxT*0.5;
+// A patch covers the current cycle; its deadline never moves.
+const patchDue=a=>!a.covered;
 function applyPatch(a){
   if(!patchDue(a)&&!a.botErr)return false;
-  a.timer=Math.min(a.maxT*1.5,Math.max(0,a.timer)+a.maxT);
+  a.covered=true;
   a.botErr=false;return true;
 }
 const engagementReady=()=>!S.racks.some(Boolean)&&!S.pipe.length&&!S.carry&&!S.bots.some(b=>b.carry)&&!S.cloud.some(a=>a&&(a.down||a.breach));
@@ -818,7 +818,7 @@ function agentPick(){
   if(leak&&leak.a.leak>25)return{kind:"leak",a:leak.a,i:leak.i,x:SLOTS[leak.i].x,y:SLOTS[leak.i].y+38};
   if(S.tk.length>=2)return{kind:"ticket",x:480,y:470};
   if(imp.length>=2)return{kind:"email",x:480,y:98};
-  const pr=racks.filter(a=>a.timer<a.maxT*0.5||a.botErr).sort((p,q)=>p.timer/p.maxT-q.timer/q.maxT)[0];
+  const pr=racks.filter(a=>!a.covered&&(a.timer<a.maxT*0.5||a.botErr)).sort((p,q)=>p.timer/p.maxT-q.timer/q.maxT)[0];
   if(pr)return{kind:"patch",a:pr,x:RACKS[pr.slot].x,y:RACKS[pr.slot].y+44};
   if(S.tk.length)return{kind:"ticket",x:480,y:470};
   if(imp.length)return{kind:"email",x:480,y:98};
@@ -826,7 +826,7 @@ function agentPick(){
 }
 function agentValid(j){
   if(j.kind==="leak")return S.cloud[j.i]===j.a&&j.a.leakOn&&!j.a.breach;
-  if(j.kind==="patch")return S.racks[j.a.slot]===j.a&&!j.a.down&&j.a.fire===0;
+  if(j.kind==="patch")return S.racks[j.a.slot]===j.a&&!j.a.covered&&!j.a.down&&j.a.fire===0;
   if(j.kind==="ticket")return S.tk.length>0;
   return importantMail().length>0;
 }
@@ -1039,7 +1039,7 @@ function drawFx(dt){
 }
 /* Observability: warn before things break. A rack under 25% compliance time or a leak over 60% gets a
    pulsing amber ring, and the first time each one crosses the line you get an alert toast. */
-const atRisk=a=>a&&!a.hidden&&!a.down&&a.timer/a.maxT<0.25;
+const atRisk=a=>a&&!a.hidden&&!a.down&&!a.covered&&a.timer/a.maxT<0.25;
 const leakRisk=a=>a&&a.leakOn&&a.leak>60;
 function observeTick(){
   if(!S.upgrades.observe)return;
@@ -1462,7 +1462,7 @@ function fixTarget(){
     if(a.hidden){take({kind:"discover",a,pos:RACKS[i],key:"d"+i},d);return;}
     if(a.down)take({kind:"restore",a,pos:RACKS[i],key:"r"+i},d);
     else if(a.fire>0)take({kind:"fire",a,pos:RACKS[i],key:"f"+i},d);
-    else if(a.timer<a.maxT*0.95)take({kind:"patch",a,pos:RACKS[i],key:"p"+i},d);});
+    else if(patchDue(a))take({kind:"patch",a,pos:RACKS[i],key:"p"+i},d);});
   S.cloud.forEach((a,i)=>{if(!a)return;const d=dist(P,SLOTS[i]);if(d>=56)return;
     if(a.down){take({kind:"cloudrestore",a,i,pos:SLOTS[i],key:"c"+i},d);return;}
     if(a.breach)take({kind:"breach",a,i,pos:SLOTS[i],key:"b"+i},d);
@@ -1519,7 +1519,7 @@ function doFix(dt){
   S.fixNeed=need;S.fixP+=dt;
   if(S.fixP<need)return;
   S.energy-=c;S.fixP=0;S.fixKey=null;
-  if(f.kind==="patch"){sfx("patch");applyPatch(f.a);fl(f.pos,"Patched: coverage extended",C.ok);}
+  if(f.kind==="patch"){sfx("patch");applyPatch(f.a);fl(f.pos,"✓ Covered this cycle",C.ok);}
   else if(f.kind==="leak"){sfx("sealed");f.a.age=0;f.a.leakOn=false;f.a.leak=0;f.a.grace=4;fl(f.pos,"Sealed by hand",C.ok);}
   else if(f.kind==="email"){sfx("sent");S.em=S.em.filter(x=>x!==f.m);if(f.m.type==="vendor")S.run.vendor++;
     // answering a finance email negotiates a 20s extension on the license closest to renewing
@@ -1535,7 +1535,8 @@ function tickOnPrem(dt){
     if(a.hidden||a.down)continue;
     a.timer-=dt*rate;
     if(a.lic>0&&!a.down){a.lic-=dt;if(a.lic<=0){a.lic=0;const c=licCost(a);spend("license",c);fl(posOf(a),`📜 −$${c}k`,C.danger);toast(`📜 ${a.name}'s license auto-renewed before you moved it. −$${c}k.`);}}
-    if(a.timer<=0){if(a.botErr){a.botErr=false;fl(posOf(a),"🤖 automation error reset",C.muted);} // after a failed audit the bot gets another try
+    if(a.timer<=0&&a.covered){a.covered=false;a.timer=a.maxT;}
+    else if(a.timer<=0){if(a.botErr){a.botErr=false;fl(posOf(a),"🤖 automation error reset",C.muted);} // after a failed audit the bot gets another try
       a.timer=a.maxT;spend("audits",12);sfx("audit");secHit("audit",4);S.ss.audits++;unplanned(1,"audit");
       toast(`📋 Audit failed: ${a.name} fell out of compliance. −$12k, −4 security.`);fl(posOf(a),"AUDIT FAIL",C.danger);}
   }
@@ -1860,10 +1861,9 @@ function drawRack(i,a){
   tx(T.label,x+w-5,y+12,7.5,T.c,{align:"right",weight:600});
   em("🖥️",p.x,p.y-6,22);
   tx(a.name,p.x,p.y+15,10.5,C.ink,{max:w-8,weight:600});
-  bar(x+6,y+h-10,w-12,5,clamp((r-0.5),0,1),C.ok,"#1a252d");
-  if(patchDue(a)&&!a.fire){ctx.beginPath();ctx.arc(p.x,p.y,43+(RM?0:2*Math.sin(S.t*3)),0,Math.PI*2);ctx.strokeStyle=a.botErr?C.amber:C.ok;ctx.lineWidth=1.5;ctx.stroke();}
-  tx(patchDue(a)?"PATCH DUE":"✓ COVERED",p.x,y-7,8,C.ok,{weight:600});
-  tx(`${Math.ceil(a.timer)}s covered${a.heavy?(a.heavy===2?" · HEAVY×2":" · HEAVY"):""}`,p.x,y+h+9,10,ratioColor(r),{weight:600});
+  bar(x+6,y+h-10,w-12,5,r,a.covered?C.ok:ratioColor(r),"#1a252d");
+  if(!a.covered&&r<=0.5&&!a.fire){ctx.beginPath();ctx.arc(p.x,p.y,43+(RM?0:2*Math.sin(S.t*3)),0,Math.PI*2);ctx.strokeStyle=r<=0.25?C.danger:C.amber;ctx.lineWidth=1.5;ctx.stroke();}
+  tx(a.covered?"✓ COVERED":`${Math.ceil(a.timer)}s`,p.x,y+h+9,10,a.covered?C.ok:ratioColor(r),{weight:600});
   if(a.botErr){
     // the Patch Bot gave up on this one: a human has to patch it
     const pulse=0.6+0.4*Math.sin(S.t*8);ctx.strokeStyle=`rgba(255,93,77,${pulse})`;ctx.lineWidth=2;ctx.setLineDash([4,3]);rr(x-3,y-3,w+6,h+6,7);ctx.stroke();ctx.setLineDash([]);
@@ -2167,7 +2167,7 @@ function howToPlay(){
     <div><span class="ic">📦</span><span><b>Migrate.</b> Space to grab an app, carry it to the cloud, Space to drop. Migrating earns energy, and cloud apps cost less to run than on-prem servers.</span></div>
     <div><span class="ic">🎲</span><span><b>Cutover odds.</b> Each rack shows its chance of coming up in the cloud. Bronze starts high, gold starts around 15%. Moving bronze raises silver's odds; moving bronze and silver raises gold's, up to 100% once they're all moved. A failed cutover lands offline in the cloud: hold E to retry at the same odds (3s bronze, 5s silver, 8s gold), or hold Space to roll it back on-prem.</span></div>
     <div><span class="ic">📜</span><span><b>License renewal.</b> Some servers show a renewal countdown. Migrate them before it hits zero or you pay for another year. Gold licenses come due later, so you have time to build experience. Answering a finance email buys the closest one 20 more seconds.</span></div>
-    <div><span class="ic">⏳</span><span><b>Compliance timer.</b> Hold E to patch (costs energy; available at half coverage, adds a full cycle up to 150% coverage), or migrate it to stop the clock for good. If one runs out, the audit fails: $12k and 4 security, and the server goes under remediation with a fresh timer.</span></div>
+    <div><span class="ic">⏳</span><span><b>Compliance timer.</b> Hold E to patch (costs energy; covers the current cycle without restarting its countdown. Covered cycles have a green bar and checkmark. When the cycle ends, a fresh uncovered cycle begins), or migrate it to stop the clock for good. If one runs out, the audit fails: $12k and 4 security, and the server goes under remediation with a fresh timer.</span></div>
     <div><span class="ic">🔥</span><span><b>Fire.</b> Only escalated tickets start fires. Hold E to put one out. If it burns all the way, the server goes offline, burning your uptime budget until you hold E to bring it back up. While any server is offline, nothing can be moved.</span></div>
     <div><span class="ic">🥇</span><span><b>Tiers.</b> Gold, silver and bronze servers. Gold takes longest to bring back up (5s) and costs the most while it's down.</span></div>
     <div><span class="ic">🚨</span><span><b>Red alert.</b> A gold server offline or any cloud breach. You drop everything and can only fix incidents until it's over. Incident fixes never cost energy.</span></div>
