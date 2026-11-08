@@ -41,6 +41,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 
 - Ticket escalations **do cause server fires**. Do not replace this with random infrastructure fires or penalties alone.
 - During any outage or active breach, slow escalation pressure considerably; the feature branch uses one-quarter normal escalation speed. Escalations still happen outside explicit freezes.
+- Each escalation needs 12 seconds of full queue, and a dip below full does not reset that wait. While any server is burning, escalation runs at half speed; an outage or active breach takes precedence at one-quarter speed.
 - Escalations retain server identity through pickup, relocation, pipeline transit, failed cutover, and rollback. Wait at the last rack while the target is absent; reacquire its actual rack when it returns. Do not silently retarget a different server or discard the escalation on pickup.
 - Successful migration may retire that server's escalation.
 - Managers provide bounded automatic freezes for critical incidents; all tiers help, higher tiers provide more protection. Explicit freezes pause users, arrivals, queue pressure, fire growth/spread, and breach spread while recovery continues.

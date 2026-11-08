@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
+  "tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -153,6 +153,25 @@ test("a forced put-back never overwrites a rack someone else now uses", () => {
   const intruder = {...a, name: "Intruder", slot}; S.racks[slot] = intruder;
   S.racks.find(x => x && x !== intruder).down = true; G.update(0.05);
   check(S.racks[slot] === intruder && S.racks.includes(a) && !S.carry, "carried server overwrote a rack or was lost");
+});
+
+/* ---------- ticket escalation pressure ---------- */
+const fullQueue = S => { S.tk = [{age: 0}, {age: 0}, {age: 0}, {age: 0}, {age: 0}]; };
+const runQueue = (S, seconds, refill = true) => { for (let t = 0; t < seconds - 1e-9; t += 0.05) { if (refill) fullQueue(S); S.atk = []; G.tickHazards(0.05); } }; // escalations in flight are dropped so only the queue timing is measured
+test("escalations are 12 seconds of full queue apart, and a dip below full doesn't reset the wait", () => {
+  const S = fresh(); const e0 = S.ss.esc;
+  runQueue(S, 2.1); check(S.ss.esc === e0 + 1, `first escalation: ${S.ss.esc - e0}`);
+  runQueue(S, 5); check(S.ss.esc === e0 + 1, "second escalation came too soon");
+  S.tk = [{age: 0}]; runQueue(S, 1, false); check(S.escT > 6, `dip reset the wait to ${S.escT}`);
+  runQueue(S, 7.2); check(S.ss.esc === e0 + 2, `after the full wait: ${S.ss.esc - e0}`);
+});
+test("escalations run at half speed during fires and quarter speed during outages", () => {
+  let S = fresh(); firstRack(S).fire = 30; let e0 = S.ss.esc; S.escT = 1;
+  runQueue(S, 1.8); check(S.ss.esc === e0, "fire did not slow escalation");
+  runQueue(S, 0.4); check(S.ss.esc === e0 + 1, "escalation stalled during a fire");
+  S = fresh(); firstRack(S).fire = 30; S.racks.filter(a => a && !a.hidden)[1].down = true; e0 = S.ss.esc; S.escT = 1;
+  runQueue(S, 3.8); check(S.ss.esc === e0, "outage rate did not take precedence over the fire rate");
+  runQueue(S, 0.4); check(S.ss.esc === e0 + 1, "escalation stalled during an outage");
 });
 
 /* ---------- blue-green ---------- */
