@@ -1402,7 +1402,7 @@ function cutoverOK(a){
   const original=a.orig||a;
   if(!original.savingsCredited){
     spend("savings",-4);original.savingsCredited=true;
-    if(original.lic>0){S.avoided=(S.avoided||0)+licCost(original);original.lic=0;}
+    if(original.lic>0){const saved=licCost(original);S.avoided=(S.avoided||0)+saved;original.lic=0;toast(`📜 Moved ${original.name} before its license renewed. Saved $${saved}k.`);}
   }
 S.movedT[a.tier]=(S.movedT[a.tier]||0)+1;S.ss.mig++;S.ss.att++;
   const o=a.orig||a;if(o.touchT!=null){S.ss.leadSum+=S.time-o.touchT;S.ss.leadN++;o.touchT=null;}}
@@ -1692,7 +1692,8 @@ function tickEscalation(e,dt){
   // Target identity survives carrying, pipelines, failed cutovers and rollback.
   if(!e.a){
     const opts=onPremApps();
-    if(!opts.length)return;
+    // nothing left on-prem to set on fire: the escalation fizzles into an angry fee
+    if(!opts.length){e.dead=true;spend("other",4);fl(e,"😡 −$4k",C.danger);return;}
     e.a=pick(opts.filter(a=>!a.down&&a.fire===0).length?opts.filter(a=>!a.down&&a.fire===0):opts);
     e.waitAt={...RACKS[e.a.slot]};
   }
@@ -1900,7 +1901,7 @@ function drawPipeline(){
 function drawRack(i,a){
   const p=RACKS[i],x=p.x-34,y=p.y-33,w=68,h=66;
   if(!a){ctx.setLineDash([4,4]);ctx.strokeStyle="rgba(255,255,255,.09)";ctx.lineWidth=1;rr(x,y,w,h,6);ctx.stroke();ctx.setLineDash([]);
-    if(S.carry&&!liveCopy(S.carry)&&zoneOf(S.p.x)===0&&rackUnder()===i){ctx.strokeStyle=C.amber;ctx.lineWidth=2;ctx.setLineDash([6,4]);rr(x,y,w,h,6);ctx.stroke();ctx.setLineDash([]);tx("PUT DOWN",p.x,y+9,8.5,C.amber,{font:DISP,weight:700});}
+    if(S.carry&&!liveCopy(S.carry)&&zoneOf(S.p.x)===0&&rackUnder()===i){ctx.strokeStyle=C.amber;ctx.lineWidth=2;ctx.setLineDash([6,4]);rr(x,y,w,h,6);ctx.stroke();ctx.setLineDash([]);tx("PUT DOWN",p.x,y+h+10,8.5,C.amber,{font:DISP,weight:700});}
     if((S.pipe||[]).some(j=>j.a.slot===i&&!liveCopy(j.a)))tx("IN PIPELINE",p.x,p.y,9,C.leak,{font:DISP,weight:700});
     return;}
   if(a.hidden){ctx.fillStyle="#1d1817";rr(x,y,w,h,6);ctx.fill();ctx.setLineDash([3,3]);ctx.strokeStyle=C.muted;ctx.stroke();ctx.setLineDash([]);
@@ -1968,7 +1969,7 @@ function drawLicense(a,p,bottom){
 function drawSlot(i,a){
   const p=SLOTS[i],x=p.x-32,y=p.y-31,w=64,h=62;
   if(!a){ctx.setLineDash([4,4]);ctx.strokeStyle="rgba(29,64,88,.28)";ctx.lineWidth=1;rr(x,y,w,h,14);ctx.stroke();ctx.setLineDash([]);
-    if(S.carry&&zoneOf(S.p.x)===2&&slotUnder()===i){ctx.fillStyle="rgba(255,181,71,.16)";rr(x,y,w,h,14);ctx.fill();ctx.strokeStyle=C.amber;ctx.lineWidth=2.5;ctx.setLineDash([6,4]);rr(x,y,w,h,14);ctx.stroke();ctx.setLineDash([]);tx("DROP HERE",p.x,y+9,8.5,"#8a5a00",{font:DISP,weight:700});}
+    if(S.carry&&zoneOf(S.p.x)===2&&slotUnder()===i){ctx.fillStyle="rgba(255,181,71,.16)";rr(x,y,w,h,14);ctx.fill();ctx.strokeStyle=C.amber;ctx.lineWidth=2.5;ctx.setLineDash([6,4]);rr(x,y,w,h,14);ctx.stroke();ctx.setLineDash([]);tx("DROP HERE",p.x,y+h+10,8.5,"#8a5a00",{font:DISP,weight:700});}
     return;}
   const T=TIER[a.tier||"bronze"];
   if(a.staged){
