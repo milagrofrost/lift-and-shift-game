@@ -68,7 +68,7 @@ Google Fonts supplies optional fonts; system font fallbacks are included. Sound 
 | M | Toggle sound effects |
 | Music button | Toggle music |
 
-Touch controls are available on supported layouts. Tutorial, How to play, and Why it works this way explain the mechanics in-game. With the pipeline upgrade, Space at a rack sends it down a free lane (or you carry it if every lane is busy).
+On phones the game plays in landscape: drag anywhere on the left half of the screen to move, and use the see-through FIX (hold), GRAB, freeze and pause buttons on the right. Tutorial, How to play, and Why it works this way explain the mechanics in-game. With the pipeline upgrade, Space at a rack sends it down a free lane (or you carry it if every lane is busy).
 
 ## Development status
 

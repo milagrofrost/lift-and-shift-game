@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
+  "stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -267,6 +267,20 @@ test("a roll that does nothing without foundations succeeds with them, and still
     check(S.tk.length === (ready ? 0 : 1), `ready=${ready}: ${S.tk.length} tickets left`);
     check((S.cost.ai || 0) > spent, "no tokens billed");
   }
+});
+
+/* ---------- touch ---------- */
+test("the joystick has a dead zone, scales with drag, and caps at full speed", () => {
+  const z = G.stickVector(5, 0, 66); check(z.x === 0 && z.y === 0, "dead zone moved the player");
+  const half = G.stickVector(23.1, 0, 66); check(near(half.x, 0.5), `half drag ${half.x}`);
+  const far = G.stickVector(300, 400, 66); check(near(Math.hypot(far.x, far.y), 1), "drag past the edge exceeded full speed");
+});
+test("the joystick moves the player, and releasing it stops them", () => {
+  const S = fresh(); S.p.x = 480; S.p.y = 280;
+  G.stick.on = true; G.stick.x = 1; G.stick.y = 0; G.update(0.05);
+  const x1 = S.p.x; check(x1 > 480, "joystick did not move the player");
+  G.stick.on = false; G.stick.x = 0; G.update(0.05);
+  check(S.p.x === x1, "player kept moving after release");
 });
 
 /* ---------- music ---------- */

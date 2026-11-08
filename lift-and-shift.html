@@ -1,5 +1,6 @@
 <meta charset="utf-8">
 <title>Lift &amp; Shift</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -131,13 +132,43 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:960/560;touch-action:no
 @keyframes toast{0%{opacity:0;transform:translateY(6px)}7%{opacity:1;transform:none}82%{opacity:1}100%{opacity:0}}
 .help{font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 16px}
 kbd{font-family:var(--f-mono);font-size:11.5px;background:var(--panel-2);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;color:var(--ink)}
-.touch{display:none;justify-content:space-between;align-items:center;gap:12px;user-select:none;-webkit-user-select:none}
-@media (pointer:coarse){.touch{display:flex}}
-.dpad{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:4px}
-.dpad button,.acts button{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:10px;font-size:18px;touch-action:none}
-.dpad button:active,.acts button:active,.dpad button.on,.acts button.on{background:var(--panel-2);border-color:var(--amber)}
-.acts{display:flex;gap:10px}
-.acts button{width:84px;height:84px;font-family:var(--f-display);font-size:14px;font-weight:700;border-radius:50%}
+/* Touch controls: a see-through layer over the game. Left half is a drag-anywhere joystick, right half is big action buttons. */
+.touch{display:none;position:fixed;inset:0;z-index:10;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+@media (pointer:coarse){.touch{display:block}.touch[hidden]{display:none}}
+.stick-zone{position:absolute;left:0;top:0;bottom:0;width:50%;pointer-events:auto;touch-action:none}
+.stick-base{position:absolute;left:max(24px,env(safe-area-inset-left,0px));bottom:20px;width:132px;height:132px;margin:0;border-radius:50%;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.26);opacity:.6}
+.stick-zone.on .stick-base{opacity:1;background:rgba(255,255,255,.12)}
+.stick-knob{position:absolute;left:50%;top:50%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;background:rgba(255,255,255,.26);border:2px solid rgba(255,255,255,.5)}
+.tbtn{position:absolute;pointer-events:auto;touch-action:none;border-radius:50%;background:rgba(255,255,255,.13);border:2px solid rgba(255,255,255,.42);color:rgba(255,255,255,.95);font-family:var(--f-display);font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.8);padding:0;-webkit-tap-highlight-color:transparent}
+.tbtn.ready{background:rgba(255,181,71,.24);border-color:rgba(255,181,71,.9)}
+.tbtn.on{background:rgba(255,181,71,.5);border-color:#ffb547}
+#t-fix{right:max(14px,env(safe-area-inset-right,0px));bottom:14px;width:124px;height:124px;font-size:26px}
+#t-grab{right:calc(max(14px,env(safe-area-inset-right,0px)) + 132px);bottom:14px;width:100px;height:100px;font-size:20px}
+#t-freeze{right:calc(max(14px,env(safe-area-inset-right,0px)) + 32px);bottom:148px;width:64px;height:64px;font-size:26px}
+#t-freeze[hidden]{display:none}
+#t-pause{right:max(14px,env(safe-area-inset-right,0px));top:8px;width:52px;height:52px;font-size:20px}
+/* phones in landscape: the map takes all the height it can, and the controls sit in the space beside it */
+@media (pointer:coarse) and (orientation:landscape) and (max-height:520px){
+  .wrap{max-width:none;padding-block:2px 12px;gap:3px;padding-left:max(6px,env(safe-area-inset-left,0px));padding-right:max(6px,env(safe-area-inset-right,0px))}
+  .brand,.modline{display:none}
+  .top{justify-content:center}
+  .hud{flex-wrap:nowrap;gap:4px}
+  .chip{padding:1px 7px;font-size:11.5px}
+  .health{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+  .hb{padding:1px 6px 2px;gap:1px;font-size:11px}
+  .hb small{display:none}
+  #t-pause{top:72px}
+  .toast{font-size:11.5px;padding:3px 8px}
+  .stage{width:min(100%,calc((100vh - 70px)*960/560));width:min(100%,calc((100dvh - 70px)*960/560));margin-inline:auto}
+}
+/* the game needs landscape on a phone */
+#rotate{display:none}
+@media (pointer:coarse) and (orientation:portrait) and (max-width:760px){
+  #rotate{display:flex;position:fixed;inset:0;z-index:40;background:var(--bg);color:var(--ink);flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center;font-family:var(--f-display)}
+  #rotate b{font-size:22px}
+  #rotate span{font-family:var(--f-body);color:var(--muted);font-size:14px}
+  #rotate i{font-style:normal;font-size:48px}
+}
 /* overlay screens */
 .overlay{position:fixed;inset:0;background:rgba(5,11,16,.8);display:flex;align-items:center;justify-content:center;z-index:20;padding-block:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;max-width:680px;width:100%;max-height:100%;overflow:auto;padding:24px;display:flex;flex-direction:column;gap:14px}
@@ -208,17 +239,6 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
     <canvas id="c" width="960" height="560" aria-label="Game floor: on-prem server room on the left, hallway in the middle, cloud on the right"></canvas>
     <div id="toasts" aria-live="polite"></div>
   </div>
-  <div class="touch" id="touch">
-    <div class="dpad">
-      <span></span><button data-k="u" aria-label="Up">▲</button><span></span>
-      <button data-k="l" aria-label="Left">◀</button><span></span><button data-k="r" aria-label="Right">▶</button>
-      <span></span><button data-k="d" aria-label="Down">▼</button><span></span>
-    </div>
-    <div class="acts">
-      <button data-k="fix" aria-label="Fix (hold)">FIX</button>
-      <button data-k="grab" aria-label="Grab or drop">GRAB</button>
-    </div>
-  </div>
   <div class="help">
     <span><kbd>WASD</kbd> / <kbd>←↑↓→</kbd> move</span>
     <span><kbd>Space</kbd> grab / drop an app</span>
@@ -230,6 +250,14 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
     <button id="snd" class="sndbtn" type="button" aria-pressed="true" style="margin-left:0">🔊 Sound on</button>
   </div>
 </div>
+<div class="touch" id="touch" hidden>
+  <div class="stick-zone" id="stick-zone" aria-label="Drag to move"><div class="stick-base" id="stick-base"><div class="stick-knob" id="stick-knob"></div></div></div>
+  <button class="tbtn" id="t-fix" type="button" data-k="fix" aria-label="Fix (hold)">FIX</button>
+  <button class="tbtn" id="t-grab" type="button" data-k="grab" aria-label="Grab or drop">GRAB</button>
+  <button class="tbtn" id="t-freeze" type="button" aria-label="Use emergency freeze" hidden>❄</button>
+  <button class="tbtn" id="t-pause" type="button" aria-label="Pause">❚❚</button>
+</div>
+<div id="rotate" role="alert"><i>📱↻</i><b>Turn your phone sideways</b><span>Lift &amp; Shift plays in landscape.</span></div>
 <div class="overlay" id="overlay"></div>
 
 <script>
@@ -1303,12 +1331,33 @@ addEventListener("keydown",e=>{
 });
 addEventListener("keyup",e=>{const k=MAP[e.code];if(k)keys[k]=false;});
 addEventListener("blur",()=>{for(const k in keys)keys[k]=false;if(mode==="play")togglePause();});
-document.querySelectorAll("#touch button").forEach(b=>{
+/* Touch: press anywhere on the left half and drag; the joystick appears under your thumb. The player's speed follows
+   how far you drag. Action buttons keep their press if your thumb slides off them, and each finger is tracked separately. */
+const stick={on:false,x:0,y:0,id:null,ox:0,oy:0};
+const STICK_R=66;
+function stickVector(dx,dy,R=STICK_R){const d=Math.hypot(dx,dy);if(d<R*0.15)return{x:0,y:0};const m=Math.min(1,d/(R*0.7));return{x:dx/d*m,y:dy/d*m};}
+function stickDraw(dx=0,dy=0){const d=Math.hypot(dx,dy),k=d>STICK_R?STICK_R/d:1;$("stick-knob").style.transform=`translate(${dx*k}px,${dy*k}px)`;}
+function stickEnd(){const z=$("stick-zone"),b=$("stick-base");stick.on=false;stick.id=null;stick.x=stick.y=0;z.classList.remove("on");b.style.left=b.style.top=b.style.bottom="";stickDraw();}
+function resetTouch(){stickEnd();document.querySelectorAll("#touch button[data-k]").forEach(b=>{keys[b.dataset.k]=false;b.classList.remove("on");});}
+{
+  const z=$("stick-zone"),b=$("stick-base");
+  z.addEventListener("pointerdown",e=>{if(stick.id!==null)return;e.preventDefault();z.setPointerCapture(e.pointerId);
+    stick.id=e.pointerId;stick.on=true;stick.ox=e.clientX;stick.oy=e.clientY;z.classList.add("on");
+    b.style.left=`${e.clientX-66}px`;b.style.top=`${e.clientY-66}px`;b.style.bottom="auto";stickDraw();});
+  z.addEventListener("pointermove",e=>{if(e.pointerId!==stick.id)return;const dx=e.clientX-stick.ox,dy=e.clientY-stick.oy,v=stickVector(dx,dy);stick.x=v.x;stick.y=v.y;stickDraw(dx,dy);});
+  const up=e=>{if(e.pointerId===stick.id)stickEnd();};
+  z.addEventListener("pointerup",up);z.addEventListener("pointercancel",up);
+  $("touch").addEventListener("contextmenu",e=>e.preventDefault());
+}
+document.querySelectorAll("#touch button[data-k]").forEach(b=>{
   const k=b.dataset.k;
-  const on=e=>{e.preventDefault();if(k==="grab"&&!keys.grab)grabPressed=true;keys[k]=true;b.classList.add("on");};
+  const on=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);if(k==="grab"&&!keys.grab)grabPressed=true;keys[k]=true;b.classList.add("on");};
   const off=()=>{keys[k]=false;b.classList.remove("on");};
-  b.addEventListener("pointerdown",on);["pointerup","pointerleave","pointercancel"].forEach(ev=>b.addEventListener(ev,off));
+  b.addEventListener("pointerdown",on);["pointerup","pointercancel"].forEach(ev=>b.addEventListener(ev,off));
 });
+$("t-freeze").addEventListener("pointerdown",e=>{e.preventDefault();useFreeze();});
+$("t-pause").addEventListener("pointerdown",e=>{e.preventDefault();if(mode==="play")togglePause();});
+const PHONE_PORTRAIT=matchMedia("(pointer:coarse) and (orientation:portrait) and (max-width:760px)");
 
 /* ---------- state ---------- */
 let S;
@@ -1836,7 +1885,7 @@ function update(dt){
   S.t+=dt;S.time+=dt;
   const e0=S.energy;
   const P=S.p;if(P.stun>0)P.stun-=dt;if(P.inv>0)P.inv-=dt;
-  const mx=(keys.r?1:0)-(keys.l?1:0),my=(keys.d?1:0)-(keys.u?1:0),m=Math.hypot(mx,my)||1;
+  const stk=stick.on&&(stick.x||stick.y),mx=stk?stick.x:(keys.r?1:0)-(keys.l?1:0),my=stk?stick.y:(keys.d?1:0)-(keys.u?1:0),m=stk?1:Math.hypot(mx,my)||1;
   if(P.boost>0)P.boost-=dt;
   let sp=175*(S.upgrades.coffee?1.15:1)*(P.boost>0?1.3:1);
   if(S.carry)sp*=S.carry.heavy===2?0.5:S.carry.heavy?0.62:0.78;
@@ -2208,6 +2257,12 @@ function healthBars(){
   const cap=capNext();setBar("hb-pts",cap/15,`${cap} pts`,cap>=10?"ok":cap>=7?"warn":"bad",cap<=5);
 }
 function hud(){
+  // the touch layer only exists during play, so it never blocks a menu; a phone turned upright pauses the game
+  if(mode==="play"&&PHONE_PORTRAIT.matches)togglePause();
+  const tl=$("touch"),showT=mode==="play";
+  if(tl.hidden===showT){tl.hidden=!showT;if(!showT)resetTouch();}
+  if(showT&&S){$("t-freeze").hidden=!S.upgrades.freezecharge;$("t-grab").textContent=S.carry?"DROP":"GRAB";
+    $("t-fix").classList.toggle("ready",!!S.fix);$("t-grab").classList.toggle("ready",!!(S.carry||grabTarget()||rollbackTarget()));}
   $("freeze").disabled=mode!=="play"||!S.upgrades.freezecharge;
   $("freeze").textContent=S.upgrades.freezecharge?"❄ Freeze (F) · 1 charge":"❄ Freeze · buy between clients";
   if(!S)return;
@@ -2341,7 +2396,7 @@ function howToPlay(){
     <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, then quits. Users ignore them, 15% of their patches take a server down, and some only want snacks. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds. <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
     <div><span class="ic">❓</span><span><b>Unknown rack.</b> The client forgot to mention these. Hold E on one to investigate (6 seconds, free) and you'll find it with a healthy timer. Hidden servers never reveal themselves through migration progress. From client 4 on they can be any tier, even gold. They may come with an expired or approaching license. Escalations can ignite unknown racks; going offline reveals them. Asset Inventory cuts investigation time to 3 seconds.</span></div>
   </div>
-  <p style="color:var(--muted);font-size:13px">Move with WASD or arrows. Your hands are full while carrying, so you can't fix anything until you drop it.</p>
+  <p style="color:var(--muted);font-size:13px">On a phone, play in landscape: drag anywhere on the left half to move, hold FIX and tap GRAB on the right. Move with WASD or arrows. Your hands are full while carrying, so you can't fix anything until you drop it.</p>
   <button class="btn" data-act="menu">Back to menu</button>`);
 }
 // 6 offers per planning, at least 2 of them security. Maxed-out items are left out.
