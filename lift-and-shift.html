@@ -1648,14 +1648,7 @@ function tickHazards(dt){
   // Paused during focus time and explicit change freezes.
   if(S.tk.length>=ticketLimit()&&!(S.focus>0)){S.escT=(S.escT==null?2:S.escT)-dt*(downCount()>0||S.cloud.some(a=>a&&a.breach)?0.25:1);if(S.escT<=0){S.escT=5;S.tk.shift();launchEscalation();}}
   else S.escT=2;
-  for(const e of S.atk){
-    if(e.a&&(!validRack(e.a)||e.a.down))e.a=null;
-    if(!e.a){const opts=S.racks.filter(a=>a&&!a.hidden&&!a.down);if(!opts.length){e.dead=true;spend("other",4);fl(e,"😡 −$4k",C.danger);continue;}e.a=pick(opts.filter(a=>a.fire===0).length?opts.filter(a=>a.fire===0):opts);}
-    const p=RACKS[e.a.slot],dx=p.x-e.x,dy=p.y-e.y,d=Math.hypot(dx,dy);
-    if(d<10){e.dead=true;sfx("fireStart");e.a.fire=Math.max(e.a.fire,20);e.a.spreadT=3;fl(p,"🚨 ESCALATED",C.danger);
-      toast(`🚨 An ignored ticket escalated and set ${e.a.name} on fire.`);continue;}
-    e.x+=dx/d*220*dt;e.y+=dy/d*220*dt;
-  }
+  for(const e of S.atk)tickEscalation(e,dt);
   S.atk=S.atk.filter(e=>!e.dead);
   } // end unfrozen queue processing
   // pickups: coffee = energy + a short speed boost; donut = users leave you alone for a bit
@@ -1663,6 +1656,28 @@ function tickHazards(dt){
     if(s.kind==="coffee"){sfx("coffee");S.energy=Math.min(100,S.energy+15);P.boost=4;fl(s,"☕ +15⚡ and a speed boost",C.amber);}
     else{sfx("donut");P.ghost=DONUT_TIME;fl(s,"🍩 Mouth full: users can't stop you",C.amber);}}}
   S.st=S.st.filter(s=>!s.dead&&s.life>0);
+}
+function tickEscalation(e,dt){
+  // Target identity survives carrying, pipelines, failed cutovers and rollback.
+  if(!e.a){
+    const opts=onPremApps().filter(a=>!a.hidden);
+    if(!opts.length)return;
+    e.a=pick(opts.filter(a=>!a.down&&a.fire===0).length?opts.filter(a=>!a.down&&a.fire===0):opts);
+    e.waitAt={...RACKS[e.a.slot]};
+  }
+  // A successful migration retires the original server; a failed one may return.
+  if(e.a.savingsCredited){e.dead=true;return;}
+  const present=validRack(e.a);
+  if(present)e.waitAt={...RACKS[e.a.slot]};
+  const p=e.waitAt||(e.waitAt={...RACKS[e.a.slot]});
+  const dx=p.x-e.x,dy=p.y-e.y,d=Math.hypot(dx,dy);
+  e.waiting=!present||e.a.down;
+  if(d<10){
+    if(e.waiting)return;
+    e.dead=true;sfx("fireStart");e.a.fire=Math.max(e.a.fire,20);e.a.spreadT=3;
+    fl(p,"🚨 ESCALATED",C.danger);toast(`🚨 An ignored ticket escalated and set ${e.a.name} on fire.`);return;
+  }
+  const step=Math.min(d,220*dt);e.x+=dx/d*step;e.y+=dy/d*step;
 }
 function validRack(a){return a&&!a.hidden&&S.racks[a.slot]===a;}
 /* Patch Bot: patches only (fires and outages are your job). Each level raises its success rate: 50% / 66% / 90%.
@@ -2049,7 +2064,7 @@ function draw(){
   drawInbox();
   for(const s of S.st)drawPickup(s);
   drawDesk();
-  for(const e of S.atk){ctx.fillStyle="rgba(255,93,77,.3)";ctx.beginPath();ctx.arc(e.x,e.y,18+3*Math.sin(S.t*14),0,7);ctx.fill();em("🚨",e.x,e.y,22);tx("ESCALATION",e.x,e.y+20,8.5,C.danger,{weight:600});}
+  for(const e of S.atk){ctx.fillStyle="rgba(255,93,77,.3)";ctx.beginPath();ctx.arc(e.x,e.y,18+3*Math.sin(S.t*14),0,7);ctx.fill();em("🚨",e.x,e.y,22);tx(e.waiting?"WAITING":"ESCALATION",e.x,e.y+20,8.5,C.danger,{weight:600});}
   for(const u of S.users){drawUser(u);if(freezeActive()){ctx.fillStyle="rgba(180,230,255,.3)";rr(u.x-17,u.y-24,34,47,8);ctx.fill();}}
   for(const c of S.cbots)drawChatbot(c);
   drawSpecials();
