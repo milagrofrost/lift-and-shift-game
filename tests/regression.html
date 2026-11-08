@@ -311,6 +311,9 @@ test("each client plays the next song set, and every song is defined", () => {
   for (let n = 1; n <= G.SONG_SETS.length + 1; n++) { S.sprint = n; heard.push(G.wantMood()); }
   check(new Set(heard.slice(0, G.SONG_SETS.length)).size === G.SONG_SETS.length, `clients repeat a song: ${heard}`);
   check(heard[G.SONG_SETS.length] === heard[0], `rotation does not wrap: ${heard}`);
+  S.alert = true;
+  G.SONG_SETS.forEach((set, n) => { S.sprint = n + 1; check(set.length === 3 && G.wantMood() === set[2], `client ${n + 1} red alert played ${G.wantMood()}`); });
+  S.alert = false;
 });
 
 /* ---------- runner ---------- */
