@@ -165,6 +165,9 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
 .up .t{display:flex;align-items:center;gap:8px;font-weight:600}
 .up .t .i{font-size:20px}
 .up p{font-size:13px;color:var(--muted)}
+.readiness{font-size:12px;color:var(--muted);margin-top:4px}
+.readiness b{color:var(--ai)}
+.foundation{font-size:11.5px;color:var(--ai)}
 .up.ai{border-color:var(--ai)}
 .up.sec{border-color:var(--leak)}
 .pips{display:inline-flex;gap:3px;margin-left:auto}
@@ -407,7 +410,7 @@ const UPGRADES=[
   {id:"snacks",name:"Snack Budget",icon:"🍩",cost:2,max:3,desc:"Finance approved more donuts and coffee. Pickups show up at 35% shorter intervals per level, and one more can be out at a time."},
   {id:"vendor",name:"Vendor Negotiation",icon:"🤝",cost:2,max:3,desc:"License renewals cost 20% less per level."},
   {id:"manager",name:"A Manager Who Fights for You",icon:"👔",cost:5,max:3,desc:"All levels automatically call a change freeze for gold outages or breaches (10/14/18 seconds; cooldown 60/50/40 seconds). Level 1: answers your email, but chats with users and sometimes tries to patch a server himself (it goes offline). Level 2: focuses on email and rarely touches servers. Level 3: also stands guard at your doorway and shoves users out of your way as you cross the hallway."},
-  {id:"agent",name:"AI Agent",icon:"🧠",cost:6,max:4,ai:true,req:()=>S.career.length>=3,desc:"Answers email, closes tickets, patches servers and seals leaks, fast, anywhere. Every attempt costs tokens. L1 pilot: 50% right, 25% does nothing, 25% breaks something. L2 better instructions: 70/20/10. L3 agentic workflows: 85/12/3. L4 guardrails and evals: harmful actions get blocked."},
+  {id:"agent",name:"AI Agent",icon:"🧠",cost:6,max:4,ai:true,req:()=>S.career.length>=3,desc:"Answers email, closes tickets, patches servers and seals leaks, fast, anywhere. Every attempt costs tokens. L1 pilot: 50% right, 25% does nothing, 25% breaks something. L2 better instructions: 70/20/10. L3 agentic workflows: 85/12/3. L4 guardrails and evals: harmful actions get blocked. It amplifies what you already have: with good foundations for a job, it's right far more often."},
   {id:"chatbot",name:"AI Chatbots",icon:"💬",cost:4,max:2,ai:true,desc:"A chatbot roams the hallway, chats up users and resolves them. A user being chatted up can't grab you. Sometimes they just want a human. Each level adds a bot."},
 ];
 
@@ -845,6 +848,29 @@ const MGR_LINES={
    Level 4 adds guardrails: harmful actions get blocked (still billed). */
 const AGENT_LV={1:{ok:0.5,nop:0.25,cost:0.3,tok:2.1},2:{ok:0.7,nop:0.2,cost:0.4,tok:3.4},3:{ok:0.85,nop:0.12,cost:0.55,tok:6.8},4:{ok:0.92,nop:0.08,cost:0.68,tok:9.5}};
 const AGENT_BAD={email:"Replied-all with a policy I made up!",ticket:"Marked it resolved. Didn't fix it.",patch:"Applied the patch for a different server.",leak:"Opened the firewall to 0.0.0.0/0. Very accessible now."};
+/* The agent amplifies the practices already in place. Each job has foundations: [upgrade id, readiness per level, label].
+   Readiness 0 keeps the AGENT_LV odds exactly; full readiness removes 80% of harmful results and half of the no-ops. */
+const AGENT_FOUNDATIONS={
+  patch:[["patchbot",0.2,"Patch Bot"],["runbooks",0.25,"Runbooks"],["observe",0.15,"Observability"]],
+  ticket:[["portal",0.2,"Self-Service Portal"],["runbooks",0.4,"Runbooks"]],
+  email:[["manager",0.25,"Manager"],["statuspage",0.25,"Status Page"]],
+  leak:[["pac",0.15,"Policy as Code"],["scanner",0.1,"Vulnerability Scanner"],["autopatch",0.25,"Cloud Auto-Patching"]],
+};
+const AGENT_JOB_LABEL={patch:"Patching",ticket:"Tickets",email:"Email",leak:"Leaks"};
+const agentReadiness=kind=>Math.min(1,AGENT_FOUNDATIONS[kind].reduce((n,[id,v])=>n+v*lvl(id),0));
+function agentOdds(kind,L=Math.max(1,Math.min(4,lvl("agent")))){
+  const G=AGENT_LV[L],f=agentReadiness(kind),base=1-G.ok-G.nop,bad=base*(1-0.8*f),nop=G.nop*(1-0.5*f);
+  return{ok:1-bad-nop,nop,bad,f};
+}
+function agentReadinessHtml(){
+  return`<div class="readiness">${Object.keys(AGENT_FOUNDATIONS).map(k=>{const o=agentOdds(k),miss=AGENT_FOUNDATIONS[k].filter(([id])=>!lvl(id)).map(x=>x[2]);
+    return`<div><b>${AGENT_JOB_LABEL[k]}: ${Math.round(o.ok*100)}% right</b>${miss.length?` · needs ${miss.join(", ")}`:" · foundations in place"}</div>`;}).join("")}</div>`;
+}
+function foundationTag(id){
+  if(!(lvl("agent")||S.career.length>=3))return"";
+  const jobs=Object.keys(AGENT_FOUNDATIONS).filter(k=>AGENT_FOUNDATIONS[k].some(f=>f[0]===id)).map(k=>AGENT_JOB_LABEL[k].toLowerCase());
+  return jobs.length?`<small class="foundation">🧠 Makes the AI Agent better at: ${jobs.join(", ")}</small>`:"";
+}
 function spawnAgent(){S.agent=lvl("agent")?{x:480,y:260,job:null,work:0,say:"",sayT:0,wx:480,wy:260,wT:0}:null;}
 function agentSay(t){const A=S.agent;A.say=t;A.sayT=2.4;}
 function agentPick(){
@@ -874,7 +900,7 @@ function tickAgent(dt){
   const j=A.job;if(!goTo(A,j.x,j.y,300,dt))return;
   A.work+=dt;if(A.work<1.0)return; // "thinking..."
   // every attempt bills tokens, whatever happens next
-  const r=Math.random(),out=r<G.ok?"ok":r<G.ok+G.nop?"nop":(L>=4?"blocked":"bad");
+  const odds=agentOdds(j.kind,L),r=Math.random(),out=r<odds.ok?"ok":r<odds.ok+odds.nop?"nop":(L>=4?"blocked":"bad");
   spend("ai",G.cost);const st=S.ss.ai;st.n++;st.cost+=G.cost;
   const tok=(G.tok*rand(0.8,1.2)).toFixed(1),pos={x:A.x,y:A.y-10};
   fl(pos,`🪙 ${tok}k tokens · −$${G.cost.toFixed(1)}k`,out==="ok"?C.ok:out==="bad"?C.danger:C.muted);
@@ -927,7 +953,7 @@ function rumorBlock(){
 function agentBlock(){
   const st=S.ss.ai;if(!st||!st.n)return"";
   const useful=st.ok,per=useful?st.cost/useful:0;
-  return`<div class="modcard" style="border-color:var(--ai)">🧠 <b>AI agent ROI:</b> ${st.n} tasks · ${st.ok} right · ${st.nop} did nothing · ${st.bad} broke something · <b>${money(-st.cost)}</b> in tokens · <b>${useful?`$${per.toFixed(2)}k per useful task`:"no useful tasks"}</b></div>`;
+  return`<div class="modcard" style="border-color:var(--ai)">🧠 <b>AI agent ROI:</b> ${st.n} tasks · ${st.ok} right · ${st.nop} did nothing · ${st.bad} broke something · <b>${money(-st.cost)}</b> in tokens · <b>${useful?`$${per.toFixed(2)}k per useful task`:"no useful tasks"}</b>${agentReadinessHtml()}</div>`;
 }
 function spawnManager(){S.mgr=lvl("manager")?{x:480,y:300,state:"idle",tgt:null,work:0,dec:0.5,say:"",sayT:0,wx:480,wy:300}:null;}
 function mgrSay(k){const M=S.mgr;if(M&&!(M.sayT>0.6)){M.say=pick(MGR_LINES[k]);M.sayT=2.2;}}
@@ -2274,6 +2300,7 @@ const NOTES=[
   ["Toil and automation","Bots, Terraform and runbooks take manual work off your hands.","Manual, repetitive work is called toil. The way out is automation and infrastructure as code, which is exactly what the improvement sprints are for."],
   ["Defense in depth","Stacked security upgrades each cut risk by a percentage.","Most cloud breaches come from misconfigurations. Layers like policy as code, least-privilege access, scanners and secrets managers each catch what the others miss."],
   ["Scripts vs AI agents","Bots are scripts that work or flag an error; the AI agent does everything but is sometimes confidently wrong.","Deterministic automation fails loudly and predictably. AI agents fail creatively, and their mistakes look like successes. Better instructions, agentic workflows, guardrails and evals are how teams make them trustworthy."],
+  ["AI amplifies your practices","The AI Agent is far more reliable at jobs where you already have good automation and process.","AI speeds up whatever system it lands in. On top of solid pipelines, runbooks and monitoring it multiplies good work; dropped into chaos, it multiplies the chaos."],
   ["AI costs tokens","Every agent action costs money, even the failures. The review shows cost per useful task.","AI usage is billed per token whether the answer is right or not. Measure agents by cost per useful outcome, not by how busy they look."],
   ["Interruptions","Users stop you for \"quick questions\".","Context switching is expensive. Every interruption costs more than the question itself, and the most senior people interrupt the longest."],
   ["Money as the score","IT spend only goes negative; the least negative total wins.","IT is usually treated as a cost center. Nobody gets fired for spending a bit too much, but people do get fired for outages and breaches."],
@@ -2309,7 +2336,7 @@ function howToPlay(){
     <div><span class="ic">📅</span><span><b>Lease target.</b> Each client's data center lease has a target day. Going late never ends the game, but on-prem costs rise 10% per overdue day and the client's rating drops.</span></div>
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and a 4-second speed boost (you glow). 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
     <div><span class="ic">🤖</span><span><b>Patch Bot (upgrade).</b> Patches overdue servers for you, but never fights fires. Level 1 succeeds 50% of the time, level 2 66%, level 3 90%. A failed patch leaves a red AUTOMATION ERROR on the rack: patch it yourself to clear it, or if its compliance timer runs out, the audit fails and the error resets so the bot can try again.</span></div>
-    <div><span class="ic">🧠</span><span><b>AI Agent (upgrade, after client 3).</b> A fast purple agent that answers email, closes tickets, patches servers and seals leaks. Every attempt costs tokens. At level 1 only half its work is right; the rest does nothing (while claiming success) or breaks something. Levels 2–4 add better instructions, agentic workflows and finally guardrails that block harmful actions. Check its ✓ / ✗ marks.</span></div>
+    <div><span class="ic">🧠</span><span><b>AI Agent (upgrade, after client 3).</b> A fast purple agent that answers email, closes tickets, patches servers and seals leaks. Every attempt costs tokens. At level 1 only half its work is right; the rest does nothing (while claiming success) or breaks something. Levels 2–4 add better instructions, agentic workflows and finally guardrails that block harmful actions. It also amplifies the practices you already have. Patching improves with Patch Bot, Runbooks and Observability; tickets with Self-Service Portal and Runbooks; email with your Manager and Status Page; leaks with Policy as Code, Vulnerability Scanner and Cloud Auto-Patching. The shop shows its odds for each job and what's missing. Check its ✓ / ✗ marks.</span></div>
     <div><span class="ic">👔</span><span><b>Your manager (upgrade).</b> Level 1 answers your email, but chats with users and sometimes tries to patch a server himself, which takes it offline. Level 2 sticks to email. Level 3 also guards your doorway and shoves users out of your way as you cross the hallway.</span></div>
     <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, then quits. Users ignore them, 15% of their patches take a server down, and some only want snacks. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds. <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
     <div><span class="ic">❓</span><span><b>Unknown rack.</b> The client forgot to mention these. Hold E on one to investigate (6 seconds, free) and you'll find it with a healthy timer. Hidden servers never reveal themselves through migration progress. From client 4 on they can be any tier, even gold. They may come with an expired or approaching license. Escalations can ignite unknown racks; going offline reveals them. Asset Inventory cuts investigation time to 3 seconds.</span></div>
@@ -2349,7 +2376,7 @@ function review(){
     const pips=u.max?`<span class="pips" aria-label="Level ${L} of ${u.max}">${Array.from({length:u.max},(_,k)=>`<i class="${k<L?"on":""}"></i>`).join("")}</span>`:"";
     const btn=done?`<span style="color:var(--ok);font-size:13px;font-weight:600">${u.max?"Maxed out":"Installed"}</span>`
       :`<button class="btn sm" data-buy="${id}" ${S.points<c?"disabled":""}>${u.max&&L?`Level ${L+1}`:"Buy"} · ${c} pts</button>`;
-    return`<div class="up ${done?"owned":""} ${u.ai?"ai":""} ${u.sec?"sec":""}"><div class="t"><span class="i">${u.icon}</span>${u.name}${pips}</div><p>${u.desc}</p>${btn}</div>`;}).join("");
+    return`<div class="up ${done?"owned":""} ${u.ai?"ai":""} ${u.sec?"sec":""}"><div class="t"><span class="i">${u.icon}</span>${u.name}${pips}</div><p>${u.desc}</p>${id==="agent"?agentReadinessHtml():foundationTag(id)}${btn}</div>`;}).join("");
   const owned=UPGRADES.filter(u=>u.max&&lvl(u.id)).map(u=>`${u.icon} ${u.name} ${lvl(u.id)}/${u.max}`).join(" · ");
   const done=S.career[S.career.length-1],nx=getClient(S.sprint+1),nec=engagementCfg(S.sprint+1),cnt=nec.apps.length;
   show(`<div class="eyebrow">Engagement ${S.sprint} · complete</div><h2>${done.name}</h2>

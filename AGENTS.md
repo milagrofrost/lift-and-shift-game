@@ -49,6 +49,10 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 - Emergency freeze is a single carried charge, repurchasable after use. Extend existing protection with a cap rather than wasting the charge or stacking indefinitely.
 - No adrenaline system has been requested.
 
+### AI Agent foundations
+
+- The AI Agent amplifies existing practices. With no foundations for a job, it keeps its base level odds; each relevant upgrade improves that job only (patching: Patch Bot, Runbooks, Observability). Foundations shift results toward success; they do not add a penalty or stop tokens being billed.
+
 ### Career and balance
 
 - Short successful careers and early retirement fit the job-jumping satire. Do not automatically redesign scoring to punish them.

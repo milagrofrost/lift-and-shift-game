@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "wantMood,SONG_SETS,MOODS").split(",");
+  "wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -238,6 +238,35 @@ test("a hidden server stays hidden until investigated or burned out, and burnout
   check(h.hidden, "revealed without investigation or outage");
   h.fire = 99.9; G.tickOnPrem(0.1);
   check(!h.hidden && h.down, "burnout did not reveal it");
+});
+
+/* ---------- AI agent foundations ---------- */
+test("with no foundations, the AI agent keeps its base odds at every level", () => {
+  const S = fresh(); S.upgrades = {};
+  for (const L of [1, 2, 3, 4]) for (const k of ["patch", "ticket", "email", "leak"]) {
+    const o = G.agentOdds(k, L), b = G.AGENT_LV[L];
+    check(near(o.ok, b.ok) && near(o.nop, b.nop) && o.f === 0, `L${L} ${k}: ${o.ok}/${o.nop}`);
+  }
+});
+test("foundations improve only their own job, and full readiness is reachable", () => {
+  const S = fresh(); S.upgrades = {patchbot: 3};
+  check(G.agentOdds("patch", 1).ok > 0.5 && G.agentOdds("patch", 1).bad < 0.25, "Patch Bot did not help patching");
+  for (const k of ["ticket", "email", "leak"]) check(near(G.agentOdds(k, 1).ok, 0.5), `Patch Bot changed ${k}`);
+  for (const [k, list] of Object.entries(G.AGENT_FOUNDATIONS)) {
+    S.upgrades = {}; for (const [id] of list) S.upgrades[id] = 3;
+    const o = G.agentOdds(k, 1);
+    check(o.f === 1 && near(o.ok + o.nop + o.bad, 1) && near(o.bad, 0.05) && near(o.nop, 0.125), `${k}: f ${o.f}, ok ${o.ok}`);
+  }
+});
+test("a roll that does nothing without foundations succeeds with them, and still bills tokens", () => {
+  for (const ready of [false, true]) {
+    const S = fresh(); S.upgrades = ready ? {agent: 1, portal: 3, runbooks: true} : {agent: 1};
+    S.tk = [{age: 0}]; S.agent = {x: 480, y: 470, job: {kind: "ticket", x: 480, y: 470}, work: 1, say: "", sayT: 0, wx: 480, wy: 260, wT: 0};
+    const spent = S.cost.ai || 0;
+    fixedRandom(0.6); G.tickAgent(0.05);
+    check(S.tk.length === (ready ? 0 : 1), `ready=${ready}: ${S.tk.length} tickets left`);
+    check((S.cost.ai || 0) > spent, "no tokens billed");
+  }
 });
 
 /* ---------- music ---------- */
