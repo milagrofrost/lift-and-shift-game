@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "devRun,devSet,DEV,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
+  "tickTemp,devRun,devSet,DEV,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -153,6 +153,20 @@ test("a forced put-back never overwrites a rack someone else now uses", () => {
   const intruder = {...a, name: "Intruder", slot}; S.racks[slot] = intruder;
   S.racks.find(x => x && x !== intruder).down = true; G.update(0.05);
   check(S.racks[slot] === intruder && S.racks.includes(a) && !S.carry, "carried server overwrote a rack or was lost");
+});
+
+/* ---------- temp workers ---------- */
+test("a temp investigates an unknown rack 10-75%, once, and never reveals it", () => {
+  for (const [roll, frac] of [[0.01, 0.1065], [0.5, 0.425], [0.999, 0.74935]]) {
+    const S = fresh({reveal: false}); const h = S.racks.find(a => a && a.hidden), p = G.RACKS[h.slot];
+    check(h, "no hidden server");
+    S.temp = {name: "Temp", x: p.x, y: p.y + 44, t: 20, work: 2.19, asked: true, snack: false, idle: 0, sayT: 5, wT: 1, wx: 480, wy: 400, tgt: {kind: "discover", a: h}};
+    fixedRandom(roll); G.tickTemp(0.05);
+    check(h.hidden && h.tempChecked, "temp revealed it or did not mark it");
+    check(near(h.disc, 6 * frac, 1e-6), `progress ${h.disc} at roll ${roll}`);
+    const after = h.disc; fixedRandom(0.5); G.tickTemp(0.05);
+    check(!(S.temp.tgt && S.temp.tgt.kind === "discover" && S.temp.tgt.a === h) && h.disc === after, "temp went back to the same rack");
+  }
 });
 
 /* ---------- ticket escalation pressure ---------- */

@@ -844,12 +844,13 @@ function tickTemp(dt){
     else{T.wT-=dt;if(T.wT<=0){T.wT=rand(2,4);T.wx=rand(395,565);T.wy=rand(140,440);}goTo(T,T.wx,T.wy,60,dt);}
     return;
   }
-  const ok=g=>g&&(g.kind==="desk"?S.tk.length>0:validRack(g.a)&&(g.kind==="fire"?g.a.fire>0:g.kind==="restore"?g.a.down:(!g.a.down&&g.a.fire===0&&patchDue(g.a))));
+  const ok=g=>g&&(g.kind==="discover"?S.racks[g.a.slot]===g.a&&g.a.hidden&&!g.a.tempChecked:g.kind==="desk"?S.tk.length>0:validRack(g.a)&&(g.kind==="fire"?g.a.fire>0:g.kind==="restore"?g.a.down:(!g.a.down&&g.a.fire===0&&patchDue(g.a))));
   if(!ok(T.tgt)){
     T.tgt=null;T.work=0;const rs=S.racks.filter(a=>a&&!a.hidden);let f;
     if((f=rs.filter(a=>a.fire>0).sort((a,b)=>b.fire-a.fire)[0]))T.tgt={kind:"fire",a:f};
     else if((f=rs.find(a=>a.down)))T.tgt={kind:"restore",a:f};
     else if(S.tk.length)T.tgt={kind:"desk"};
+    else if((f=S.racks.find(a=>a&&a.hidden&&!a.tempChecked)))T.tgt={kind:"discover",a:f};
     else if((f=rs.filter(a=>!a.down&&a.fire===0&&patchDue(a)).sort((a,b)=>a.timer/a.maxT-b.timer/b.maxT)[0]))T.tgt={kind:"patch",a:f};
   }
   if(!T.tgt){goTo(T,480,400,60,dt);return;}
@@ -859,6 +860,8 @@ function tickTemp(dt){
   if(g.kind==="restore"){g.a.prog+=dt*0.55;T.work=0.001;if(g.a.prog>=TIER[g.a.tier].restore){g.a.prog=0;noteRestored(g.a);g.a.down=false;g.a.timer=Math.max(g.a.timer,g.a.maxT*0.5);fl(RACKS[g.a.slot],`${T.name}: back online`,C.ok);T.tgt=null;}return;}
   T.work+=dt;
   if(g.kind==="desk"){if(T.work>=1.4){T.work=0;S.tk.shift();fl(DESK,`${T.name} closed a ticket`,C.ok);}return;}
+  // a temp can get an unknown rack partway investigated (10-75%), but it takes someone who knows the place to finish
+  if(g.kind==="discover"){if(T.work>=2.2){T.work=0;const a=g.a;a.tempChecked=true;a.disc=Math.max(a.disc||0,discoverTime()*rand(0.1,0.75));a.discT=S.t;T.tgt=null;fl(RACKS[a.slot],`${T.name}: "Found some cables"`,C.amber);}return;}
   if(T.work>=2.2){
     T.work=0;const a=g.a;T.tgt=null;
     if(Math.random()<0.15){sfx("offline");a.down=true;a.downT=S.time;a.fire=0;a.prog=0;S.ss.lost++;tempSay("Was it supposed to beep like that?");toast(`🧑‍💼 ${T.name} patched ${a.name}... and took it offline.`);fl(RACKS[a.slot],"OFFLINE",C.danger);}
@@ -2457,7 +2460,7 @@ function howToPlay(){
     <div><span class="ic">🤖</span><span><b>Patch Bot (upgrade).</b> Patches overdue servers for you, but never fights fires. Level 1 succeeds 50% of the time, level 2 66%, level 3 90%. A failed patch leaves a red AUTOMATION ERROR on the rack: patch it yourself to clear it, or if its compliance timer runs out, the audit fails and the error resets so the bot can try again.</span></div>
     <div><span class="ic">🧠</span><span><b>AI Agent (upgrade, after client 3).</b> A fast purple agent that answers email, closes tickets, patches servers and seals leaks. Every attempt costs tokens. At level 1 only half its work is right; the rest does nothing (while claiming success) or breaks something. Levels 2–4 add better instructions, agentic workflows and finally guardrails that block harmful actions. It also amplifies the practices you already have. Patching improves with Patch Bot, Runbooks and Observability; tickets with Self-Service Portal and Runbooks; email with your Manager and Status Page; leaks with Policy as Code, Vulnerability Scanner and Cloud Auto-Patching. The shop shows its odds for each job and what's missing. Check its ✓ / ✗ marks.</span></div>
     <div><span class="ic">👔</span><span><b>Your manager (upgrade).</b> Level 1 answers your email, but chats with users and sometimes wanders over to look at a server. Half the time, just looking takes it offline. Every level speeds up uptime recovery. Level 2 sticks to email. Level 3 also guards your doorway and shoves users out of your way as you cross the hallway.</span></div>
-    <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, then quits. Users ignore them, 15% of their patches take a server down, and some only want snacks. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds. <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
+    <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, gets unknown racks 10–75% investigated (you finish the job), then quits. Users ignore them, 15% of their patches take a server down, and some only want snacks. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds. <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
     <div><span class="ic">❓</span><span><b>Unknown rack.</b> The client forgot to mention these. Hold E on one to investigate (6 seconds, free) and you'll find it with a healthy timer. Hidden servers never reveal themselves through migration progress. From client 4 on they can be any tier, even gold. They may come with an expired or approaching license. Escalations can ignite unknown racks; going offline reveals them. Asset Inventory cuts investigation time to 3 seconds.</span></div>
   </div>
   <p style="color:var(--muted);font-size:13px">On a phone, play in landscape: drag anywhere on the left half to move, hold FIX and tap GRAB on the right. Move with WASD or arrows. Your hands are full while carrying, so you can't fix anything until you drop it.</p>
