@@ -29,7 +29,7 @@
    Results: the page title becomes "PASS n/n" or "FAIL k/n", and window.__RESULTS holds the details. */
 const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
-const NAMES = ("newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
+const NAMES = ("BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
   "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
@@ -105,6 +105,22 @@ test("an outage or breach in the cloud blocks client completion", () => {
   S.cloud[0] = {name: "x", tier: "bronze", down: true}; check(!G.engagementReady(), "completed with a cloud outage");
   S.cloud[0] = {name: "x", tier: "bronze", breach: true}; check(!G.engagementReady(), "completed with an active breach");
   S.cloud[0] = {name: "x", tier: "bronze", leakOn: true, leak: 50}; check(G.engagementReady(), "a developing leak blocked completion");
+});
+test("a license pauses in transit, resumes on return, and keeps running under blue-green", () => {
+  const setup = () => { const S = fresh(); S.racks.filter(Boolean).forEach(x => { x.lic = 0; x.timer = 999; x.covered = true; }); const a = firstRack(S); a.lic = 1; a.licBase = 20; S.cost.license = 0; return {S, a, slot: a.slot}; };
+  let {S, a, slot} = setup();
+  S.racks[slot] = null; S.carry = a; G.tickOnPrem(2);
+  check(a.lic === 1 && !S.cost.license, `carried: lic ${a.lic}, cost ${S.cost.license}`);
+  S.carry = null; S.pipe = [{a, t: 0, dur: 6, lane: 0}]; G.tickOnPrem(2);
+  check(a.lic === 1 && !S.cost.license, `pipeline: lic ${a.lic}, cost ${S.cost.license}`);
+  S.pipe = []; const b = G.mkBot("move"); b.carry = a; S.bots = [b]; G.tickOnPrem(2);
+  check(a.lic === 1 && !S.cost.license, `bot: lic ${a.lic}, cost ${S.cost.license}`);
+  b.carry = null; S.racks[slot] = a; G.tickOnPrem(0.5);
+  check(near(a.lic, 0.5) && !S.cost.license, `resumed: lic ${a.lic}`);
+  G.tickOnPrem(1);
+  check(a.lic === 0 && S.cost.license > 0, "no renewal after returning");
+  ({S, a, slot} = setup()); S.upgrades.bluegreen = true; S.carry = a; G.tickOnPrem(2);
+  check(a.lic === 0 && S.cost.license > 0, "blue-green original skipped its renewal");
 });
 test("a failed cutover pays no savings and keeps the license; success pays once", () => {
   const S = fresh(); const a = firstRack(S); a.lic = 30; a.licBase = 20;
@@ -414,6 +430,21 @@ test("the AI agent tiers start at 80% and 90%, and never reach certainty", () =>
   check(near(G.AGENT_LV[2].ok, 0.8) && near(G.AGENT_LV[3].ok, 0.9), "wrong baselines");
   for (const L of [1, 2, 3, 4]) check(G.AGENT_LV[L].ok < 1 && G.agentFixOdds("patch", L) < 1, `L${L} is perfect`);
 });
+test("the AI agent goes to a Patch Bot's automation error first, within its tier, and clears it at its odds", () => {
+  const S = fresh(); S.upgrades = {agent: 1}; S.em = []; S.tk = [{age: 0}, {age: 0}]; S.agent = {};
+  const racks = S.racks.filter(Boolean); racks.forEach(a => { a.hidden = false; a.down = false; a.fire = 0; a.covered = false; a.timer = a.maxT; a.botErr = false; a.tier = "bronze"; });
+  check(G.agentPick().kind === "ticket", "tickets not picked without an error");
+  const a = racks[1]; a.botErr = true;
+  const j = G.agentPick(); check(j.kind === "patch" && j.a === a, "did not go to the automation error");
+  a.tier = "gold"; check(G.agentPick().kind === "ticket", "level 1 went to a gold automation error");
+  a.tier = "bronze";
+  for (const [roll, cleared] of [[0.1, true], [0.6, false]]) {
+    a.botErr = true; a.covered = false; a.down = false;
+    S.agent = {x: 480, y: 300, job: {...G.agentPick(), x: 480, y: 300}, work: 1, say: "", sayT: 0, wx: 480, wy: 260, wT: 0};
+    fixedRandom(roll); G.tickAgent(0.05);
+    check(a.botErr === !cleared && a.covered === cleared, `roll ${roll}: err ${a.botErr}, covered ${a.covered}`);
+  }
+});
 const agentBreaks = (S, job) => { S.agent = {x: 480, y: 300, job: {...job, x: 480, y: 300}, work: 1, say: "", sayT: 0, wx: 480, wy: 260, wT: 0}; fixedRandom(0.99); G.tickAgent(0.05); };
 test("a failed AI patch takes the server down, then the agent repairs it or leaves it to you", () => {
   for (const works of [true, false]) {
@@ -454,6 +485,33 @@ test("the agent calls off its own escalation, even after it lands", () => {
   const a = firstRack(S), e2 = S.atk[0]; e2.a = a; e2.dead = true; a.fire = 20;
   fixedRandom(0.1); G.tickAgent(3.1);
   check(a.fire === 0, "landed escalation still burning");
+});
+
+/* ---------- give me a break ---------- */
+test("Give me a break is offered only after two rough clients in a row", () => {
+  const S = fresh(), good = {stars: 5, cap: 15}, low = {stars: 1, cap: 12}, tight = {stars: 4, cap: 5};
+  const offered = () => G.retroOptions().some(o => o.id === "break");
+  S.career = [low]; check(!G.needsBreak() && !offered(), "offered after one rough client");
+  S.career = [low, tight]; check(G.needsBreak() && offered(), "not offered after two rough clients");
+  S.career = [low, good]; check(!G.needsBreak(), "offered after a good client");
+  S.career = [good, tight, low, good, low]; check(!G.needsBreak(), "older clients counted");
+});
+test("a break makes one small, first-client-paced job, then the career resumes", () => {
+  const S = fresh(); S.sprint = 9; S.breakN = 10;
+  const small = G.engagementCfg(10), [k, h] = G.DIFFS ? G.DIFFS.normal.counts[0] : [4, 1];
+  check(small.apps.length === k && small.hidden.length === h, `size ${small.apps.length}+${small.hidden.length}`);
+  check(!G.getClient(10).trait && G.getClient(10) === G.BREAK_CLIENTS[0], "break client not used");
+  S.retro.break = 2; check(G.getClient(10) === G.BREAK_CLIENTS[1], "second break repeated the first client"); S.retro.break = 0;
+  const big = G.engagementCfg(11).apps.length; check(big > k, `next client ${big}`);
+  G.startSprint(10);
+  check(near(G.haz(), 1), `haz ${G.haz()}`);
+  const on = S.racks.filter(Boolean); check(on.length === k + h, `${on.length} racks`);
+  G.startSprint(11);
+  check(G.haz() > 1.5, `haz after break ${G.haz()}`);
+});
+test("Patch Bot and the CI/CD Pipeline each cost a point less", () => {
+  fresh(); const cost = id => G.UPGRADES.find(u => u.id === id).cost;
+  check(cost("patchbot") === 4 && cost("pipeline") === 5, `${cost("patchbot")}, ${cost("pipeline")}`);
 });
 
 /* ---------- touch ---------- */

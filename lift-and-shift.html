@@ -347,7 +347,28 @@ function genClient(n){
   }
   return S.gen[n]=c;
 }
-const getClient=n=>n<=CLIENTS.length?CLIENTS[n-1]:genClient(n);
+// "Give me a break" swaps the next client for a small follow-up job, sized and paced like the very first one
+const BREAK_CLIENTS=[
+  {name:"Crybaby Daycare",short:"Crybaby Daycare",err:170,days:14,trait:null,contact:"Director of Naps, Crybaby Daycare",
+   apps:[["Nap Schedule",0,"bronze"],["Snack Ledger",0,"silver"],["Email",0,"bronze"],["Diaper Inventory",0,"gold",20],["Parent Portal",0,"bronze"],["Tantrum Archive",1,"silver",15],["Finger Paint Gallery",0,"bronze"],["Lost Mittens",0,"bronze"]],
+   hidden:[["Blankie Backup","bronze"],["Teddy Bear NAS","silver"]],
+   quotes:["Nobody cried during the cutover. Well, one person. It was the auditor.","Nap time is now highly available.","The cloud is very soft. We approve."]},
+  {name:"Just Bubbles Bar",short:"Just Bubbles Bar",err:170,days:14,trait:null,contact:"Head Bubbletender, Just Bubbles Bar",
+   apps:[["Bar Tabs",0,"bronze"],["Bubble Recipes",0,"silver"],["Email",0,"bronze"],["Soap Supply Chain",0,"gold",20],["Reservations",0,"bronze"],["Wand Registry",1,"silver",15],["Happy Hour Board",0,"bronze"],["Jukebox",0,"bronze"]],
+   hidden:[["Foam Machine PC","bronze"],["Bartender's Laptop","silver"]],
+   quotes:["Your migration was light, airy and gone in seconds.","We asked for a drink menu. It's still just bubbles.","Everything popped exactly when it was supposed to."]},
+  {name:"Training Wheels Warehouse",short:"Training Wheels",err:170,days:14,trait:null,contact:"Regional Manager (Both Wheels), Training Wheels Warehouse",
+   apps:[["Order Desk",0,"bronze"],["Wheel Catalog (2 items)",0,"silver"],["Email",0,"bronze"],["Left & Right Inventory",0,"gold",20],["Returns",0,"bronze"],["Bolt Archive",1,"silver",15],["Website",0,"bronze"],["Balance Survey",0,"bronze"]],
+   hidden:[["Kickstand PC","bronze"],["Owner's Spreadsheet","silver"]],
+   quotes:["We only sell training wheels, and now we do it in the cloud.","You didn't fall over once. We're so proud.","Sales are steady. Customers keep outgrowing us."]},
+  {name:"Participation Trophy Outlet",short:"Trophy Outlet",err:170,days:14,trait:null,contact:"Vice President of Trying, Participation Trophy Outlet",
+   apps:[["Engraving Queue",0,"bronze"],["Everyone's Names",0,"silver"],["Email",0,"bronze"],["Ribbon Ledger",0,"gold",20],["Shelf Planner",0,"bronze"],["Consolation Archive",1,"silver",15],["Website",0,"bronze"],["Polish Orders",0,"bronze"]],
+   hidden:[["Back Room PC","bronze"],["Runner-Up Laptop","silver"]],
+   quotes:["You showed up, and that's what counts. It also worked.","Please accept this trophy for your migration.","Everybody won this cutover."]},
+];
+const BREAK_CLIENT=()=>BREAK_CLIENTS[Math.max(0,retro("break")-1)%BREAK_CLIENTS.length];
+const getClient=n=>S.breakN===n?BREAK_CLIENT():n<=CLIENTS.length?CLIENTS[n-1]:genClient(n);
+const pace=()=>S.breakN===S.sprint?1:S.sprint;
 const client=()=>getClient(S.sprint);
 const dayNum=()=>Math.floor(S.time/DAY)+1;
 const overdue=()=>Math.max(0,dayNum()-S.cdays);
@@ -364,7 +385,8 @@ const diff=()=>DIFFS[S.diff||"normal"];
 const STEP={easy:1,normal:2,hard:3};
 function engagementCfg(n){
   const c=getClient(n);let k,h;
-  if(n<=3)[k,h]=diff().counts[n-1];
+  if(S.breakN===n)[k,h]=diff().counts[0];
+  else if(n<=3)[k,h]=diff().counts[n-1];
   else if(c.trait&&c.trait.id==="donut"){k=c.apps.length;h=1;}
   else{const last=diff().counts[2];k=last[0]+STEP[S.diff||"normal"]*(n-3);h=last[1]+Math.floor((n-3)/2);}
   // a big client can ask for more servers than its template lists, so reuse names as numbered extras
@@ -373,7 +395,7 @@ function engagementCfg(n){
   return{c,apps,hidden:hid,days:Math.max(6,Math.round(5+(k+h)*1.1)+diff().days+2*retro("estimates")),err:Math.round((c.err||110)*diff().err)};
 }
 // hazards ramp up past the third client
-const haz=()=>diff().haz*(1+0.08*Math.max(0,S.sprint-3));
+const haz=()=>diff().haz*(1+0.08*Math.max(0,pace()-3));
 const TITLES=["Junior Consultant (pretending)","Consultant","Senior Consultant","Principal Consultant","Distinguished Consultant","Partner","Senior Partner","Managing Partner","Living Legend"];
 const careerTitle=()=>TITLES[Math.min(S.career.length,TITLES.length-1)];
 const stars=n=>"★".repeat(n)+"☆".repeat(5-n);
@@ -446,7 +468,7 @@ const UPGRADES=[
   {id:"freezecharge",name:"Emergency Freeze Window",icon:"❄",cost:3,desc:"One charge: press F or click Freeze to pause users, arrivals and incident spread for 12 seconds. Repurchase after use. Extends an active freeze, up to 30 seconds."},
   {id:"terraform",name:"Terraform the cloud",icon:"⚙️",cost:8,desc:"Infrastructure as code. Retrying a failed cutover takes 1–2 seconds instead of 3–8, and consistent builds give every cutover +10% odds."},
   {id:"moverbot",name:"Mover Bot",icon:"🦾",cost:8,desc:"Moves on-prem apps to the cloud by itself and finds a free cloud slot on its own. Slow but steady. Once you have a CI/CD pipeline it only uses the pipeline and waits for a free lane."},
-  {id:"patchbot",name:"Patch Bot",icon:"🤖",cost:5,max:3,desc:"Walks the server room patching the most overdue app. It doesn't fight fires; that's your job. Success rate 50% at level 1, 66% at level 2, 90% at level 3. A failed patch leaves an automation error you have to fix by hand."},
+  {id:"patchbot",name:"Patch Bot",icon:"🤖",cost:4,max:3,desc:"Walks the server room patching the most overdue app. It doesn't fight fires; that's your job. Success rate 50% at level 1, 66% at level 2, 90% at level 3. A failed patch leaves an automation error you have to fix by hand, unless an AI Agent trusted with that server tier gets there first."},
   {id:"finops",name:"FinOps Dashboard",icon:"📊",cost:5,desc:"Cloud running costs and egress fees drop 40%, and license renewals cost 25% less."},
   {id:"runbooks",name:"Runbooks",icon:"📄",cost:3,desc:"Patching and firefighting cost 40% less energy, and fires go out faster."},
   {id:"inventory",name:"Asset Inventory",icon:"🗂️",cost:3,desc:"Investigations take 3 seconds instead of 6. Forgotten servers still need investigation or an outage to reveal them."},
@@ -460,7 +482,7 @@ const UPGRADES=[
   {id:"suppress",name:"Fire Suppression",icon:"🧯",cost:2,max:3,desc:"On-prem fires grow 20% slower per level."},
   {id:"portal",name:"Self-Service Portal",icon:"🙋",cost:2,max:3,desc:"Users reset their own passwords. 15% fewer tickets per level."},
   {id:"autopatch",name:"Cloud Auto-Patching",icon:"🩹",cost:5,sec:true,desc:"Cloud apps get patched automatically, so they never drift into riskier states, and new leaks are 20% less likely. Covered apps show a green shield."},
-  {id:"pipeline",name:"CI/CD Pipeline",icon:"🏭",cost:6,max:3,desc:"Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud. No walking: about 6 seconds (3 with Terraform), with +10% odds from automated tests. Each level adds a lane, so more jobs can run at once."},
+  {id:"pipeline",name:"CI/CD Pipeline",icon:"🏭",cost:5,max:3,desc:"Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud. No walking: about 6 seconds (3 with Terraform), with +10% odds from automated tests. Each level adds a lane, so more jobs can run at once."},
   {id:"bluegreen",name:"Blue-Green Cutovers",icon:"🔀",cost:6,desc:"Run old and new side by side. You carry a see-through copy while the original stays live in its rack, so moving it costs no downtime. The original still takes fires and escalations, and if it goes offline the copy is canceled. Failed cloud deployments stay gray; hold E there to retry."},
   {id:"spin",name:"Redefine \"Uptime\"",icon:"🎤",cost:3,max:3,desc:"Leadership skills. That outage was a \"planned degradation event.\" Your uptime recovers faster and can recover further: up to 65%, 80%, then 95% of the budget."},
   {id:"statuspage",name:"Status Page",icon:"📣",cost:3,desc:"During a red alert, users check the status page instead of grabbing you. (Execs you ignored still come find you.)"},
@@ -675,7 +697,10 @@ const RETRO={
   inbox:{icon:"📥",name:"Inbox rules and filters",fix:"The inbox holds one more email before a VP comes looking."},
   estimates:{icon:"📅",name:"Better estimates",fix:"Future lease targets are 2 days longer."},
   lunch:{icon:"🥪",name:"Team lunch",fix:"Start every client with +25 energy."},
+  break:{icon:"🏖️",name:"Give me a break",fix:"Just this once: your next client is a small job, sized and paced like your first. A clean finish can win back your sprint points."},
 };
+// offered after two rough clients in a row: 5 or 6 sprint points, or 2 stars or fewer
+const needsBreak=()=>{const l=S.career.slice(-2);return l.length===2&&l.every(c=>c.cap<=6||c.stars<=2);};
 function retroOptions(){
   const ss=S.ss,late=overdue(),fails=ss.att-ss.mig,c=[];
   if(ss.audits)c.push(["patchcal",ss.audits*3,`${ss.audits} failed audit${ss.audits>1?"s":""}`]);
@@ -689,12 +714,13 @@ function retroOptions(){
   c.sort((a,b)=>b[1]-a[1]);
   const out=c.slice(0,3).map(([id,,why])=>({id,why}));
   for(const id of ["lunch","estimates","preflight"])if(out.length<3&&!out.some(o=>o.id===id))out.push({id,why:"a clean engagement, so pick something nice"});
+  if(needsBreak())out.push({id:"break",why:"your last two clients went badly"});
   return out;
 }
 function retroBlock(){
   const opts=S.retroOpts||[];
   if(S.retroPick){const r=RETRO[S.retroPick];return`<div class="retro"><h3>🔁 Retrospective</h3><p class="picked">${r.icon} <b>Action item adopted: ${r.name}.</b> ${r.fix}</p></div>`;}
-  return`<div class="retro"><h3>🔁 Retrospective</h3><p style="font-size:13px;color:var(--muted)">What hurt this time, and one fix the team commits to. Free, and it lasts the rest of your career.</p>
+  return`<div class="retro"><h3>🔁 Retrospective</h3><p style="font-size:13px;color:var(--muted)">What hurt this time, and one fix the team commits to. Free, and action items last the rest of your career.</p>
   <div class="retro-opts">${opts.map(o=>{const r=RETRO[o.id];return`<button class="retro-opt" data-retro="${o.id}"><span class="ri">${r.icon}</span><span><b>${r.name}</b><small>Because of: ${o.why}</small><em>${r.fix}</em></span></button>`;}).join("")}</div></div>`;
 }
 /* ---------- DORA metrics: the four numbers real teams use to measure delivery ---------- */
@@ -725,10 +751,10 @@ const RANKS=[
   {name:"CIO",hold:4.8,lines:["Are we cloud yet?","Have you tried AI?","Make it serverless.","Saw it on LinkedIn.","Cut costs 40%."]},
 ];
 function spawnUsers(){
-  S.users=[];const n=S.sprint+1+diff().users;
+  S.users=[];const n=pace()+1+diff().users;
   for(let i=0;i<n;i++){
     let u;for(let k=0;k<20;k++){u={x:rand(390,570),y:rand(60,460)};if(dist(u,S.p)>100)break;}
-    const rank=Math.min(5,Math.floor(rand(0,2.2+S.sprint*1.3)));
+    const rank=Math.min(5,Math.floor(rand(0,2.2+pace()*1.3)));
     S.users.push({...u,rank,vx:0,vy:0,turn:0,cd:0,line:""});
   }
 }
@@ -976,6 +1002,9 @@ function agentPick(){
   const imp=importantMail(),racks=S.racks.filter(a=>a&&!a.hidden&&!a.down&&a.fire===0);
   const leak=S.cloud.map((a,i)=>a&&a.leakOn&&!a.breach&&!a.down&&agentCanTouch(a)?{a,i}:null).filter(Boolean).sort((p,q)=>q.a.leak-p.a.leak)[0];
   if(leak&&leak.a.leak>25)return{kind:"leak",a:leak.a,i:leak.i,x:SLOTS[leak.i].x,y:SLOTS[leak.i].y+38};
+  // a Patch Bot's automation error draws the agent over ahead of routine work; it uses its normal patching odds
+  const err=racks.filter(a=>a.botErr&&!a.covered&&agentCanTouch(a)).sort((p,q)=>p.timer/p.maxT-q.timer/q.maxT)[0];
+  if(err)return{kind:"patch",a:err,x:RACKS[err.slot].x,y:RACKS[err.slot].y+44};
   if(S.tk.length>=2)return{kind:"ticket",x:480,y:470};
   if(imp.length>=2)return{kind:"email",x:480,y:98};
   const pr=racks.filter(a=>agentCanTouch(a)&&!a.covered&&(a.timer<a.maxT*0.5||a.botErr)).sort((p,q)=>p.timer/p.maxT-q.timer/q.maxT)[0];
@@ -1169,9 +1198,9 @@ function tickUsers(dt){
   if(P.heldBy&&!S.users.includes(P.heldBy)&&P.stun<=0)P.heldBy=null; // the person holding you is gone
   // new users wander in over time, so the hallway never stays empty for long
   S.userT-=dt;
-  if(S.userT<=0){S.userT=rand(8,12);if(S.users.filter(u=>!u.hunter).length<S.sprint+1+diff().users){
+  if(S.userT<=0){S.userT=rand(8,12);if(S.users.filter(u=>!u.hunter).length<pace()+1+diff().users){
     const spot=[{x:400,y:470},{x:560,y:470},{x:400,y:130},{x:560,y:130}].sort((a,b)=>dist(b,S.p)-dist(a,S.p))[0];
-    S.users.push({...spot,rank:Math.min(5,Math.floor(rand(0,2.2+S.sprint*1.3))),vx:0,vy:0,turn:0,cd:0,line:""});}}
+    S.users.push({...spot,rank:Math.min(5,Math.floor(rand(0,2.2+pace()*1.3))),vx:0,vy:0,turn:0,cd:0,line:""});}}
   for(const u of S.users){
     if(u.cd>0)u.cd-=dt;
     if(u.chat)continue; // busy talking to a chatbot: frozen, and can't grab you
@@ -1511,7 +1540,7 @@ function startSprint(n){
   S.racks=Array(12).fill(null);S.cloud=Array(16).fill(null);S.tierTot={};S.movedT={};S.totalApps=0;S.rival=0;S.lz=0;S.wave=[];
   // everything this client has, in order; the first 12 go in the room, the rest wait for later waves
   const tierOrder={bronze:0,silver:1,gold:2}; ec.apps.sort((a,b)=>tierOrder[a[2]]-tierOrder[b[2]]); ec.hidden.sort((a,b)=>tierOrder[a[1]]-tierOrder[b[1]]);
-  const all=[...ec.apps.map(e=>({e,hidden:false})),...ec.hidden.map(e=>({e:n<=3?e:[e[0],pick(["bronze","silver","gold"])],hidden:true}))]; // handmade clients keep their designed hidden tiers
+  const all=[...ec.apps.map(e=>({e,hidden:false})),...ec.hidden.map(e=>({e:n<=3||S.breakN===n?e:[e[0],pick(["bronze","silver","gold"])],hidden:true}))]; // handmade clients keep their designed hidden tiers
   const first=all.length>12?[...all.slice(0,12-Math.min(2,ec.hidden.length)),...all.filter(x=>x.hidden).slice(0,Math.min(2,ec.hidden.length))]:all;
   S.wave=all.filter(x=>!first.includes(x));
   for(const x of all){const t=x.hidden?x.e[1]:x.e[2];S.totalApps++;S.tierTot[t]=(S.tierTot[t]||0)+1;}
@@ -1536,7 +1565,7 @@ function clientStars(){
 }
 function finishEngagement(){
   const c=client(),st=clientStars();
-  S.career.push({name:c.name,stars:st,days:dayNum(),late:overdue(),spend:Math.round(S.ss.budget0-S.budget)});
+  S.career.push({name:c.name,stars:st,days:dayNum(),late:overdue(),spend:Math.round(S.ss.budget0-S.budget),cap:capNext()});
   S.bots.forEach(b=>{b.tgt=null;b.carry=null;});
   try{const b=+(localStorage.getItem("liftshift-clients")||0);if(S.career.length>b)localStorage.setItem("liftshift-clients",String(S.career.length));}catch(e){}
   S.retroOpts=retroOptions();S.retroPick=null;S.agentNews=S.career.length===3&&!lvl("agent");S.points=S.cap=capNext();S.offers=rollOffers();if(S.agentNews&&!S.offers.includes("agent"))S.offers[0]="agent";S.quote=pick(c.quotes);S.rerolls=0;S.rerollMsg="";
@@ -1786,7 +1815,8 @@ function tickOnPrem(dt){
   for(const a of onPremApps()){
     if(a.hidden||a.down)continue;
     a.timer-=dt*rate;
-    if(a.lic>0&&!a.down){a.lic-=dt;if(a.lic<=0){a.lic=0;const c=licCost(a);spend("license",c);fl(posOf(a),`📜 −$${c}k`,C.danger);toast(`📜 ${a.name}'s license auto-renewed before you moved it. −$${c}k.`);}}
+    // a license only runs down while the server is running on its rack: in transit it is paused, but a blue-green original stays live and keeps counting
+    if(a.lic>0&&S.racks[a.slot]===a){a.lic-=dt;if(a.lic<=0){a.lic=0;const c=licCost(a);spend("license",c);fl(posOf(a),`📜 −$${c}k`,C.danger);toast(`📜 ${a.name}'s license auto-renewed before you moved it. −$${c}k.`);}}
     if(a.timer<=0&&a.covered){a.covered=false;a.timer=a.maxT;}
     else if(a.timer<=0){if(a.botErr){a.botErr=false;fl(posOf(a),"🤖 automation error reset",C.muted);} // after a failed audit the bot gets another try
       a.timer=a.maxT;spend("audits",12);sfx("audit");secHit("audit",4);S.ss.audits++;unplanned(1,"audit");
@@ -1826,7 +1856,7 @@ function revealApp(a,investigated){
 }
 
 function tickCloud(dt){
-  const lc=(0.0065+0.002*S.sprint)*leakChanceMult()*haz();
+  const lc=(0.0065+0.002*pace())*leakChanceMult()*haz();
   S.cloud.forEach((a,i)=>{
     if(!a||a.staged)return;
     if(a.cleanStart>0)a.cleanStart=Math.max(0,a.cleanStart-dt);
@@ -1922,7 +1952,7 @@ function tickEscalation(e,dt){
 }
 function validRack(a){return a&&!a.hidden&&S.racks[a.slot]===a;}
 /* Patch Bot: patches only (fires and outages are your job). Each level raises its success rate: 50% / 66% / 90%.
-   A failed job can fail anywhere along the way, and leaves an AUTOMATION ERROR on the rack that only you can clear. */
+   A failed job can fail anywhere along the way, and leaves an AUTOMATION ERROR on the rack for you, or the AI Agent, to clear. */
 const BOT_PATCH_OK=[0,0.5,0.66,0.9];
 function patchBot(b,dt,ai,sp){
   const ok=a=>a&&!a.hidden&&!a.down&&a.fire===0&&!a.botErr&&S.racks[a.slot]===a;
@@ -1940,7 +1970,7 @@ function patchBot(b,dt,ai,sp){
   if(b.fail&&b.work>=b.failAt){
     // the automation broke partway through: flag the rack for a human
     a.botErr=true;b.work=0;b.tgt=null;b.flash=1.5;sfx("audit");fl(p,"⚠ AUTOMATION ERROR",C.danger);
-    toast(`🤖 Patch Bot couldn't patch ${a.name} (automation error). It needs a human: patch it yourself.`);return;
+    toast(`🤖 Patch Bot couldn't patch ${a.name} (automation error). ${S.agent&&agentCanTouch(a)?"The AI agent is going to take a look. Good luck.":"It needs a human: patch it yourself."}`);return;
   }
   if(b.work<b.need)return;
   b.work=0;b.tgt=null;
@@ -2505,7 +2535,7 @@ function howToPlay(){
   <div class="legend">
     <div><span class="ic">📦</span><span><b>Migrate.</b> Space to grab an app, carry it to the cloud, stand on an empty cloud slot and press Space to drop it. To put one back, stand on an empty rack; an escalation chasing that server will follow it there. Migrating earns energy, and cloud apps cost less to run than on-prem servers.</span></div>
     <div><span class="ic">🎲</span><span><b>Cutover odds.</b> Each rack shows its chance of coming up in the cloud. Bronze starts high, gold starts around 15%. Moving bronze raises silver's odds; moving bronze and silver raises gold's, up to 100% once they're all moved. A failed cutover lands offline in the cloud: hold E to retry at the same odds (3s bronze, 5s silver, 8s gold), or hold Space to roll it back on-prem.</span></div>
-    <div><span class="ic">📜</span><span><b>License renewal.</b> Some servers show a renewal countdown. Migrate them before it hits zero or you pay for another year. Gold licenses come due later, so you have time to build experience. Answering a finance email buys the closest one 20 more seconds.</span></div>
+    <div><span class="ic">📜</span><span><b>License renewal.</b> Some servers show a renewal countdown. Migrate them before it hits zero or you pay for another year. The countdown pauses while a server is being moved and resumes if it comes back. With Blue-Green Cutovers the original keeps running, so its license keeps counting down. Gold licenses come due later, so you have time to build experience. Answering a finance email buys the closest one 20 more seconds.</span></div>
     <div><span class="ic">⏳</span><span><b>Compliance timer.</b> Every on-prem server runs a compliance cycle. Hold E to patch it: it costs energy and covers the rest of that cycle (green bar, ✓ COVERED). When the cycle ends, a new uncovered one starts and needs another patch. If an uncovered cycle runs out, the audit fails: $12k and 4 security, and a fresh cycle starts. Migrating stops the clock for good, and a server migrated while covered is half as likely to leak for its first 30 seconds in the cloud.</span></div>
     <div><span class="ic">🔥</span><span><b>Fire.</b> Escalated tickets start fires. Escalations run 75% slower during any outage or active breach. Change freezes pause escalations, fire growth and spread. Hold E to put one out. If it burns all the way, the server goes offline, burning your uptime budget until you hold E to bring it back up. While any server is offline, nothing can be moved.</span></div>
     <div><span class="ic">🥇</span><span><b>Tiers.</b> Gold, silver and bronze servers. Gold takes longest to bring back up (5s) and burns uptime fastest: 3 per second, against 1 for silver and 0.25 for bronze.</span></div>
@@ -2519,7 +2549,7 @@ function howToPlay(){
     <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. Once you have a pipeline, the Mover Bot only uses it and waits for a free lane; carry servers yourself to go faster. The pipeline and the Mover Bot find a free cloud slot on their own; only you have to walk to one. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at half rate.</span></div>
     <div><span class="ic">📅</span><span><b>Lease target.</b> Each client's data center lease has a target day. Going late never ends the game, but on-prem costs rise 10% per overdue day and the client's rating drops.</span></div>
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and a 4-second speed boost (you glow). 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
-    <div><span class="ic">🤖</span><span><b>Patch Bot (upgrade).</b> Patches overdue servers for you, but never fights fires. Level 1 succeeds 50% of the time, level 2 66%, level 3 90%. A failed patch leaves a red AUTOMATION ERROR on the rack: patch it yourself to clear it, or if its compliance timer runs out, the audit fails and the error resets so the bot can try again.</span></div>
+    <div><span class="ic">🤖</span><span><b>Patch Bot (upgrade).</b> Patches overdue servers for you, but never fights fires. Level 1 succeeds 50% of the time, level 2 66%, level 3 90%. A failed patch leaves a red AUTOMATION ERROR on the rack: patch it yourself to clear it, let an AI Agent trusted with that server tier try at its usual patching odds, or if its compliance timer runs out, the audit fails and the error resets so the bot can try again.</span></div>
     <div><span class="ic">🧠</span><span><b>AI Agent (upgrade, after client 3).</b> A fast purple agent that answers email, closes tickets, patches servers and seals leaks. Every attempt costs tokens. At level 1 it only touches bronze servers and only half its work is right; the rest does nothing (while claiming success) or breaks something. Level 2 adds silver servers and level 3 adds gold, with far better odds; level 4 adds guardrails that block harmful actions. When it breaks something it apologizes and stays to try one fix, billed in tokens. If that fails, the problem is yours. It also amplifies the practices you already have. Patching improves with Patch Bot, Runbooks and Observability; tickets with Self-Service Portal and Runbooks; email with your Manager and Status Page; leaks with Policy as Code, Vulnerability Scanner and Cloud Auto-Patching. The shop shows its odds for each job and what's missing. Check its ✓ / ✗ marks.</span></div>
     <div><span class="ic">👔</span><span><b>Your manager (upgrade).</b> Level 1 answers your email, but chats with users and sometimes wanders over to look at a server. Half the time, just looking takes it offline. While they're at a server, hold E there to shoo them away. Each one they break sends them on a slow walk of shame to the inbox, and they stay out of the data center longer every time. Every level speeds up uptime recovery. Level 2 sticks to email. Level 3 also guards your doorway and shoves users out of your way as you cross the hallway.</span></div>
     <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, gets unknown racks 10–75% investigated (you finish the job), then quits. Users ignore them, 15% of their patches take a server down, and some only want snacks. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds. <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
@@ -2770,7 +2800,7 @@ function togglePause(){
 ov.addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
   if(b.dataset.buy)return buy(b.dataset.buy);
-  if(b.dataset.retro){if(!S.retroPick){S.retroPick=b.dataset.retro;S.retro[b.dataset.retro]=(S.retro[b.dataset.retro]||0)+1;sfx("buy");}return review();}
+  if(b.dataset.retro){if(!S.retroPick){S.retroPick=b.dataset.retro;if(b.dataset.retro==="break")S.breakN=S.sprint+1;S.retro[b.dataset.retro]=(S.retro[b.dataset.retro]||0)+1;sfx("buy");}return review();}
   if(b.dataset.diff){DIFF=b.dataset.diff;try{localStorage.setItem("liftshift-diff",DIFF);}catch(e){}return titleScreen();}
   const a=b.dataset.act;
   if(a==="start"){newRun();toast(`${diff().label} career. First client: ${client().name}. Grab an app and carry it right.`);play();}

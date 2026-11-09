@@ -35,6 +35,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 - Any outage or active breach blocks client completion. Developing leaks and warning states do not by themselves block completion.
 - Check failure conditions before awarding completion.
 - Failed cutovers must not award decommissioning savings or remove future license obligations. Successful migration rewards apply once per server.
+- A license counts down only while its server runs on its rack. It pauses while carried or in the pipeline and resumes on return. A blue-green original stays on its rack, so it keeps counting and can still renew.
 - Rollback counts as service restoration. Player, bot, and pipeline migrations must use consistent delivery statistics.
 
 ### Escalations, recovery, and freezes
@@ -54,6 +55,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 
 - The AI Agent amplifies existing practices. With no foundations for a job, it keeps its base level odds; each relevant upgrade improves that job only (patching: Patch Bot, Runbooks, Observability). Foundations shift results toward success; they do not add a penalty or stop tokens being billed.
 - Level 1 only touches bronze servers, level 2 adds silver, level 3 adds gold; tickets and email are open at every level. Baselines are 50%, 80% and 90% right, and never certain.
+- A Patch Bot automation error draws the agent ahead of tickets and email, within its server tiers, using its normal patching odds.
 - When the agent breaks something it stays, apologizes, and makes one billed repair attempt. A failed repair leaves the problem to the player and never causes further damage. Damage already charged stays charged.
 
 ### Uptime recovery
@@ -63,6 +65,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 
 ### Career and balance
 
+- After two rough clients in a row (5–6 sprint points or at most 2 stars), the retrospective offers "Give me a break": one small client, sized and paced like the first, in place of that retrospective's action item.
 - Short successful careers and early retirement fit the job-jumping satire. Do not automatically redesign scoring to punish them.
 - Lower-tier-first migration advice must be feasible with wave ordering. Avoid requiring future-wave work to unlock progress in the current wave.
 - Distinguish client completion from inter-wave consolidation; do not silently change risk ownership between them.
