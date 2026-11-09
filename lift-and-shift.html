@@ -2424,14 +2424,23 @@ function setBar(id,frac,label,level,flash){
   el.dataset.level=level;el.classList.toggle("flash",!!flash&&mode==="play");
 }
 const lvlOf=f=>f>0.6?"ok":f>0.3?"warn":"bad";
+// one quick red flash when a top box takes a hit; the baseline resets each client so a new start never flashes
+let hitRun=null,hitPrev={};
+const LEASE_WARN_DAYS=4;
+function hitFlash(id,v,worse,hard){
+  if(hitRun!==S||hitPrev.sprint!==S.sprint){hitRun=S;hitPrev={sprint:S.sprint};}
+  const p=hitPrev[id];hitPrev[id]=v;
+  if(p===undefined||mode!=="play"||!worse(v,p))return;
+  const el=$(id);if(el&&el.animate)el.animate([{offset:0,borderColor:"#ff5d4d",boxShadow:"0 0 0 3px rgba(255,93,77,.9)",background:"rgba(255,93,77,.38)"}],{duration:RM?(hard?1000:500):(hard?260:750),iterations:!RM&&hard?4:1,easing:RM?"step-end":"ease-out"});
+}
 function healthBars(){
   const mb=migrateBurn(),ob=outageBurn();$("hb-up").querySelector("small").textContent=ob>0&&mb>0?`Outages −${ob.toFixed(1)}/s · Moving −${mb.toFixed(1)}/s`:ob>0?`Outages: −${ob.toFixed(1)}/s`:mb>0?`Migrating: −${mb.toFixed(1)}/s`:uptimeRegen()>0?"Recovering · empty = fired":"Empty = fired";
   const up=S.err/S.errMax;setBar("hb-up",up,`${Math.max(0,Math.ceil(up*100))}%`,lvlOf(up),up<0.2);$("hb-up").dataset.burn=mode!=="play"?"":downCount()>0?"outage":mb>=MIGRATE_WARN?"heavy":mb>0?"migrate":"";
-  const sec=Math.max(0,S.security)/100;setBar("hb-sec",sec,`${Math.round(Math.max(0,S.security))}`,lvlOf(sec),sec<0.3);
+  const sec=Math.max(0,S.security)/100;setBar("hb-sec",sec,`${Math.round(Math.max(0,S.security))}`,lvlOf(sec),sec<0.3);hitFlash("hb-sec",Math.round(Math.max(0,S.security)),(v,p)=>v<p);
   const d=dayNum(),late=overdue(),lf=d/S.cdays;
-  setBar("hb-lease",late?1:lf,late?`${late} day${late>1?"s":""} late`:`Day ${d}/${S.cdays}`,late?"bad":lf>0.75?"warn":"ok",late>0);
-  const st=clientStars();setBar("hb-stars",st/5,stars(st),st>=4?"ok":st===3?"warn":"bad",st<=1);
-  const cap=capNext();setBar("hb-pts",cap/15,`${cap} pts`,cap>=10?"ok":cap>=7?"warn":"bad",cap<=5);
+  setBar("hb-lease",late?1:lf,late?`${late} day${late>1?"s":""} late`:`Day ${d}/${S.cdays}`,late?"bad":lf>0.75?"warn":"ok",late>0);hitFlash("hb-lease",d,(v,p)=>v>p&&v>=S.cdays-LEASE_WARN_DAYS,late>0); // quiet early, a warning in the final days, hard flashes once overdue
+  const st=clientStars();setBar("hb-stars",st/5,stars(st),st>=4?"ok":st===3?"warn":"bad",st<=1);hitFlash("hb-stars",st,(v,p)=>v<p);
+  const cap=capNext();setBar("hb-pts",cap/15,`${cap} pts`,cap>=10?"ok":cap>=7?"warn":"bad",cap<=5);hitFlash("hb-pts",cap,(v,p)=>v<p);
 }
 function hud(){
   // the touch layer only exists during play, so it never blocks a menu; a phone turned upright pauses the game
