@@ -102,6 +102,9 @@ The terminal keeps a play-by-play event log for the current client and a restore
 ### Humble brag
 Every end screen (retired, fired, or resigned) has a share panel with a 1080×1080 report card and a post written for LinkedIn, Facebook, X, or Instagram. Getting fired is reported as "Open to work"; the numbers are real. LinkedIn and X open with the post filled in, Facebook only accepts the link, and Instagram needs the card uploaded by hand (phones get the share sheet). The post is copied to your clipboard each time, and nothing is published until you do it yourself.
 
+### Terminal help
+Type `?` in the terminal to list its commands, a command and `?` for its options (`ping ?`), or part of a word and `?` to match by prefix (`p?`). Help answers as soon as you press `?` and keeps your line.
+
 ### Hidden-server discovery
 Unknown racks require investigation (hold E for 6 seconds; 3 with Asset Inventory). The three handmade clients keep their designed hidden-server tiers; from client 4 on, hidden servers can be any tier. Discovery can expose an already-expired license with renewal liability, or a license close to expiry. Investigate quickly and you can beat the renewal; leave it, or let an outage find it, and the license has probably already renewed. Escalations can attack hidden racks; a resulting outage reveals the server. Migration progress never reveals them automatically.
 

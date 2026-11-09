@@ -3083,12 +3083,71 @@ function finishRestore(){
   <p style="font-size:13.5px;color:var(--muted);margin-top:12px">The future wasn't backed up, so it may go differently this time.</p>
   <div class="row"><button class="btn" data-act="resume">Press any key to resume</button></div>`);
 }
+/* Terminal commands. Everything here only reads or jokes: never change S, and never show what the player can't already see.
+   CLI drives Cisco-style help (?, ping ?, p?). The cheat is deliberately not in it. */
+const cli=(d,sub)=>({d,sub});
+const CLI={
+  cat:cli("Read a file",{"passwords.txt":cli("Please don't"),"resume_final_v7_REAL.docx":cli("Your qualifications")}),
+  date:cli("Show the date"),
+  exit:cli("Close the terminal"),
+  git:cli("Assign responsibility",{blame:cli("Find out whose fault this is")}),
+  help:cli("How to get help"),
+  journalctl:cli("Show this client's event log"),
+  kubectl:cli("Container orchestration",{get:cli("List resources",{pods:cli("List pods")})}),
+  ls:cli("List files"),
+  man:cli("Read the manual",{restore:cli("Recovery point and recovery time objectives")}),
+  ping:cli("Check whether a host responds",{linda:cli("Linda"),"<host>":cli("Any other host")}),
+  pwd:cli("Show where you are"),
+  restore:cli("Go back to a restore point",{"<mm:ss>":cli("A 💾 time from journalctl")}),
+  rm:cli("Delete files",{"-rf":cli("Without asking",{"/":cli("All of it")})}),
+  sudo:cli("Run as administrator",{"<anything>":cli("Go on, then")}),
+  terraform:cli("Infrastructure as code",{plan:cli("Preview the changes")}),
+  uptime:cli("Show uptime"),
+  whoami:cli("Show who you are"),
+};
+function cliHelp(cmd){
+  const toks=cmd.slice(0,-1).split(" "),pre=toks.pop();let node=CLI;
+  for(const t of toks){
+    if(!t)continue;
+    const ks=Object.keys(node),k=ks.find(x=>x.toLowerCase()===t)||ks.find(x=>x[0]==="<");
+    if(!k){devLog("% Unrecognized command");return;}
+    if(k[0]==="<"){devLog("  <cr>");return;} // a free-form argument takes anything after it
+    node=node[k].sub||{};
+  }
+  const ks=Object.keys(node);
+  if(!ks.length){devLog(pre?"% Unrecognized command":"  <cr>");return;}
+  let hits=ks.filter(k=>k[0]!=="<"&&k.toLowerCase().startsWith(pre));
+  if(!pre)hits=ks;else if(!hits.length)hits=ks.filter(k=>k[0]==="<");
+  if(!hits.length){devLog("% Unrecognized command");return;}
+  const w=Math.max(...hits.map(k=>k.length))+2;
+  devLog(hits.map(k=>`  ${k.padEnd(w)}${node[k].d}`).join("\n"));
+}
+const RESUME=["Cloud experience: has seen one, from a plane.","Certifications: several, pending. Led a successful migration of a calendar invite.","Architected enterprise-grade synergy across a very small number of servers.","Personally invented the availability zone. Trusted by clients who have stopped returning calls.","Thought leader. Keynote speaker at a conference held in my kitchen.","The cloud was my idea. References available upon subpoena."];
+function cliRun(cmd){
+  const[h,...a]=cmd.split(" "),rest=a.join(" ");let out=null;
+  if(h==="sudo")out="This incident will be reported to Linda.";
+  else if(h==="rm")out="Blocked by change control. Submit a CAB request in 6-8 weeks.";
+  else if(h==="cat"){
+    if(rest==="passwords.txt")out="hunter2, Summer2019!, and Linda's cat's name.";
+    else if(rest==="resume_final_v7_real.docx")out=`${careerTitle()}\n${RESUME[Math.min(S.career.length,RESUME.length-1)]}`;
+    else out=`cat: ${rest||"what"}: No such file. Have you tried opening a ticket?`;
+  }
+  else if(h==="git")out=rest==="blame"?(S.career.length>=3?"a3f9c1d (You, just now) # TODO: fix before go-live":"a3f9c1d (Previous Consultant, 3 years ago) # TODO: fix before go-live"):"git: Only blame is supported here.";
+  else if(h==="terraform")out=rest==="plan"?"Plan: 0 to add, 0 to change, 1 career to destroy.":"terraform: Only plan is approved. Apply needs a CAB request.";
+  else if(h==="kubectl")out=rest==="get pods"?"No pods. You sell donuts.":"kubectl: The cluster is a spreadsheet.";
+  else if(h==="ping")out=rest==="linda"?"Request timed out. Linda is at lunch.":rest?"Request timed out.":"usage: ping <host>";
+  else if(h==="man")out=rest==="restore"?`RESTORE(1)\nRPO, recovery point objective: how much work you can afford to lose. Here it's about ${BACKUP_EVERY} seconds, the gap between 💾 restore points.\nRTO, recovery time objective: how long getting back takes. Here it's the progress bar.\nA backup you've never restored is just a rumor.`:rest?`No manual entry for ${rest}. Documentation is on the roadmap.`:"What manual page do you want?";
+  if(out===null)return false;
+  devLog(out);return true;
+}
+const cliNorm=v=>v.trimStart().toLowerCase().replace(/\s+/g," ");
 function devRun(raw){
   const cmd=raw.trim().toLowerCase().replace(/\s+/g," ");if(!cmd)return;
   if(devHash(cmd)===1903980526){DEV.unlocked=true;devLog("Access granted. Please don't tell Compliance.");devMenu();return;}
-  if(backupCmd(cmd))return;
+  if(cmd.endsWith("?")){cliHelp(cliNorm(raw.trim()));return;}
+  if(backupCmd(cmd)||cliRun(cmd))return;
   if(cmd==="exit"||cmd==="logout"){devClose();return;}
-  const R={help:"journalctl: show this client's event log.\nrestore mm:ss: go back to a restore point.\nEverything else: documentation is on the roadmap.",ls:"resume_final_v7_REAL.docx  passwords.txt  do_not_delete/",whoami:S?careerTitle().toLowerCase():"nobody",pwd:"/home/definitely_qualified",uptime:"Define uptime.",date:"Q4, always."};
+  const R={help:"Type ? to list commands, or a command and ? for its options, like: ping ?",ls:"resume_final_v7_REAL.docx  passwords.txt  do_not_delete/",whoami:S?careerTitle().toLowerCase():"nobody",pwd:"/home/definitely_qualified",uptime:"Define uptime.",date:"Q4, always."};
   devLog(R[cmd]||`${cmd.split(" ")[0]}: command not found. Have you tried opening a ticket?`);
 }
 function devShow(){
@@ -3105,6 +3164,10 @@ $("devbtn").addEventListener("click",()=>{if($("devterm").hidden)devShow();else 
 $("devinput").addEventListener("keydown",e=>{e.stopPropagation();
   if(e.key==="Enter"){const v=e.target.value;e.target.value="";devLog(`$ ${v}`);devRun(v);}
   else if(e.key==="Escape")devClose();});
+$("devinput").addEventListener("input",e=>{ // ? answers at once and keeps the line, like a Cisco console
+  const v=e.target.value;if(!v.endsWith("?"))return;
+  e.target.value=v.slice(0,-1);devLog(`$ ${v}`);cliHelp(cliNorm(v));
+});
 $("devterm").addEventListener("click",e=>{
   if(e.target===$("devterm"))return devClose();
   const b=e.target.closest("button");if(!b)return;

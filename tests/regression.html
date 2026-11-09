@@ -675,6 +675,42 @@ test("restore points don't cross clients", () => {
   check(G.bkPoints().length === 1 && G.bkPoints()[0] !== old, "old client's restore points survived");
 });
 
+/* ---------- terminal help ---------- */
+const term = cmd => { const l = W.document.getElementById("devlog"); l.textContent = ""; G.devRun(cmd); return l.textContent; };
+test("? lists commands without exposing the cheat", () => {
+  fresh(); const out = term("?");
+  for (const c of ["ping", "sudo", "journalctl", "restore", "terraform"]) check(out.includes(c), `${c} missing from ?`);
+  check(!G.DEV.unlocked && !out.includes("Access granted"), "help touched the cheat");
+});
+test("? works after a command, in the middle of one, and by prefix", () => {
+  fresh();
+  check(term("ping ?").includes("linda"), "ping ? should list linda");
+  check(term("kubectl get ?").includes("pods"), "nested help failed");
+  const p = term("p?"); check(p.includes("ping") && p.includes("pwd") && !p.includes("sudo"), "prefix match failed");
+  check(term("git blame ?").includes("<cr>"), "a finished command should show <cr>");
+  check(term("sudo make me a sandwich ?").includes("<cr>"), "free-form argument should accept anything");
+  check(term("nonsense ?").includes("% Unrecognized"), "unknown command should be rejected");
+});
+test("satire commands answer and change nothing", () => {
+  const S = fresh(); const before = {err: S.err, sec: S.security, racks: S.racks.filter(Boolean).length, budget: S.budget, left: G.BK.left};
+  check(term("sudo rm everything").includes("reported to Linda"), "sudo");
+  check(term("rm -rf /").includes("CAB"), "rm");
+  check(term("cat passwords.txt").includes("hunter2"), "passwords");
+  check(term("cat resume_final_v7_REAL.docx").length > 10, "resume");
+  check(term("terraform plan").includes("1 career to destroy"), "terraform");
+  check(term("kubectl get pods").includes("donuts"), "kubectl");
+  check(term("ping linda").includes("at lunch"), "ping");
+  check(term("man restore").includes("RPO") && term("man restore").includes("RTO"), "man");
+  check(S.err === before.err && S.security === before.sec && S.budget === before.budget && G.BK.left === before.left && S.racks.filter(Boolean).length === before.racks, "a joke changed the game");
+  check(G.S === S, "state was replaced");
+});
+test("git blame turns on you after three clients", () => {
+  const S = fresh();
+  check(term("git blame").includes("Previous Consultant"), "new hires blame the last person");
+  S.career = [{}, {}, {}];
+  check(term("git blame").includes("You"), "three clients in, it's you");
+});
+
 /* ---------- sharing the end report ---------- */
 const FACTS = {retired: {head: "Retired", sub: "x"}, fired: {head: "Open to work", sub: "x", who: "the SLA"}, resigned: {head: "Pursuing other opportunities", sub: "x"}};
 test("every outcome has a post for every network, with the real numbers", () => {
