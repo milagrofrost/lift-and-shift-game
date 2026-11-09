@@ -592,6 +592,8 @@ const SFX={
   celebrate:()=>[523,659,784,1047,784,1047,1319].forEach((f,i)=>tone(f,0.26,{type:"triangle",vol:0.2,delay:i*0.11})),
   click:()=>tone(660,0.04,{type:"triangle",vol:0.1}),
   buy:()=>[660,990].forEach((f,i)=>tone(f,0.09,{vol:0.15,delay:i*0.06})),
+  chaching:()=>{tone(392,0.05,{type:"square",vol:0.09});tone(523,0.05,{type:"square",vol:0.09,delay:0.07});tone(1568,0.1,{type:"square",vol:0.09,delay:0.14});tone(2093,0.32,{type:"square",vol:0.08,delay:0.2});tone(3136,0.2,{vol:0.07,delay:0.28});},
+  licenseRenewed:()=>{tone(1568,0.05,{type:"square",vol:0.09});tone(1109,0.05,{type:"square",vol:0.09,delay:0.07});tone(392,0.1,{type:"square",vol:0.1,delay:0.14});tone(196,0.36,{type:"square",vol:0.1,delay:0.2});tone(98,0.26,{type:"triangle",vol:0.2,delay:0.28});},
   fired:()=>[392,330,262,196].forEach((f,i)=>tone(f,0.32,{type:"triangle",vol:0.2,delay:i*0.22})),
   siren:()=>{tone(620,0.35,{type:"sawtooth",vol:0.06,slide:260});tone(880,0.35,{type:"sawtooth",vol:0.06,slide:-260,delay:0.36});},
 };
@@ -1675,7 +1677,7 @@ function cutoverOK(a){logEv(`☁️ ${a.name} is live in the cloud.`);
   const original=a.orig||a;
   if(!original.savingsCredited){
     spend("savings",-4);original.savingsCredited=true;
-    if(original.lic>0){const saved=licCost(original);S.avoided=(S.avoided||0)+saved;original.lic=0;toast(`📜 Moved ${original.name} before its license renewed. Saved $${saved}k.`);}
+    if(original.lic>0){const saved=licCost(original);S.avoided=(S.avoided||0)+saved;original.lic=0;sfx("chaching");toast(`📜 Moved ${original.name} before its license renewed. Saved $${saved}k.`);}
   }
 S.movedT[a.tier]=(S.movedT[a.tier]||0)+1;S.ss.mig++;S.ss.att++;
   const o=a.orig||a;if(o.touchT!=null){S.ss.leadSum+=S.time-o.touchT;S.ss.leadN++;o.touchT=null;}}
@@ -1848,7 +1850,7 @@ function doFix(dt){
   else if(f.kind==="leak"){sfx("sealed");f.a.age=0;f.a.leakOn=false;f.a.leak=0;f.a.grace=4;fl(f.pos,"Sealed by hand",C.ok);}
   else if(f.kind==="email"){sfx("sent");S.em=S.em.filter(x=>x!==f.m);if(f.m.type==="vendor")S.run.vendor++;
     // answering a finance email negotiates a 20s extension on the license closest to renewing
-    if(f.m.type==="finance"){const l=onPremApps().filter(a=>a.lic>0).sort((a,b)=>a.lic-b.lic)[0];if(l){l.lic+=20;toast(`🤝 Finance negotiated an extension: ${l.name}'s license renewal pushed back 20 seconds.`);}}fl(f.pos,f.m.type==="vendor"?"Replied to a vendor. Why?":"Replied",f.m.type==="vendor"?C.muted:C.ok);}
+    if(f.m.type==="finance"){const l=onPremApps().filter(a=>a.lic>0).sort((a,b)=>a.lic-b.lic)[0];if(l){l.lic+=20;sfx("chaching");toast(`🤝 Finance negotiated an extension: ${l.name}'s license renewal pushed back 20 seconds.`);}}fl(f.pos,f.m.type==="vendor"?"Replied to a vendor. Why?":"Replied",f.m.type==="vendor"?C.muted:C.ok);}
   else{sfx("closed");S.tk=S.tk.filter(x=>x!==f.t);fl(f.pos,"Ticket closed",C.ok);}
 }
 
@@ -1860,7 +1862,7 @@ function tickOnPrem(dt){
     if(a.hidden||a.down)continue;
     a.timer-=dt*rate;
     // a license only runs down while the server is running on its rack: in transit it is paused, but a blue-green original stays live and keeps counting
-    if(a.lic>0&&S.racks[a.slot]===a){a.lic-=dt;if(a.lic<=0){a.lic=0;const c=licCost(a);spend("license",c);fl(posOf(a),`📜 −$${c}k`,C.danger);toast(`📜 ${a.name}'s license auto-renewed before you moved it. −$${c}k.`);}}
+    if(a.lic>0&&S.racks[a.slot]===a){a.lic-=dt;if(a.lic<=0){a.lic=0;const c=licCost(a);spend("license",c);sfx("licenseRenewed");fl(posOf(a),`📜 −$${c}k`,C.danger);toast(`📜 ${a.name}'s license auto-renewed before you moved it. −$${c}k.`);}}
     if(a.timer<=0&&a.covered){a.covered=false;a.timer=a.maxT;}
     else if(a.timer<=0){if(a.botErr){a.botErr=false;fl(posOf(a),"🤖 automation error reset",C.muted);} // after a failed audit the bot gets another try
       a.timer=a.maxT;spend("audits",12);sfx("audit");secHit("audit",4);S.ss.audits++;unplanned(1,"audit");
@@ -1889,7 +1891,7 @@ function revealApp(a,investigated){
   a.hidden=false;a.disc=0;a.maxT=40;a.timer=investigated?rand(30,40):rand(14,22);
   const remaining=a.hiddenLicenseDue-S.time;
   if(remaining<=0){
-    a.lic=0;a.licenseExpired=true;const cost=licCost(a);spend("license",cost);
+    a.lic=0;a.licenseExpired=true;const cost=licCost(a);spend("license",cost);sfx("licenseRenewed");
     toast(`📜 Discovered ${a.name} (${a.tier}): its license already expired. Renewal liability: $${cost}k.`);
   }else{
     a.lic=remaining;
