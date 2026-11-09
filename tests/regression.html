@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("outageBurn,migrateBurn,migrateMult,rollOffers,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,notMyProblem").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -205,6 +205,29 @@ test("two chatbots never fight over one user, and the conversation finishes", ()
 test("respawning chatbots releases anyone they were talking to", () => {
   const S = fresh(); S.upgrades.chatbot = 1; const u = {x: 480, y: 300, rank: 0, chat: {}}; S.users = [u];
   G.spawnChatbots(); check(!u.chat, "user left frozen by a bot that no longer exists");
+});
+test("a user who rejects the chatbot runs around frantic, yells for a human, then calms down", () => {
+  const S = fresh(); S.upgrades.chatbot = 1; const u = {x: 480, y: 300, rank: 1, vx: 0, vy: 0, turn: 5, cd: 0, line: ""}; S.users = [u]; G.spawnChatbots();
+  S.p.x = 100; S.p.y = 100; S.alert = false;
+  S.cbots[0].x = 480; S.cbots[0].y = 300;
+  fixedRandom(0.5); G.tickChatbots(0.05); check(u.chat, "no conversation started");
+  fixedRandom(0.01); u.chat.chatT = 99; G.tickChatbots(0.05);
+  check(!u.gone && !u.chat && u.frantic > S.t && G.HUMAN_LINES.includes(u.shout), "rejection did not send the user frantic");
+  check(G.HUMAN_LINES.includes("Representative! Representative!"), "no Representative line");
+  G.tickUsers(0.05); check(u.panic && Math.abs(u.vx) > 18, `not running around: panic ${u.panic} vx ${u.vx}`);
+  S.t = u.frantic + 0.1; u.turn = 0; G.tickUsers(0.05); check(!u.panic, "still frantic after the window");
+});
+
+/* ---------- hallway users ---------- */
+test("an intern blurts a question in passing instead of holding you; an analyst still holds you", () => {
+  check(G.RANKS[0].name === "Intern" && G.RANKS[0].hold === 0 && G.RANKS[1].hold > 0, "rank table changed");
+  for (const rank of [0, 1]) {
+    const S = fresh(); S.alert = false; S.pizza = null; S.p.userImm = 0; S.p.ghost = 0; S.p.heldBy = null; S.p.stun = 0;
+    const u = {x: S.p.x, y: S.p.y, rank, vx: 0, vy: 0, turn: 5, cd: 0, line: ""}; S.users = [u];
+    const held = S.run.held; fixedRandom(0.5); G.tickUsers(0.01);
+    if (rank === 0) check(!S.p.heldBy && S.p.stun === 0 && S.run.held === held && u.shoutT > 0 && u.cd > 0, "the intern stopped you");
+    else check(S.p.heldBy === u && S.p.stun > 0, "the analyst didn't stop you");
+  }
 });
 
 /* ---------- temp workers ---------- */
