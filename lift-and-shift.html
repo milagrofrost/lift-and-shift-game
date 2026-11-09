@@ -87,8 +87,15 @@ body{font-family:var(--f-body)}
 .rt.medium{background:rgba(255,181,71,.18);color:var(--amber)} .rt.low{background:rgba(255,93,77,.18);color:var(--danger)}
 .retro-opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
 .retro-opt{display:flex;gap:10px;text-align:left;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:10px;color:var(--ink);cursor:pointer;font:inherit}
-.retro-opt:hover{border-color:var(--ai)} .retro-opt:focus-visible{outline:2px solid var(--leak);outline-offset:2px}
-.retro-opt .ri{font-size:22px;line-height:1}
+.retro-opt:hover{border-color:var(--amber);background:rgba(255,181,71,.08)} .retro-opt:focus-visible{outline:2px solid var(--leak);outline-offset:2px}
+.retro-opt .rl{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--amber);color:#14212b;font-weight:800;font-size:14px}
+.retro-opt .rc{display:inline-block;margin-top:7px;padding:3px 10px;border-radius:6px;background:rgba(255,181,71,.16);border:1px solid rgba(255,181,71,.55);color:var(--amber);font-size:12px;font-weight:700}
+.retro-opt:hover .rc{background:var(--amber);color:#14212b}
+.retro-prompt{font-size:14.5px;font-weight:700;color:var(--amber);margin:8px 0}
+.retro-opt.nudge{grid-column:1/-1;border:2px solid var(--amber);background:rgba(255,181,71,.1);animation:nudge 1.1s ease-in-out infinite alternate}
+.retro-opt .rn{display:block;font-size:12.5px;font-weight:700;color:var(--amber);margin-bottom:3px}
+@keyframes nudge{from{box-shadow:0 0 0 0 rgba(255,181,71,0)}to{box-shadow:0 0 14px 2px rgba(255,181,71,.55)}}
+@media (prefers-reduced-motion:reduce){.retro-opt.nudge{animation:none;box-shadow:0 0 0 1px var(--amber)}}
 .retro-opt b{display:block;font-size:13.5px} .retro-opt small{display:block;font-size:11.5px;color:var(--danger);margin-top:2px} .retro-opt em{display:block;font-style:normal;font-size:12px;color:var(--muted);margin-top:3px}
 .retro .picked{font-size:13.5px;color:var(--ok)}
 .sndbtn{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:2px 9px;font:inherit;font-size:12.5px;cursor:pointer;margin-left:auto}
@@ -697,7 +704,7 @@ const RETRO={
   inbox:{icon:"📥",name:"Inbox rules and filters",fix:"The inbox holds one more email before a VP comes looking."},
   estimates:{icon:"📅",name:"Better estimates",fix:"Future lease targets are 2 days longer."},
   lunch:{icon:"🥪",name:"Team lunch",fix:"Start every client with +25 energy."},
-  break:{icon:"🏖️",name:"Give me a break",fix:"Just this once: your next client is a small job, sized and paced like your first. A clean finish can win back your sprint points."},
+  break:{icon:"🏖️",name:"Give me a break",fix:"Just this once: your next client is a small job, sized and paced like your first. A clean finish can win back your sprint points, and the next shop is guaranteed to stock every big-ticket tool you don't own yet."},
 };
 // offered after two rough clients in a row: 5 or 6 sprint points, or 2 stars or fewer
 const needsBreak=()=>{const l=S.career.slice(-2);return l.length===2&&l.every(c=>c.cap<=6||c.stars<=2);};
@@ -721,7 +728,8 @@ function retroBlock(){
   const opts=S.retroOpts||[];
   if(S.retroPick){const r=RETRO[S.retroPick];return`<div class="retro"><h3>🔁 Retrospective</h3><p class="picked">${r.icon} <b>Action item adopted: ${r.name}.</b> ${r.fix}</p></div>`;}
   return`<div class="retro"><h3>🔁 Retrospective</h3><p style="font-size:13px;color:var(--muted)">What hurt this time, and one fix the team commits to. Free, and action items last the rest of your career.</p>
-  <div class="retro-opts">${opts.map(o=>{const r=RETRO[o.id];return`<button class="retro-opt" data-retro="${o.id}"><span class="ri">${r.icon}</span><span><b>${r.name}</b><small>Because of: ${o.why}</small><em>${r.fix}</em></span></button>`;}).join("")}</div></div>`;
+  <p class="retro-prompt">👇 Pick one:</p>
+  <div class="retro-opts">${opts.map((o,i)=>{const r=RETRO[o.id],L="ABCD"[i],nudge=o.id==="break";return`<button class="retro-opt${nudge?" nudge":""}" data-retro="${o.id}"><span class="rl">${L}</span><span>${nudge?`<span class="rn">👀 Go on. Nobody's judging.</span>`:""}<b>${r.icon} ${r.name}</b><small>Because of: ${o.why}</small><em>${r.fix}</em><span class="rc">Choose ${L}</span></span></button>`;}).join("")}</div></div>`;
 }
 /* ---------- DORA metrics: the four numbers real teams use to measure delivery ---------- */
 function doraBlock(){
@@ -2559,11 +2567,13 @@ function howToPlay(){
   <button class="btn" data-act="menu">Back to menu</button>`);
 }
 // 6 offers per planning, at least 2 of them security. Maxed-out items are left out.
+// the shop after a "Give me a break" client stocks every big-ticket tool you don't own yet, plus Patch Bot
+const breakMust=()=>S.breakN===S.sprint?UPGRADES.filter(u=>(u.cost>=5||u.id==="patchbot")&&canBuy(u)&&!S.upgrades[u.id]):[];
 function canBuy(u){return(u.max?lvl(u.id)<u.max:!S.upgrades[u.id])&&(!u.req||u.req());}
 function rollOffers(){
-  const avail=UPGRADES.filter(canBuy),sec=shuffle(avail.filter(u=>u.sec)).slice(0,2);
-  const rest=shuffle(avail.filter(u=>!sec.includes(u))).slice(0,6-sec.length);
-  return shuffle([...sec,...rest]).map(u=>u.id);
+  const must=breakMust(),avail=UPGRADES.filter(canBuy),sec=shuffle(avail.filter(u=>u.sec&&!must.includes(u))).slice(0,Math.max(0,2-must.filter(u=>u.sec).length));
+  const rest=shuffle(avail.filter(u=>!sec.includes(u)&&!must.includes(u))).slice(0,Math.max(0,6-sec.length-must.length));
+  return shuffle([...must,...sec,...rest]).map(u=>u.id);
 }
 function statBlock(){
   const ss=S.ss,db=Math.round(S.budget-ss.budget0),dsec=Math.round(S.security-ss.sec0),last=S.career[S.career.length-1];
@@ -2607,6 +2617,7 @@ function review(){
   <p style="font-size:13.5px">Before the next client, the team gets one sprint to build tools. Everything you build here comes with you to every future client.</p>
   ${capacityLine()}
   <p style="font-size:13.5px">You have <b>${S.points} of ${S.cap} points</b> left to commit. Points you don't spend are gone; velocity doesn't bank.</p>
+  ${breakMust().length?`<p style="font-size:13.5px">🏖️ <b>Back from your easy job.</b> The tools you've been missing are on the shelf this sprint.</p>`:""}
   <div class="shop">${cards||'<p style="color:var(--muted)">Nothing left to buy.</p>'}</div>
   <div class="row reroll"><button class="btn ghost sm" data-act="reroll" ${S.points<rerollCost()?"disabled":""}>💡 Brainstorm new ideas · ${rerollCost()} pt${rerollCost()>1?"s":""}</button>
     <span>${S.rerollMsg||"Don't like these options? Hold a meeting. Each one this sprint costs a point more than the last."}</span></div>

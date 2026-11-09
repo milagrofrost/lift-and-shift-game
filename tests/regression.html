@@ -29,7 +29,7 @@
    Results: the page title becomes "PASS n/n" or "FAIL k/n", and window.__RESULTS holds the details. */
 const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
-const NAMES = ("BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
+const NAMES = ("rollOffers,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
   "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
@@ -508,6 +508,22 @@ test("a break makes one small, first-client-paced job, then the career resumes",
   const on = S.racks.filter(Boolean); check(on.length === k + h, `${on.length} racks`);
   G.startSprint(11);
   check(G.haz() > 1.5, `haz after break ${G.haz()}`);
+});
+test("the shop after a break client always stocks the key tools you don't own", () => {
+  const S = fresh(); S.upgrades = {}; S.sprint = 5; S.breakN = 5;
+  for (let i = 0; i < 40; i++) {
+    const o = G.rollOffers();
+    check(o.length >= 6 && new Set(o).size === o.length, `offers ${o}`);
+    for (const id of ["pipeline", "patchbot", "terraform", "moverbot", "bluegreen", "finops", "manager", "autopatch"]) check(o.includes(id), `${id} missing: ${o}`);
+    check(!o.includes("agent"), "offered a locked AI Agent");
+    check(o.filter(id => G.UPGRADES.find(u => u.id === id).sec).length >= 2, "lost its security offers");
+  }
+  S.career = [{}, {}, {}]; check(G.rollOffers().includes("agent"), "AI Agent missing once unlocked"); S.career = [];
+  S.upgrades = {pipeline: 1, terraform: true};
+  check(!G.rollOffers().includes("terraform"), "offered Terraform twice");
+  S.upgrades = {}; S.breakN = 4;
+  let always = true; for (let i = 0; i < 40; i++) always = always && G.rollOffers().includes("terraform");
+  check(!always, "guarantee leaked into a normal shop");
 });
 test("Patch Bot and the CI/CD Pipeline each cost a point less", () => {
   fresh(); const cost = id => G.UPGRADES.find(u => u.id === id).cost;
