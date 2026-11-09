@@ -99,6 +99,9 @@ With Blue-Green Cutovers, you carry (or pipeline) a see-through copy while the o
 ### Restore from backup
 The terminal keeps a play-by-play event log for the current client and a restore point (💾) roughly every 30 seconds. Selecting one plays a "Restoring to mm:ss state" progress bar and returns the game to that moment. You get three restores per career on Easy, two on Normal, one on Hard, and none with the Hardcore checkbox (Hard otherwise unchanged). They also work from the screen where you get fired. Restore points don't cross client boundaries, and the future can play out differently after a restore.
 
+### Humble brag
+Every end screen (retired, fired, or resigned) has a share panel with a 1080×1080 report card and a post written for LinkedIn, Facebook, X, or Instagram. Getting fired is reported as "Open to work"; the numbers are real. LinkedIn and X open with the post filled in, Facebook only accepts the link, and Instagram needs the card uploaded by hand (phones get the share sheet). The post is copied to your clipboard each time, and nothing is published until you do it yourself.
+
 ### Hidden-server discovery
 Unknown racks require investigation (hold E for 6 seconds; 3 with Asset Inventory). The three handmade clients keep their designed hidden-server tiers; from client 4 on, hidden servers can be any tier. Discovery can expose an already-expired license with renewal liability, or a license close to expiry. Investigate quickly and you can beat the renewal; leave it, or let an outage find it, and the license has probably already renewed. Escalations can attack hidden racks; a resulting outage reveals the server. Migration progress never reveals them automatically.
 

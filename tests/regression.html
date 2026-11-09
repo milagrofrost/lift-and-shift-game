@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("outageBurn,migrateBurn,migrateMult,rollOffers,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -673,6 +673,44 @@ test("dev tools used after a backup still mark the run", () => {
 test("restore points don't cross clients", () => {
   fresh(); const old = G.bkPoints()[0]; G.startSprint(2);
   check(G.bkPoints().length === 1 && G.bkPoints()[0] !== old, "old client's restore points survived");
+});
+
+/* ---------- sharing the end report ---------- */
+const FACTS = {retired: {head: "Retired", sub: "x"}, fired: {head: "Open to work", sub: "x", who: "the SLA"}, resigned: {head: "Pursuing other opportunities", sub: "x"}};
+test("every outcome has a post for every network, with the real numbers", () => {
+  const S = fresh(); S.budget = -412; S.ss.mig = 7;
+  for (const outcome of Object.keys(FACTS)) for (const net of Object.keys(G.SHARE_NETS)) for (let v = 0; v < 6; v++) {
+    const f = G.shareFacts(outcome, FACTS[outcome]), t = G.sharePostText(net, f, v);
+    check(t.includes(G.SHARE_URL), `${outcome}/${net} has no link`);
+    check(t.includes("−$412k"), `${outcome}/${net} lost the spend`);
+    check(t.includes("7 apps migrated"), `${outcome}/${net} lost the migrations`);
+    check(!/undefined|NaN/.test(t), `${outcome}/${net} has a hole: ${t}`);
+  }
+});
+test("X posts fit the limit even for a long client name", () => {
+  const S = fresh(); const f = G.shareFacts("fired", FACTS.fired); f.client = "A".repeat(200);
+  for (let v = 0; v < 6; v++) { const t = G.sharePostText("x", f, v); check(t.length - G.SHARE_URL.length + 23 <= 280, `post ${v} is ${t.length} long`); check(t.includes(G.SHARE_URL), "link was cut"); }
+});
+test("share links carry the post where the network allows it", () => {
+  const t = "a & b #c";
+  check(G.shareLink("x", t).includes(encodeURIComponent(t)), "X lost the text");
+  check(G.shareLink("linkedin", t).includes(encodeURIComponent(t)), "LinkedIn lost the text");
+  check(G.shareLink("facebook", t).includes(encodeURIComponent(G.SHARE_URL)), "Facebook lost the link");
+});
+test("all three end screens offer sharing, and it leaves the run alone", () => {
+  const S = fresh(), doc = W.document, opened = [], realOpen = W.open; W.open = u => { opened.push(u); return null; };
+  try {
+    for (const end of [() => G.showEnd("uptime"), () => G.showEnd("security"), () => G.showEnd(null), () => G.resign()]) {
+      end();
+      for (const k of Object.keys(G.SHARE_NETS)) check(doc.querySelector(`[data-share="${k}"]`), `no ${k} button`);
+      check(doc.activeElement && !doc.activeElement.dataset.share, "a share button took the opening focus");
+      const before = [S.budget, S.security, S.err, S.points, S.career.length, S.sprint, G.BK.left].join();
+      G.shareAct("x"); G.shareAct("facebook"); G.shareAct("linkedin"); G.shareAct("spin"); G.shareAct("copy");
+      check(before === [S.budget, S.security, S.err, S.points, S.career.length, S.sprint, G.BK.left].join(), "sharing changed the run");
+      check(doc.getElementById("share-post").textContent.length > 0, "empty post preview");
+    }
+    check(opened.length === 12 && opened.some(u => u.includes("x.com/intent")) && opened.some(u => u.includes("facebook.com/sharer")), `opened ${opened.length}`);
+  } finally { W.open = realOpen; }
 });
 
 /* ---------- runner ---------- */

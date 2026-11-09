@@ -71,6 +71,11 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 - Restore works from play, pause, the between-client review and the fired screen; not after retiring or resigning, and not across clients. "Rollback" remains the failed-cutover mechanic.
 - A restore shows a "Restoring to mm:ss state" progress bar, then waits for a key press. Randomness is not rewound.
 
+### Sharing the end report
+
+- Every end screen offers LinkedIn, Facebook, X and Instagram. Posts spin the outcome for laughs, but the stats on them are real.
+- Sharing only reads the run. It must never change `S`, and it never posts for the player.
+
 ### Career and balance
 
 - After two rough clients in a row (5–6 sprint points or at most 2 stars), the retrospective offers "Give me a break": one small client, sized and paced like the first, in place of that retrospective's action item. The shop after that client always stocks Patch Bot and every upgrade with a base cost of 5 or more that is not owned yet, including the AI Agent once unlocked.
