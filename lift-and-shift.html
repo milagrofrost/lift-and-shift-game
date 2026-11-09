@@ -1663,6 +1663,7 @@ const liveCopy=a=>!!a&&S.racks[a.slot]===a;
 const MIGRATE_BURN=0.25,MIGRATE_WARN=1.5;
 const migrateMult=()=>MIGRATE_BURN*(1-0.2*lvl("spin"));
 const shutDownMoving=()=>[...new Set([S.carry,...S.bots.map(b=>b.carry),...(S.pipe||[]).map(j=>j.a)].filter(a=>a&&!liveCopy(a)))];
+const outageBurn=()=>[...S.racks,...S.cloud].reduce((n,a)=>n+(a&&a.down?TIER[a.tier].sla:0),0);
 const migrateBurn=()=>shutDownMoving().reduce((n,a)=>n+TIER[a.tier].sla*migrateMult(),0);
 // you have to stand on the spot you're putting a server into
 const DROP_REACH=38;
@@ -2424,7 +2425,7 @@ function setBar(id,frac,label,level,flash){
 }
 const lvlOf=f=>f>0.6?"ok":f>0.3?"warn":"bad";
 function healthBars(){
-  const mb=migrateBurn();$("hb-up").querySelector("small").textContent=mb>0?`Migrating: −${mb.toFixed(1)}/s`:uptimeRegen()>0?"Recovering · empty = fired":"Empty = fired";
+  const mb=migrateBurn(),ob=outageBurn();$("hb-up").querySelector("small").textContent=ob>0&&mb>0?`Outages −${ob.toFixed(1)}/s · Moving −${mb.toFixed(1)}/s`:ob>0?`Outages: −${ob.toFixed(1)}/s`:mb>0?`Migrating: −${mb.toFixed(1)}/s`:uptimeRegen()>0?"Recovering · empty = fired":"Empty = fired";
   const up=S.err/S.errMax;setBar("hb-up",up,`${Math.max(0,Math.ceil(up*100))}%`,lvlOf(up),up<0.2);$("hb-up").dataset.burn=mode!=="play"?"":downCount()>0?"outage":mb>=MIGRATE_WARN?"heavy":mb>0?"migrate":"";
   const sec=Math.max(0,S.security)/100;setBar("hb-sec",sec,`${Math.round(Math.max(0,S.security))}`,lvlOf(sec),sec<0.3);
   const d=dayNum(),late=overdue(),lf=d/S.cdays;
