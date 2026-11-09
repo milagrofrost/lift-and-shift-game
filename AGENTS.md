@@ -13,7 +13,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 ## Repository and branch handling
 
 - Inspect Git status, branch, and applicable instructions before editing. Preserve unrelated user changes.
-- `lift-and-shift.html` contains the game. No build system is required.
+- `lift-and-shift.html` contains the game. No build system is required. `functions/` holds dependency-free Cloudflare Pages Functions for shared report links.
 - Gameplay revisions are merged into `main`. Cloudflare Pages deploys `main` to https://las.milagrofrost.com. Use feature branches for new work; pushing main publishes the site.
 - The design direction below describes accepted behavior, including feature-branch work. Inspect the current branch before claiming it is implemented.
 - Do not merge branches, rewrite history, publish releases, or change repository visibility without authorization.
@@ -75,6 +75,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 
 - Every end screen offers LinkedIn, Facebook, X and Instagram. Posts spin the outcome for laughs, but the stats on them are real.
 - Sharing only reads the run. It must never change `S`, and it never posts for the player.
+- Report links (`/r/<code>`) carry only numbers and fixed choices, never free text, so nobody can put their own words on an image served from this domain. `functions/_lib/report.js` mirrors the game's titles and verdicts.
 
 ### Terminal commands
 

@@ -31,11 +31,11 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("outageBurn,migrateBurn,migrateMult,rollOffers,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
-let W, G;
+let W, G, REPORT;
 const tests = [];
 const test = (name, fn) => tests.push({name, fn});
 const check = (cond, msg) => { if (!cond) throw new Error(msg || "check failed"); };
@@ -712,12 +712,12 @@ test("git blame turns on you after three clients", () => {
 });
 
 /* ---------- sharing the end report ---------- */
-const FACTS = {retired: {head: "Retired", sub: "x"}, fired: {head: "Open to work", sub: "x", who: "the SLA"}, resigned: {head: "Pursuing other opportunities", sub: "x"}};
+const FACTS = {retired: {o: "r", head: "Retired", sub: "x"}, fired: {o: "u", head: "Open to work", sub: "x", who: "the SLA"}, resigned: {o: "q", x: 2, head: "Pursuing other opportunities", sub: "x"}};
 test("every outcome has a post for every network, with the real numbers", () => {
   const S = fresh(); S.budget = -412; S.ss.mig = 7;
   for (const outcome of Object.keys(FACTS)) for (const net of Object.keys(G.SHARE_NETS)) for (let v = 0; v < 6; v++) {
     const f = G.shareFacts(outcome, FACTS[outcome]), t = G.sharePostText(net, f, v);
-    check(t.includes(G.SHARE_URL), `${outcome}/${net} has no link`);
+    check(t.includes(f.url) && f.url.startsWith(`${G.SHARE_URL}/r/`), `${outcome}/${net} has no personal link`);
     check(t.includes("−$412k"), `${outcome}/${net} lost the spend`);
     check(t.includes("7 apps migrated"), `${outcome}/${net} lost the migrations`);
     check(!/undefined|NaN/.test(t), `${outcome}/${net} has a hole: ${t}`);
@@ -725,13 +725,30 @@ test("every outcome has a post for every network, with the real numbers", () => 
 });
 test("X posts fit the limit even for a long client name", () => {
   const S = fresh(); const f = G.shareFacts("fired", FACTS.fired); f.client = "A".repeat(200);
-  for (let v = 0; v < 6; v++) { const t = G.sharePostText("x", f, v); check(t.length - G.SHARE_URL.length + 23 <= 280, `post ${v} is ${t.length} long`); check(t.includes(G.SHARE_URL), "link was cut"); }
+  for (let v = 0; v < 6; v++) { const t = G.sharePostText("x", f, v); check(t.length - f.url.length + 23 <= 280, `post ${v} is ${t.length} long`); check(t.includes(f.url), "link was cut"); }
 });
 test("share links carry the post where the network allows it", () => {
   const t = "a & b #c";
-  check(G.shareLink("x", t).includes(encodeURIComponent(t)), "X lost the text");
-  check(G.shareLink("linkedin", t).includes(encodeURIComponent(t)), "LinkedIn lost the text");
-  check(G.shareLink("facebook", t).includes(encodeURIComponent(G.SHARE_URL)), "Facebook lost the link");
+  const url = `${G.SHARE_URL}/r/r_0_1_50_1_-1_0_0`;
+  check(G.shareLink("x", t, url).includes(encodeURIComponent(t)), "X lost the text");
+  check(G.shareLink("linkedin", t, url).includes(encodeURIComponent(t)), "LinkedIn lost the text");
+  check(G.shareLink("facebook", t, url).includes(encodeURIComponent(url)), "Facebook lost the personal link");
+});
+test("report links stay in step with the game and reject anything but numbers", () => {
+  check(JSON.stringify(G.TITLES) === JSON.stringify(REPORT.TITLES), "career titles differ from functions/_lib/report.js");
+  check(JSON.stringify([0, 20, 50, 100, 200].map(v => G.verdict(v)[0])) === JSON.stringify(REPORT.VERDICTS), "verdicts differ");
+  const S = fresh(); S.budget = -412.4; S.ss.mig = 23; S.career = [{name: "A", days: 1, stars: 4, late: 0}, {name: "B", days: 1, stars: 3, late: 0}];
+  const f = G.shareFacts("fired", {o: "c", head: "Open to work", sub: "x", who: "y"}), r = REPORT.parseCode(G.shareCode(f));
+  check(r && r.outcome === "c" && r.n === 2 && r.avg === 3.5 && r.mig === 23 && r.spend === -412, `round trip gave ${JSON.stringify(r)}`);
+  check(REPORT.describe(r).head === "Open to work" && REPORT.describe(r).sub.includes("Failed compliance"), "fired report lost its reason");
+  for (const bad of ["", "r_9_1_1_1_1_0_0", "r_0_1_51_1_1_0_0", "x_0_1_1_1_1_0_0", "r_0_1_1_1_1_0_0<script>", "hello_world"]) check(REPORT.parseCode(bad) === null, `accepted ${bad}`);
+  for (const code of ["r_8_999_50_9999_-9999999_2_0", "u_0_0_0_0_0_0_0", "c_0_0_0_0_0_0_0", "b_0_0_0_0_0_0_0", "q_0_0_0_0_0_0_4"]) check(!/undefined|NaN/.test(JSON.stringify(REPORT.describe(REPORT.parseCode(code)))), `hole in ${code}`);
+});
+test("the preview image is a real 1200x630 PNG under the size limits", async () => {
+  const png = await REPORT.renderCard(REPORT.describe(REPORT.parseCode("c_8_999_50_9999_-9999999_2_0")));
+  check(png.length < 5e6, `${png.length} bytes`);
+  const bmp = await createImageBitmap(new Blob([png], {type: "image/png"}));
+  check(bmp.width === 1200 && bmp.height === 630, `${bmp.width}x${bmp.height}`);
 });
 test("all three end screens offer sharing, and it leaves the run alone", () => {
   const S = fresh(), doc = W.document, opened = [], realOpen = W.open; W.open = u => { opened.push(u); return null; };
@@ -765,9 +782,10 @@ async function run() {
     li.innerHTML = `<span class="${ok ? "pass" : "fail"}">${ok ? "PASS" : "FAIL"}</span> ${name}${detail ? ` <span class="detail">— ${detail}</span>` : ""}`;
     out.appendChild(li);
   };
-  const runOne = t => { let ok = true, detail = ""; try { t.fn(); } catch (e) { ok = false; detail = e.message; } record(t.name, ok, detail); };
+  const runOne = async t => { let ok = true, detail = ""; try { await t.fn(); } catch (e) { ok = false; detail = e.message; } record(t.name, ok, detail); };
   // the syntax check needs no running game, so it always runs first
-  runOne(tests[0]);
+  await runOne(tests[0]);
+  REPORT = await import("../functions/_lib/report.js");
   const frame = document.getElementById("game");
   await new Promise(res => { frame.onload = res; frame.srcdoc = SRC.replace(HOOK, EXPOSE); });
   W = frame.contentWindow; G = W.__G;
@@ -775,7 +793,7 @@ async function run() {
   if (!G) record("the game starts inside the test frame", false, "it did not start; see the console");
   else {
     const realRandom = W.Math.random;
-    for (const t of tests.slice(1)) { runOne(t); W.Math.random = realRandom; }
+    for (const t of tests.slice(1)) { await runOne(t); W.Math.random = realRandom; }
   }
   const failed = results.filter(r => !r.ok).length;
   sum.textContent = failed ? `${failed} of ${results.length} failed` : `All ${results.length} passed`;

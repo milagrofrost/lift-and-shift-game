@@ -2744,22 +2744,28 @@ const SHARE_SPIN={
 const SHARE_LESSONS=["Here's what a server fire taught me about leadership:\n\nNothing. It was a fire.","My biggest takeaway? Patch your servers. Also, believe in yourself.","People ask how I stay so calm during an outage. I don't. I just type louder."];
 function shareFacts(outcome,extra){
   const t=runStats(),n=S.career.length;
-  return{outcome,n,avg:n?S.career.reduce((s,c)=>s+c.stars,0)/n:0,role:careerTitle(),client:client().name,mig:t.mig,lost:t.lost,spend:S.budget,dev:!!S.dev,restores:BK.used,...extra};
+  const f={outcome,n,avg:n?S.career.reduce((s,c)=>s+c.stars,0)/n:0,role:careerTitle(),client:client().name,mig:t.mig,lost:t.lost,spend:S.budget,dev:!!S.dev,restores:BK.used,...extra};
+  f.url=`${SHARE_URL}/r/${shareCode(f)}`;
+  return f;
+}
+// numbers and fixed choices only; functions/_lib/report.js turns this back into the report page and preview image
+function shareCode(f){
+  return[f.o,Math.max(0,TITLES.indexOf(f.role)),Math.min(f.n,999),Math.round(f.avg*10),Math.min(f.mig,9999),clamp(Math.round(f.spend),-9999999,9999999)+0,f.dev?1:f.restores?2:0,f.x||0].join("_");
 }
 function shareStats(f){
   return[`☁️ ${shareCount(f.mig,"app")} migrated to the cloud`,f.n?`⭐ ${f.avg.toFixed(1)} average client rating`:null,`💸 ${money(f.spend)} total IT spend`,`🔥 ${shareCount(f.lost,"server")} offline (learning opportunities)`].filter(Boolean).join("\n");
 }
 function sharePostText(net,f,v){
   const spin=SHARE_SPIN[f.outcome],of=a=>a[v%a.length],short=of(spin.short)(f);
-  if(net==="linkedin")return`${of(spin.li)(f)}\n\n${of(SHARE_LESSONS)}\n\n${shareStats(f)}\n\nAgree?\n\n#CloudMigration #Leadership #Humbled #LiftAndShift\n${SHARE_URL}`;
-  if(net==="facebook")return`${short}\n\n${shareStats(f)}\n\nAnyway, this is the game that did this to me: ${SHARE_URL}`;
-  if(net==="instagram")return`${short}\n\n${shareStats(f)}\n\n#cloudmigration #devops #sysadminlife #worklife #liftandshift\nPlay: ${SHARE_URL}`;
-  const stat=`${shareCount(f.mig,"app")} migrated. ${money(f.spend)} IT spend.`,full=`${short}\n\n${stat}\n\n#LiftAndShift ${SHARE_URL}`;
-  return full.length-SHARE_URL.length+23<=280?full:`${short.slice(0,240)}\n\n${SHARE_URL}`; // X counts any link as 23 characters
+  if(net==="linkedin")return`${of(spin.li)(f)}\n\n${of(SHARE_LESSONS)}\n\n${shareStats(f)}\n\nAgree?\n\n#CloudMigration #Leadership #Humbled #LiftAndShift\n${f.url}`;
+  if(net==="facebook")return`${short}\n\n${shareStats(f)}\n\nAnyway, this is the game that did this to me: ${f.url}`;
+  if(net==="instagram")return`${short}\n\n${shareStats(f)}\n\n#cloudmigration #devops #sysadminlife #worklife #liftandshift\nPlay: ${f.url}`;
+  const stat=`${shareCount(f.mig,"app")} migrated. ${money(f.spend)} IT spend.`,full=`${short}\n\n${stat}\n\n#LiftAndShift ${f.url}`;
+  return full.length-f.url.length+23<=280?full:`${short.slice(0,240)}\n\n${f.url}`; // X counts any link as 23 characters
 }
-function shareLink(net,text){
+function shareLink(net,text,url){
   const q=encodeURIComponent(text);
-  return{linkedin:`https://www.linkedin.com/feed/?shareActive=true&text=${q}`,facebook:`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(SHARE_URL)}`,x:`https://x.com/intent/tweet?text=${q}`,instagram:"https://www.instagram.com/"}[net];
+  return{linkedin:`https://www.linkedin.com/feed/?shareActive=true&text=${q}`,facebook:`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,x:`https://x.com/intent/tweet?text=${q}`,instagram:"https://www.instagram.com/"}[net];
 }
 function sharePanel(f){
   SHARE.f=f;SHARE.v=Math.floor(Math.random()*6);SHARE.net="linkedin";SHARE.blob=null;
@@ -2769,8 +2775,8 @@ function sharePanel(f){
     <div class="sharebody">
       <div class="sharepost" id="share-post" tabindex="0"></div>
       <div class="sharerow">${nets}</div>
-      <div class="sharerow"><button class="sbtn" data-share="spin">Spin it differently</button><button class="sbtn" data-share="copy">Copy post</button><button class="sbtn" data-share="save">Save card</button></div>
-      <p class="sharestatus" id="share-status" role="status">Your peers won't read it anyway. Pick a network and we'll copy the post for you.</p>
+      <div class="sharerow"><button class="sbtn" data-share="spin">Spin it differently</button><button class="sbtn" data-share="copy">Copy post</button><button class="sbtn" data-share="card">Copy card</button><button class="sbtn" data-share="save">Save card</button></div>
+      <p class="sharestatus" id="share-status" role="status">Your peers won't read it anyway. Your link shows this report as its preview picture.</p>
     </div></div>`;
 }
 function shareWrap(g,text,max){
@@ -2825,26 +2831,47 @@ function shareSave(){
   a.href=url;a.download="lift-and-shift-review.png";ov.appendChild(a);a.click();a.remove();
   if(SHARE.blob)setTimeout(()=>URL.revokeObjectURL(url),10000);
 }
+const shareCanCopyCard=()=>!!(SHARE.blob&&window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write);
+async function shareCopyCard(){
+  if(!shareCanCopyCard())return false;
+  try{await Promise.race([navigator.clipboard.write([new ClipboardItem({"image/png":SHARE.blob})]),new Promise((_,no)=>setTimeout(no,1500))]);return true;}catch(e){return false;}
+}
+function shareOpen(url){
+  const w=window.open(url,"_blank");
+  if(w){try{w.opener=null;}catch(e){}return true;}
+  return false;
+}
+// the post is filled in by the link, so the clipboard is free to carry the picture
+function shareComposer(net,text,pasted,copied){
+  const name=SHARE_NETS[net],opened=shareOpen(shareLink(net,text,SHARE.f.url));
+  const tail=pasted?" Your link previews the report, or paste to attach the square card instead.":` Your link previews the report.${copied?" The post is on your clipboard as a backup.":""}`;
+  shareSay(`${opened?`Opened ${name} with your post filled in.`:`Your browser blocked the ${name} tab, so allow pop-ups and try again.`}${tail} Nothing posts until you do.`);
+}
 async function shareInstagram(text,copied){
   const file=SHARE.blob&&new File([SHARE.blob],"lift-and-shift-review.png",{type:"image/png"});
   if(file&&matchMedia("(pointer:coarse)").matches&&navigator.canShare&&navigator.canShare({files:[file]})){
-    try{await navigator.share({files:[file],text});shareSay("Pick Instagram in the share sheet. The caption is on your clipboard.");return;}
+    try{await navigator.share({files:[file]});shareSay(`Pick Instagram in the share sheet.${copied?" The caption is on your clipboard, so paste it in.":""}`);return;}
     catch(e){if(e.name==="AbortError")return;}
   }
-  shareSave();window.open(shareLink("instagram",text),"_blank","noopener");
-  shareSay(`Instagram can't take a post from a link, so this one's a manual change. Card saved${copied?", caption copied":""}. Upload it yourself.`);
+  shareSave();shareOpen(shareLink("instagram",text,SHARE.f.url));
+  shareSay(`Instagram can't take a post from a website, so this one's a manual change. Card saved${copied?", caption copied":""}. Upload it yourself.`);
 }
 function shareAct(act){
   if(!SHARE.f)return;
   if(act==="spin"){SHARE.v++;shareShowPost();return shareSay("Same numbers, better adjectives.");}
   if(act==="save"){shareSave();return shareSay("Card saved. Attach it to anything you post.");}
+  if(act==="card")return shareCopyCard().then(ok=>shareSay(ok?"Card copied. Paste it into any post.":"Your browser won't copy images, so use Save card."));
   const net=SHARE_NETS[act]?act:SHARE.net;if(SHARE_NETS[act]){SHARE.net=net;shareShowPost();}
-  const text=sharePostText(net,SHARE.f,SHARE.v),copied=shareCopy(text);
+  const text=sharePostText(net,SHARE.f,SHARE.v);
+  if(act==="linkedin"||act==="x"){
+    if(shareCanCopyCard())return shareCopyCard().then(ok=>shareComposer(net,text,ok,ok?false:shareCopy(text)));
+    return shareComposer(net,text,false,shareCopy(text));
+  }
+  const copied=shareCopy(text);
   if(act==="copy")return shareSay(copied?"Post copied. Thought leadership is on your clipboard.":"Couldn't reach the clipboard. Select the text above and copy it.");
   if(net==="instagram")return shareInstagram(text,copied);
-  window.open(shareLink(net,text),"_blank","noopener");
-  const paste=copied?"":" Couldn't reach the clipboard, so copy the text above.";
-  shareSay(net==="facebook"?`Facebook only takes the link. ${copied?"Your post is on the clipboard, so paste it in.":paste.trim()}`:`Opened ${SHARE_NETS[net]} in a new tab. Nothing posts until you do. Save the card if you want the picture too.${paste}`);
+  const opened=shareOpen(shareLink(net,text,SHARE.f.url));
+  shareSay(`${opened?"Facebook only takes the link, and it previews your report.":"Your browser blocked the Facebook tab, so allow pop-ups and try again."} ${copied?"Your post is on the clipboard, so paste it in.":"Copy the text above to add it."}`);
 }
 function showEnd(reason){
   mode="end";BK.fired=!!reason;setHiss(false);if(reason==="uptime"||reason==="security")sfx("fired");
@@ -2859,7 +2886,7 @@ function showEnd(reason){
   const ai=lvl("agent")?`<p style="font-size:13.5px;color:var(--muted)">Achievement: <b style="color:var(--ai)">Vibe Ops</b>. You finished with an AI agent on the team.</p>`:(S.bots.length===0&&!reason?`<p style="font-size:13.5px;color:var(--muted)">Achievement: <b style="color:var(--ok)">Artisanal Migration</b>. No bots, all by hand.</p>`:"");
   const rows=S.career.map(c=>`<span>${c.name}<small>Day ${c.days}${c.late?`, ${c.late} days late`:", on time"}</small></span><span class="stars sm">${stars(c.stars)}</span>`).join("");
   let bestClients=0;try{bestClients=+(localStorage.getItem("liftshift-clients")||0);}catch(e){}
-  const brag=sharePanel(shareFacts(reason?"fired":"retired",reason?{head:"Open to work",sub:`Official reason: ${title.replace("Fired: ","")}. Nobody needs to know that part.`,who:reason==="uptime"?"the SLA":title==="Fired: Failed compliance"?"the auditors":"the security team"}:{head:title,sub:"Nobody ever found out about the resume."}));
+  const brag=sharePanel(shareFacts(reason?"fired":"retired",reason?{o:reason==="uptime"?"u":title==="Fired: Failed compliance"?"c":"b",head:"Open to work",sub:`Official reason: ${title.replace("Fired: ","")}. Nobody needs to know that part.`,who:reason==="uptime"?"the SLA":title==="Fired: Failed compliance"?"the auditors":"the security team"}:{o:"r",head:title,sub:"Nobody ever found out about the resume."}));
   show(`<div class="eyebrow">${reason?`Game over · engagement ${S.sprint}`:"Career complete"}</div>
   <div class="row"><div class="grade">${grade}</div><div style="flex:1;min-width:200px"><h2>${title}</h2><p>${body}</p></div></div>
   ${rows?`<h3>Clients</h3><div class="bill clients">${rows}</div>`:""}
@@ -2939,7 +2966,7 @@ function resign(){
   const t=runStats(),rows=suckRows(t);let score=0;
   const body=rows.map(([label,v,w,quip])=>{const p=v*w;score+=p;return`<span>${label}<small>${quip}</small></span><span>${v}</span><span class="${p>0?"neg":""}">${p?"+"+(Math.round(p*10)/10):"0"}</span>`;}).join("");
   score=Math.round(score);const[title,line]=verdict(score);
-  const brag=sharePanel(shareFacts("resigned",{head:"Pursuing other opportunities",sub:`Exit interview: ${title}.`}));
+  const brag=sharePanel(shareFacts("resigned",{o:"q",x:[15,40,75,120].filter(v=>score>=v).length,head:"Pursuing other opportunities",sub:`Exit interview: ${title}.`}));
   show(`<div class="eyebrow">You gave up · ${client().name}</div>
   <h2>Notice submitted</h2>
   ${letter(t)}
