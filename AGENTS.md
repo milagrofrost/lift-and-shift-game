@@ -64,6 +64,13 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 - A server shut down for migration (carried or in the pipeline) burns a quarter of its outage rate; each Redefine "Uptime" level removes 20% of that. Blue-green moves burn nothing. Moving servers are drawn as OFF. The uptime box pulses red slowly during migrations, faster when migration burn is heavy, and very fast during outages.
 - The uptime budget recovers slowly unless a gold server is offline or something is breached: up to half the budget by default. Redefine "Uptime" raises the rate and cap; managers raise the rate. A manager's server visit is an inspection that takes the server offline half the time. A break sends the manager on a slow walk to the inbox and blocks visits for 45 seconds per career break, capped at 300. Holding E at that server during the inspection cancels it without counting as a break.
 
+### Restore from backup
+
+- The terminal's `journalctl` shows the current client's event log; 💾 rows are restore points, taken about every 30 seconds and only between update frames. Restores per career: Easy 3, Normal 2, Hard 1. Hardcore is a checkbox under Hard that means zero restores and changes nothing else.
+- Charges and the log live outside `S`, so a restore cannot refund a charge. Reverted rows stay visible, greyed out. Dev tools used after a backup still mark the run.
+- Restore works from play, pause, the between-client review and the fired screen; not after retiring or resigning, and not across clients. "Rollback" remains the failed-cutover mechanic.
+- A restore shows a "Restoring to mm:ss state" progress bar, then waits for a key press. Randomness is not rewound.
+
 ### Career and balance
 
 - After two rough clients in a row (5–6 sprint points or at most 2 stars), the retrospective offers "Give me a break": one small client, sized and paced like the first, in place of that retrospective's action item. The shop after that client always stocks Patch Bot and every upgrade with a base cost of 5 or more that is not owned yet, including the AI Agent once unlocked.

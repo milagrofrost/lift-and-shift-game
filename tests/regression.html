@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("outageBurn,migrateBurn,migrateMult,rollOffers,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -606,6 +606,75 @@ test("each client plays the next song set, and every song is defined", () => {
   S.alert = false;
 });
 
+/* ---------- restore from backup ---------- */
+const backupAt = (S, t, text) => { S.time = t; G.logEv(text); G.backupTick(); return G.BK.log[G.BK.log.length - 1]; };
+const runRestore = row => { G.beginRestore(row); G.tickRestore(G.RESTORE_TIME + 1); };
+test("every client starts with one restore point and full charges", () => {
+  fresh();
+  check(G.bkPoints().length === 1, "expected the client-start restore point");
+  check(G.BK.left === G.restoresForRun(), "charges not reset by a new career");
+});
+test("restores per career follow the difficulty, and Hardcore only applies to Hard", () => {
+  const starts = (d, h) => { G.setDifficulty(d, h); G.newRun(); return G.BK.left; };
+  try {
+    check(starts("easy", false) === 3, "easy should get 3");
+    check(starts("normal", false) === 2, "normal should get 2");
+    check(starts("hard", false) === 1, "hard should get 1");
+    check(starts("hard", true) === 0 && G.S.hardcore === true, "hardcore should get 0");
+    check(G.S.diff === "hard", "hardcore should still be hard");
+    check(starts("easy", true) === 3 && !G.S.hardcore, "hardcore must not apply outside hard");
+  } finally { G.setDifficulty("normal", false); G.newRun(); }
+});
+test("restore points follow the interval and land on events", () => {
+  const S = fresh();
+  backupAt(S, 10, "too soon"); check(G.bkPoints().length === 1, "backed up before the interval");
+  const row = backupAt(S, G.BACKUP_EVERY + 1, "marker"); check(row.pt, "event after the interval got no snapshot");
+  check(G.bkPoints().length === 2, "expected a second restore point");
+});
+test("restore brings state back, reverts later rows, and spends one charge", () => {
+  const S = fresh(); const a = firstRack(S); S.carry = a; S.racks[a.slot] = null; S.err = S.errMax * 0.8;
+  const row = backupAt(S, G.BACKUP_EVERY + 1, "marker");
+  S.err = 1; S.security = 3; S.carry = null; S.budget -= 500; const after = backupAt(S, 2 * G.BACKUP_EVERY + 2, "later");
+  G.DEV.prev = "play"; runRestore(row); const R = G.S;
+  check(G.mode === "restored", "should wait for the player after the bar");
+  check(R !== S && near(R.err, R.errMax * 0.8), "uptime not restored");
+  check(R.carry && R.carry.name === a.name, "carried server not restored");
+  check(R.budget === row.pt.snap.budget, "budget not restored");
+  check(G.BK.left === G.restoresForRun() - 1, "charge not spent exactly once");
+  check(after.reverted && !after.pt, "later row should be reverted with no restore point");
+  check(row.pt && !row.reverted, "the chosen point should survive");
+});
+test("shared server references survive a restore", () => {
+  const S = fresh(); const a = firstRack(S); S.pipe = [{a, t: 1}];
+  const row = backupAt(S, G.BACKUP_EVERY + 1, "marker");
+  G.DEV.prev = "play"; runRestore(row);
+  check(G.S.pipe[0].a === G.S.racks[a.slot], "pipeline and rack became separate copies");
+});
+test("charges run out and aren't refunded by restoring", () => {
+  fresh(); const row = G.bkPoints()[0];
+  for (let i = 0; i < G.restoresForRun(); i++) { G.DEV.prev = "play"; runRestore(row); }
+  check(G.BK.left === 0, "charges should be gone");
+  const before = G.S; G.DEV.prev = "play"; G.beginRestore(row);
+  check(G.mode === "restored" && G.S === before, "restored with no charges left");
+  G.newRun(); check(G.BK.left === G.restoresForRun(), "new career should refill charges");
+});
+test("restore needs a job: fired yes, retired or title screen no", () => {
+  const S = fresh(); const row = G.bkPoints()[0];
+  G.showEnd("uptime"); G.DEV.prev = "end"; G.beginRestore(row); check(G.mode === "restoring", "fired screen should allow a restore");
+  G.tickRestore(G.RESTORE_TIME + 1); check(G.BK.fired === false, "fired flag should clear");
+  G.S.dev = true; G.showEnd(null); G.DEV.prev = "end"; const left = G.BK.left; G.beginRestore(row);
+  check(G.mode === "end" && G.BK.left === left, "retired careers can't restore");
+  G.DEV.prev = "title"; G.beginRestore(row); check(G.BK.left === left, "title screen can't restore");
+});
+test("dev tools used after a backup still mark the run", () => {
+  const S = fresh(); const row = G.bkPoints()[0]; S.dev = true;
+  G.DEV.prev = "play"; runRestore(row); check(G.S.dev === true, "restore laundered a dev-tools run");
+});
+test("restore points don't cross clients", () => {
+  fresh(); const old = G.bkPoints()[0]; G.startSprint(2);
+  check(G.bkPoints().length === 1 && G.bkPoints()[0] !== old, "old client's restore points survived");
+});
+
 /* ---------- runner ---------- */
 async function run() {
   const out = document.getElementById("out"), sum = document.getElementById("sum");
@@ -628,6 +697,7 @@ async function run() {
   const frame = document.getElementById("game");
   await new Promise(res => { frame.onload = res; frame.srcdoc = SRC.replace(HOOK, EXPOSE); });
   W = frame.contentWindow; G = W.__G;
+  if (G) G.setDifficulty("normal", false);
   if (!G) record("the game starts inside the test frame", false, "it did not start; see the console");
   else {
     const realRandom = W.Math.random;
