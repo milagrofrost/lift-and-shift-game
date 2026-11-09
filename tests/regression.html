@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -364,6 +364,63 @@ test("a roll that does nothing without foundations succeeds with them, and still
     check(S.tk.length === (ready ? 0 : 1), `ready=${ready}: ${S.tk.length} tickets left`);
     check((S.cost.ai || 0) > spent, "no tokens billed");
   }
+});
+
+test("each AI agent level only touches the server tiers it has earned", () => {
+  const S = fresh(); S.upgrades = {agent: 1}; S.tk = []; S.em = []; S.agent = {};
+  const racks = S.racks.filter(Boolean); racks.forEach(a => { a.hidden = false; a.down = false; a.fire = 0; a.covered = false; a.timer = 1; a.tier = "gold"; });
+  check(!G.agentPick(), "level 1 picked a gold server");
+  racks[0].tier = "silver"; check(!G.agentPick(), "level 1 picked a silver server");
+  S.upgrades.agent = 2; check(G.agentPick() && G.agentPick().a === racks[0], "level 2 ignored silver");
+  racks[0].tier = "gold"; check(!G.agentPick(), "level 2 picked a gold server");
+  S.upgrades.agent = 3; check(G.agentPick() && G.agentPick().kind === "patch", "level 3 ignored gold");
+  racks[1].tier = "bronze"; S.upgrades.agent = 1; check(G.agentPick().a === racks[1], "level 1 ignored bronze");
+});
+test("the AI agent tiers start at 80% and 90%, and never reach certainty", () => {
+  fresh();
+  check(near(G.AGENT_LV[2].ok, 0.8) && near(G.AGENT_LV[3].ok, 0.9), "wrong baselines");
+  for (const L of [1, 2, 3, 4]) check(G.AGENT_LV[L].ok < 1 && G.agentFixOdds("patch", L) < 1, `L${L} is perfect`);
+});
+const agentBreaks = (S, job) => { S.agent = {x: 480, y: 300, job: {...job, x: 480, y: 300}, work: 1, say: "", sayT: 0, wx: 480, wy: 260, wT: 0}; fixedRandom(0.99); G.tickAgent(0.05); };
+test("a failed AI patch takes the server down, then the agent repairs it or leaves it to you", () => {
+  for (const works of [true, false]) {
+    const S = fresh(); S.upgrades = {agent: 1}; S.atk = []; const a = firstRack(S); a.covered = false; a.down = false; a.fire = 0;
+    agentBreaks(S, {kind: "patch", a});
+    check(a.down && S.agent.job && S.agent.job.kind === "repair", "agent walked away from its mistake");
+    const spent = S.cost.ai;
+    fixedRandom(works ? 0.1 : 0.99); G.tickAgent(1.5);
+    check(S.agent.job && S.agent.say.length > 0 && a.down, "repaired too early");
+    G.tickAgent(1.6);
+    check(a.down === !works, `works=${works}: down=${a.down}`);
+    check(!S.agent.job, "repair job did not end");
+    check(S.cost.ai > spent, "repair was not billed");
+  }
+});
+test("the agent takes back its reply-all, and skips repairs that someone already made", () => {
+  let S = fresh(); S.upgrades = {agent: 1}; S.atk = [];
+  const original = {type: "legal", age: 0, life: 18}; S.em = [original];
+  agentBreaks(S, {kind: "email"});
+  check(S.em.length === 3, "no reply-all fallout");
+  fixedRandom(0.1); G.tickAgent(3.1);
+  check(S.em.length === 1 && S.em[0] === original, "repair removed the wrong mail");
+  S = fresh(); S.upgrades = {agent: 1}; S.atk = []; const a = firstRack(S); a.covered = false; a.down = false; a.fire = 0;
+  agentBreaks(S, {kind: "patch", a});
+  a.down = false; const spent = S.cost.ai;
+  fixedRandom(0.1); G.tickAgent(0.05);
+  check(!S.agent.job || S.agent.job.kind !== "repair", "still repairing a fixed server");
+  check(S.cost.ai === spent, "billed for a repair it did not need");
+});
+test("the agent calls off its own escalation, even after it lands", () => {
+  let S = fresh(); S.upgrades = {agent: 1}; S.atk = []; S.tk = [{age: 0}];
+  agentBreaks(S, {kind: "ticket"});
+  const e = S.atk[0]; check(e && S.agent.job.esc === e, "escalation not tracked");
+  fixedRandom(0.1); G.tickAgent(3.1);
+  check(e.dead, "escalation still flying");
+  S = fresh(); S.upgrades = {agent: 1}; S.atk = []; S.tk = [{age: 0}];
+  agentBreaks(S, {kind: "ticket"});
+  const a = firstRack(S), e2 = S.atk[0]; e2.a = a; e2.dead = true; a.fire = 20;
+  fixedRandom(0.1); G.tickAgent(3.1);
+  check(a.fire === 0, "landed escalation still burning");
 });
 
 /* ---------- touch ---------- */

@@ -53,6 +53,8 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 ### AI Agent foundations
 
 - The AI Agent amplifies existing practices. With no foundations for a job, it keeps its base level odds; each relevant upgrade improves that job only (patching: Patch Bot, Runbooks, Observability). Foundations shift results toward success; they do not add a penalty or stop tokens being billed.
+- Level 1 only touches bronze servers, level 2 adds silver, level 3 adds gold; tickets and email are open at every level. Baselines are 50%, 80% and 90% right, and never certain.
+- When the agent breaks something it stays, apologizes, and makes one billed repair attempt. A failed repair leaves the problem to the player and never causes further damage. Damage already charged stays charged.
 
 ### Uptime recovery
 

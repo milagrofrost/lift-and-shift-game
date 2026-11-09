@@ -470,7 +470,7 @@ const UPGRADES=[
   {id:"snacks",name:"Snack Budget",icon:"🍩",cost:2,max:3,desc:"Finance approved more donuts and coffee. Pickups show up at 35% shorter intervals per level, and one more can be out at a time."},
   {id:"vendor",name:"Vendor Negotiation",icon:"🤝",cost:2,max:3,desc:"License renewals cost 20% less per level."},
   {id:"manager",name:"A Manager Who Fights for You",icon:"👔",cost:5,max:3,desc:"All levels automatically call a change freeze for gold outages or breaches (10/14/18 seconds; cooldown 60/50/40 seconds). They also speed up uptime recovery. Level 1: answers your email, but chats with users and sometimes wanders over to look at a server (half the time, it goes offline). Level 2: focuses on email and rarely touches servers. Level 3: also stands guard at your doorway and shoves users out of your way as you cross the hallway."},
-  {id:"agent",name:"AI Agent",icon:"🧠",cost:6,max:4,ai:true,req:()=>S.career.length>=3,desc:"Answers email, closes tickets, patches servers and seals leaks, fast, anywhere. Every attempt costs tokens. L1 pilot: 50% right, 25% does nothing, 25% breaks something. L2 better instructions: 70/20/10. L3 agentic workflows: 85/12/3. L4 guardrails and evals: harmful actions get blocked. It amplifies what you already have: with good foundations for a job, it's right far more often."},
+  {id:"agent",name:"AI Agent",icon:"🧠",cost:6,max:4,ai:true,req:()=>S.career.length>=3,desc:"Answers email, closes tickets, patches servers and seals leaks, fast, anywhere. Every attempt costs tokens. L1 pilot, bronze servers only: 50% right, 25% does nothing, 25% breaks something. L2 better instructions, adds silver: 80/15/5. L3 agentic workflows, adds gold: 90/7/3. L4 guardrails and evals: harmful actions get blocked. When it breaks something it apologizes and tries once to fix it (40% at L1, 60% at L2, 80% at L3). It amplifies what you already have: with good foundations for a job, it's right far more often."},
   {id:"chatbot",name:"AI Chatbots",icon:"💬",cost:4,max:2,ai:true,desc:"A chatbot roams the hallway, chats up users and resolves them. A user being chatted up can't grab you. Sometimes they just want a human. Each level adds a bot."},
 ];
 
@@ -935,7 +935,13 @@ const MGR_LINES={
    Does busywork anywhere: email, tickets, patching, sealing leaks. Never fights fires or migrates.
    Every attempt costs tokens. Each attempt is right, does nothing (but claims success), or breaks something.
    Level 4 adds guardrails: harmful actions get blocked (still billed). */
-const AGENT_LV={1:{ok:0.5,nop:0.25,cost:0.3,tok:2.1},2:{ok:0.7,nop:0.2,cost:0.4,tok:3.4},3:{ok:0.85,nop:0.12,cost:0.55,tok:6.8},4:{ok:0.92,nop:0.08,cost:0.68,tok:9.5}};
+const AGENT_LV={1:{ok:0.5,nop:0.25,fix:0.4,cost:0.3,tok:2.1},2:{ok:0.8,nop:0.15,fix:0.6,cost:0.4,tok:3.4},3:{ok:0.9,nop:0.07,fix:0.8,cost:0.55,tok:6.8},4:{ok:0.92,nop:0.08,fix:0.9,cost:0.68,tok:9.5}};
+// which server tiers each level is trusted with
+const AGENT_REACH={1:["bronze"],2:["bronze","silver"],3:["bronze","silver","gold"],4:["bronze","silver","gold"]};
+const agentCanTouch=(a,L=Math.max(1,Math.min(4,lvl("agent"))))=>AGENT_REACH[L].includes(a.tier);
+const AGENT_SORRY=["You're absolutely right! I was wrong.","Great catch! That was my fault.","You're so right. Sorry about that.","Apologies for the confusion. Fixing it.","Good point! I see the problem now."];
+const AGENT_FIXED=["Fixed! Thanks for your patience.","There. It works now, I promise.","Corrected! I have learned nothing."];
+const AGENT_UNFIXED=["You're right, that made it worse.","I apologize. A human should look.","I can't fix this, but I can summarize it."];
 const AGENT_BAD={email:"Replied-all with a policy I made up!",ticket:"Marked it resolved. Didn't fix it.",patch:"Applied the patch for a different server.",leak:"Opened the firewall to 0.0.0.0/0. Very accessible now."};
 /* The agent amplifies the practices already in place. Each job has foundations: [upgrade id, readiness per level, label].
    Readiness 0 keeps the AGENT_LV odds exactly; full readiness removes 80% of harmful results and half of the no-ops. */
@@ -951,6 +957,8 @@ function agentOdds(kind,L=Math.max(1,Math.min(4,lvl("agent")))){
   const G=AGENT_LV[L],f=agentReadiness(kind),base=1-G.ok-G.nop,bad=base*(1-0.8*f),nop=G.nop*(1-0.5*f);
   return{ok:1-bad-nop,nop,bad,f};
 }
+// the chance it undoes its own mistake; foundations for that job close half the gap to certain
+const agentFixOdds=(kind,L=Math.max(1,Math.min(4,lvl("agent"))))=>{const x=AGENT_LV[L].fix;return x+(1-x)*0.5*agentReadiness(kind);};
 function agentReadinessHtml(){
   return`<div class="readiness">${Object.keys(AGENT_FOUNDATIONS).map(k=>{const o=agentOdds(k),miss=AGENT_FOUNDATIONS[k].filter(([id])=>!lvl(id)).map(x=>x[2]);
     return`<div><b>${AGENT_JOB_LABEL[k]}: ${Math.round(o.ok*100)}% right</b>${miss.length?` · needs ${miss.join(", ")}`:" · foundations in place"}</div>`;}).join("")}</div>`;
@@ -961,24 +969,43 @@ function foundationTag(id){
   return jobs.length?`<small class="foundation">🧠 Makes the AI Agent better at: ${jobs.join(", ")}</small>`:"";
 }
 function spawnAgent(){S.agent=lvl("agent")?{x:480,y:260,job:null,work:0,say:"",sayT:0,wx:480,wy:260,wT:0}:null;}
-function agentSay(t){const A=S.agent;A.say=t;A.sayT=2.4;}
+function agentSay(t,d=2.4){const A=S.agent;A.say=t;A.sayT=d;}
 function agentPick(){
   const imp=importantMail(),racks=S.racks.filter(a=>a&&!a.hidden&&!a.down&&a.fire===0);
-  const leak=S.cloud.map((a,i)=>a&&a.leakOn&&!a.breach&&!a.down?{a,i}:null).filter(Boolean).sort((p,q)=>q.a.leak-p.a.leak)[0];
+  const leak=S.cloud.map((a,i)=>a&&a.leakOn&&!a.breach&&!a.down&&agentCanTouch(a)?{a,i}:null).filter(Boolean).sort((p,q)=>q.a.leak-p.a.leak)[0];
   if(leak&&leak.a.leak>25)return{kind:"leak",a:leak.a,i:leak.i,x:SLOTS[leak.i].x,y:SLOTS[leak.i].y+38};
   if(S.tk.length>=2)return{kind:"ticket",x:480,y:470};
   if(imp.length>=2)return{kind:"email",x:480,y:98};
-  const pr=racks.filter(a=>!a.covered&&(a.timer<a.maxT*0.5||a.botErr)).sort((p,q)=>p.timer/p.maxT-q.timer/q.maxT)[0];
+  const pr=racks.filter(a=>agentCanTouch(a)&&!a.covered&&(a.timer<a.maxT*0.5||a.botErr)).sort((p,q)=>p.timer/p.maxT-q.timer/q.maxT)[0];
   if(pr)return{kind:"patch",a:pr,x:RACKS[pr.slot].x,y:RACKS[pr.slot].y+44};
   if(S.tk.length)return{kind:"ticket",x:480,y:470};
   if(imp.length)return{kind:"email",x:480,y:98};
   return null;
 }
 function agentValid(j){
+  if(j.kind==="repair")return agentDamageRemains(j);
   if(j.kind==="leak")return S.cloud[j.i]===j.a&&j.a.leakOn&&!j.a.breach;
   if(j.kind==="patch")return S.racks[j.a.slot]===j.a&&!j.a.covered&&!j.a.down&&j.a.fire===0;
   if(j.kind==="ticket")return S.tk.length>0;
   return importantMail().length>0;
+}
+// is the agent's own mistake still there to fix?
+function agentDamageRemains(j){
+  if(j.of==="patch")return S.racks[j.a.slot]===j.a&&j.a.down;
+  if(j.of==="leak")return S.cloud[j.i]===j.a&&j.a.breach;
+  if(j.of==="email")return j.mails.some(m=>S.em.includes(m));
+  return !j.esc.dead||!!(j.esc.a&&j.esc.a.fire>0);
+}
+// one attempt to undo the damage; a failed repair stays the player's problem and never breaks anything further
+function agentFinishRepair(j,L,G){
+  spend("ai",G.cost);S.ss.ai.cost+=G.cost;
+  fl({x:S.agent.x,y:S.agent.y-10},`🪙 Apology tokens · −$${G.cost.toFixed(1)}k`,C.muted);
+  if(Math.random()>=agentFixOdds(j.of,L)){sfx("migrateFail");agentSay(pick(AGENT_UNFIXED));toast("🧠 The AI agent couldn't undo its mistake. That one's yours now.");return;}
+  sfx("online");agentSay(pick(AGENT_FIXED));
+  if(j.of==="patch"){noteRestored(j.a);j.a.down=false;j.a.timer=Math.max(j.a.timer,j.a.maxT*0.5);j.a.agentMark={k:"ok",t:S.t};toast(`🧠 The AI agent apologized and brought ${j.a.name} back online.`);}
+  else if(j.of==="leak"){j.a.age=0;j.a.breach=false;j.a.leak=0;j.a.grace=6;j.a.agentMark={k:"ok",t:S.t};toast(`🧠 The AI agent apologized and closed the firewall on ${j.a.name}.`);}
+  else if(j.of==="email"){S.em=S.em.filter(m=>!j.mails.includes(m));toast("🧠 The AI agent apologized to the whole company. Legal and the exec have calmed down.");}
+  else{j.esc.dead=true;if(j.esc.a&&j.esc.a.fire>0)j.esc.a.fire=0;toast("🧠 The AI agent apologized and reopened the ticket it broke. The escalation is off.");}
 }
 function tickAgent(dt){
   const A=S.agent;if(!A)return;const L=Math.min(4,lvl("agent")),G=AGENT_LV[L];
@@ -987,7 +1014,14 @@ function tickAgent(dt){
   if(!A.job){A.job=agentPick();A.work=0;}
   if(!A.job){A.wT-=dt;if(A.wT<=0){A.wT=rand(1.5,3);A.wx=rand(400,560);A.wy=rand(150,430);}goTo(A,A.wx,A.wy,90,dt);return;}
   const j=A.job;if(!goTo(A,j.x,j.y,300,dt))return;
-  A.work+=dt;if(A.work<1.0)return; // "thinking..."
+  A.work+=dt;
+  if(j.kind==="repair"){
+    if(!j.said&&A.work>=1.4){j.said=true;agentSay(pick(AGENT_SORRY),1.8);}
+    if(A.work<3)return;
+    agentFinishRepair(j,L,G);A.job=null;A.work=0;return;
+  }
+  if(A.work<1.0)return; // "thinking..."
+  let repair=null;
   // every attempt bills tokens, whatever happens next
   const odds=agentOdds(j.kind,L),r=Math.random(),out=r<odds.ok?"ok":r<odds.ok+odds.nop?"nop":(L>=4?"blocked":"bad");
   spend("ai",G.cost);const st=S.ss.ai;st.n++;st.cost+=G.cost;
@@ -1001,13 +1035,15 @@ function tickAgent(dt){
     if(j.a)j.a.agentMark={k:"ok",t:S.t};if(Math.random()<0.3)agentSay("Done!");
   }else if(out==="nop"){st.nop++;if(j.a)j.a.agentMark={k:"nop",t:S.t};agentSay(pick(["Done! Confidence: 98%.","Task complete! ✨","I've handled it.","All set!"]));}
   else if(out==="blocked"){st.nop++;fl(pos,"🛡 Guardrail blocked a risky action",C.leak);agentSay("Escalating to a human for review.");}
-  else{st.bad++;sfx("migrateFail");agentSay(AGENT_BAD[j.kind]);if(j.a)j.a.agentMark={k:"bad",t:S.t};
-    if(j.kind==="email"){S.em.push({type:"legal",age:0,life:18},{type:"exec",age:0,life:22});toast("🧠 The AI agent replied-all to the whole company with a policy it made up. Legal and an exec want a word.");}
-    else if(j.kind==="ticket"){S.tk.shift();launchEscalation();toast("🧠 The AI agent marked a ticket resolved without fixing it. It escalated.");}
+  else{st.bad++;sfx("migrateFail");agentSay(AGENT_BAD[j.kind],1.4);if(j.a)j.a.agentMark={k:"bad",t:S.t};
+    // it stays to clean up its own mess
+    repair={kind:"repair",of:j.kind,a:j.a,i:j.i,x:A.x,y:A.y};
+    if(j.kind==="email"){repair.mails=[{type:"legal",age:0,life:18},{type:"exec",age:0,life:22}];S.em.push(...repair.mails);toast("🧠 The AI agent replied-all to the whole company with a policy it made up. Legal and an exec want a word.");}
+    else if(j.kind==="ticket"){S.tk.shift();repair.esc=launchEscalation();toast("🧠 The AI agent marked a ticket resolved without fixing it. It escalated.");}
     else if(j.kind==="patch"){sfx("offline");j.a.down=true;j.a.downT=S.time;j.a.fire=0;j.a.prog=0;S.ss.lost++;toast(`🧠 The AI agent patched ${j.a.name} with the wrong patch. It's offline.`);}
     else{breach(j.i,null);toast(`🧠 The AI agent "fixed" the leak on ${j.a.name} by opening the firewall to everyone.`);}
   }
-  A.job=null;A.work=0;
+  A.job=repair;A.work=0;
 }
 function drawAgent(){
   const A=S.agent;if(!A)return;const x=A.x,y=A.y,pulse=0.5+0.5*Math.sin(S.t*6);
@@ -1015,7 +1051,7 @@ function drawAgent(){
   ctx.fillStyle="#3b2a66";rr(x-13,y-12,26,24,8);ctx.fill();ctx.strokeStyle=C.ai;ctx.lineWidth=2;rr(x-13,y-12,26,24,8);ctx.stroke();
   ctx.strokeStyle=C.ai;ctx.beginPath();ctx.moveTo(x,y-12);ctx.lineTo(x,y-19);ctx.stroke();ctx.fillStyle=pulse>0.5?"#fff":C.ai;ctx.beginPath();ctx.arc(x,y-20,2.5,0,7);ctx.fill();
   ctx.fillStyle="#e9ddff";ctx.fillRect(x-7,y-4,4,4);ctx.fillRect(x+3,y-4,4,4);
-  if(A.job&&A.work>0){const dots=".".repeat(1+Math.floor(S.t*4)%3);tx(`thinking${dots}`,x,y+20,8,C.ai,{weight:600});
+  if(A.job&&A.work>0){const dots=".".repeat(1+Math.floor(S.t*4)%3);tx(`${A.job.kind==="repair"?"apologizing":"thinking"}${dots}`,x,y+20,8,C.ai,{weight:600});
     ctx.strokeStyle=C.ai;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(x,y,24,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,A.work));ctx.stroke();}
   else tx(`AI AGENT L${Math.min(4,lvl("agent"))}`,x,y+22,8,C.ai,{font:DISP,weight:700});
 }
@@ -1346,7 +1382,7 @@ function drawInbox(){
     const vend=S.em.length-n;if(vend)tx(`+${vend} spam`,x+w/2-6,y-6,8.5,C.muted,{align:"right"});}
   slotBar(x-w/2+8,y+h/2-12,w-16,Math.min(n,lim),lim,full);
 }
-function launchEscalation(){S.ss.esc++;sfx("escalate");S.run.esc++;S.atk.push({x:DESK.x,y:DESK.y-24,a:null});unplanned(0.5,"esc");}
+function launchEscalation(){S.ss.esc++;sfx("escalate");S.run.esc++;const e={x:DESK.x,y:DESK.y-24,a:null};S.atk.push(e);unplanned(0.5,"esc");return e;}
 /* Sprint capacity: 13 points per sprint. Incidents create unplanned work that eats next sprint's capacity.
    A clean sprint (no unplanned work) earns +2. Never below 5, never above 15. Unspent points don't carry over. */
 const BASE_CAP=13;
@@ -2469,7 +2505,7 @@ function howToPlay(){
     <div><span class="ic">📅</span><span><b>Lease target.</b> Each client's data center lease has a target day. Going late never ends the game, but on-prem costs rise 10% per overdue day and the client's rating drops.</span></div>
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and a 4-second speed boost (you glow). 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
     <div><span class="ic">🤖</span><span><b>Patch Bot (upgrade).</b> Patches overdue servers for you, but never fights fires. Level 1 succeeds 50% of the time, level 2 66%, level 3 90%. A failed patch leaves a red AUTOMATION ERROR on the rack: patch it yourself to clear it, or if its compliance timer runs out, the audit fails and the error resets so the bot can try again.</span></div>
-    <div><span class="ic">🧠</span><span><b>AI Agent (upgrade, after client 3).</b> A fast purple agent that answers email, closes tickets, patches servers and seals leaks. Every attempt costs tokens. At level 1 only half its work is right; the rest does nothing (while claiming success) or breaks something. Levels 2–4 add better instructions, agentic workflows and finally guardrails that block harmful actions. It also amplifies the practices you already have. Patching improves with Patch Bot, Runbooks and Observability; tickets with Self-Service Portal and Runbooks; email with your Manager and Status Page; leaks with Policy as Code, Vulnerability Scanner and Cloud Auto-Patching. The shop shows its odds for each job and what's missing. Check its ✓ / ✗ marks.</span></div>
+    <div><span class="ic">🧠</span><span><b>AI Agent (upgrade, after client 3).</b> A fast purple agent that answers email, closes tickets, patches servers and seals leaks. Every attempt costs tokens. At level 1 it only touches bronze servers and only half its work is right; the rest does nothing (while claiming success) or breaks something. Level 2 adds silver servers and level 3 adds gold, with far better odds; level 4 adds guardrails that block harmful actions. When it breaks something it apologizes and stays to try one fix, billed in tokens. If that fails, the problem is yours. It also amplifies the practices you already have. Patching improves with Patch Bot, Runbooks and Observability; tickets with Self-Service Portal and Runbooks; email with your Manager and Status Page; leaks with Policy as Code, Vulnerability Scanner and Cloud Auto-Patching. The shop shows its odds for each job and what's missing. Check its ✓ / ✗ marks.</span></div>
     <div><span class="ic">👔</span><span><b>Your manager (upgrade).</b> Level 1 answers your email, but chats with users and sometimes wanders over to look at a server. Half the time, just looking takes it offline. Every level speeds up uptime recovery. Level 2 sticks to email. Level 3 also guards your doorway and shoves users out of your way as you cross the hallway.</span></div>
     <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, gets unknown racks 10–75% investigated (you finish the job), then quits. Users ignore them, 15% of their patches take a server down, and some only want snacks. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds. <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
     <div><span class="ic">❓</span><span><b>Unknown rack.</b> The client forgot to mention these. Hold E on one to investigate (6 seconds, free) and you'll find it with a healthy timer. Hidden servers never reveal themselves through migration progress. From client 4 on they can be any tier, even gold. They may come with an expired or approaching license. Escalations can ignite unknown racks; going offline reveals them. Asset Inventory cuts investigation time to 3 seconds.</span></div>

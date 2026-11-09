@@ -4,6 +4,11 @@ Ideas and loose ends. Nothing here is a commitment.
 
 ## To do
 
+### Make the code cheaper to work on (do first, in a fresh session)
+- [ ] Move the embedded logo out of `lift-and-shift.html` into its own file.
+- [ ] Add clear section markers to the game code and a short "where things live" map to `AGENTS.md`.
+- [ ] Put big new systems, such as multiplayer, in their own `.js` files from the start. Don't rewrite or split the existing code.
+
 ### Check by hand
 - [ ] Play with the three songs and judge how the four music stages ramp.
 - [ ] Try phone controls on more real phones: button size, see-through level, stick feel.
@@ -24,7 +29,30 @@ Ideas and loose ends. Nothing here is a commitment.
 - [ ] Build a better playtest bot. The current one rarely gets past client 2, so later clients, freezes and managers are unmeasured.
 - [ ] Tune the AI Agent foundation values, uptime recovery rates, and escalation spacing from real play.
 
+## AI Agent rework (ideas from the first Living Legend run)
+
+Late-game AI was a disaster on a 10-client career with no Patch Bot: patching sat around 55–60% and broke things. None of this is settled; balance it by playing.
+
+**Agent tiers** (built; needs playtesting)
+- Level 1 only touches bronze servers, on-prem and in the cloud, and still does tickets. It keeps today's starting odds.
+- Level 2 starts at 80% on everything, plus whatever the foundation upgrades add.
+- Level 3 starts at 90%, plus foundations. It should never reach 100%; some failures stay.
+- Level 2 adds silver and level 3 adds gold. Level 4 stays as the guardrails capstone.
+
+**It cleans up its own mess** (built; needs playtesting)
+- Today it breaks something and walks away. Instead it stays and tries to fix it, with its own chance of succeeding.
+- If the repair fails, the problem falls to the player as it does now.
+
+**Shop luck**
+- Guarantee key tools show up. Patch Bot has about a 1-in-6 chance per sprint and can be missed for a whole career, even with Brainstorm. Consider always offering Patch Bot, and possibly Chatbots, until owned.
+
+**Ending: replaced by the AI, then rehired**
+- If the AI does about 90% or more of the actions, you're let go because you're no longer needed.
+- Game over, fade to black, then: "You've been rehired." The agent went rogue and everything is on fire.
+- You fix it all with no penalty for the damage already done, finish the migration, collect a $1 million bonus, quit on your own terms and retire to a perpetual vacation.
+
 ## Next up
+0. **Share your results.** A snapshot of the end report to post on social media, including where your time and money went and which upgrades you bought.
 1. **Saved sessions.** Autosave between clients only, with a "Resume career" button. Today a refresh wipes the career.
 2. **Chaos Monkey.** Opt-in modifier for bigger rewards. A monkey randomly kills servers, lanes or the inbox; enough resilience makes it barely matter. Covers the "game day" idea.
 3. **Résumé lies and permanent unlocks.** Earn "LinkedIn endorsements" across careers to unlock starting lies, such as "Claimed Kubernetes experience": start with Terraform, but gold servers are harder.
