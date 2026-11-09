@@ -469,7 +469,7 @@ const UPGRADES=[
   {id:"observe",name:"Observability",icon:"📈",cost:4,desc:"Early warnings: racks about to fail compliance and leaks about to breach get a pulsing ring and an alert."},
   {id:"snacks",name:"Snack Budget",icon:"🍩",cost:2,max:3,desc:"Finance approved more donuts and coffee. Pickups show up at 35% shorter intervals per level, and one more can be out at a time."},
   {id:"vendor",name:"Vendor Negotiation",icon:"🤝",cost:2,max:3,desc:"License renewals cost 20% less per level."},
-  {id:"manager",name:"A Manager Who Fights for You",icon:"👔",cost:5,max:3,desc:"All levels automatically call a change freeze for gold outages or breaches (10/14/18 seconds; cooldown 60/50/40 seconds). They also speed up uptime recovery. Level 1: answers your email, but chats with users and sometimes wanders over to look at a server (half the time, it goes offline). Level 2: focuses on email and rarely touches servers. Level 3: also stands guard at your doorway and shoves users out of your way as you cross the hallway."},
+  {id:"manager",name:"A Manager Who Fights for You",icon:"👔",cost:5,max:3,desc:"All levels automatically call a change freeze for gold outages or breaches (10/14/18 seconds; cooldown 60/50/40 seconds). They also speed up uptime recovery. Level 1: answers your email, but chats with users and sometimes wanders over to look at a server (half the time, it goes offline; hold E at that server to shoo them away). Each server they break keeps them out of the data center longer. Level 2: focuses on email and rarely touches servers. Level 3: also stands guard at your doorway and shoves users out of your way as you cross the hallway."},
   {id:"agent",name:"AI Agent",icon:"🧠",cost:6,max:4,ai:true,req:()=>S.career.length>=3,desc:"Answers email, closes tickets, patches servers and seals leaks, fast, anywhere. Every attempt costs tokens. L1 pilot, bronze servers only: 50% right, 25% does nothing, 25% breaks something. L2 better instructions, adds silver: 80/15/5. L3 agentic workflows, adds gold: 90/7/3. L4 guardrails and evals: harmful actions get blocked. When it breaks something it apologizes and tries once to fix it (40% at L1, 60% at L2, 80% at L3). It amplifies what you already have: with good foundations for a job, it's right far more often."},
   {id:"chatbot",name:"AI Chatbots",icon:"💬",cost:4,max:2,ai:true,desc:"A chatbot roams the hallway, chats up users and resolves them. A user being chatted up can't grab you. Sometimes they just want a human. Each level adds a bot."},
 ];
@@ -927,8 +927,10 @@ const MGR_LINES={
   email:["Reply-all, done.","I'll loop in legal.","Per my email... oh, that's me.","Inbox zero, baby."],
   chat:["Did you see the game last night?","Let's circle back on that.","Quick sync? Great.","How are the kids?"],
   patch:["I used to be technical, you know.","Let me just take a look.","Is this one supposed to blink?"],
-  fine:["Looks fine to me.","Yep. That's a server.","Good talk, server."],
+  fine:["Looks fine to me.","Yep. That's a server.","Good talk, server.","Yeah, I still got it.","See? Still technical."],
   oops:["Huh. It's never done that before.","That's... not great.","Was it supposed to beep?"],
+  shame:["I know my role.","Back to email. Where I belong.","I'll just... answer some email."],
+  shoo:["Okay, okay. You've got this.","Yo, whatever. Fine.","Fine. I'll be in my inbox."],
   guard:["Let them through!","Not now, Gary!","Book a meeting!","She's busy, folks!","Out of the way!"],
 };
 /* ---------- AI Agent (stackable, unlocks after client 3) ----------
@@ -1090,9 +1092,11 @@ function mgrShove(u,dt){if(freezeActive())return;
   const dM=dist(u,M);if(dM<45){const d=dM||1;u.x+=(u.x-M.x)/d*140*dt;u.y+=(u.y-M.y)/d*140*dt;u.x=clamp(u.x,382,578);return false;}
   return false;
 }
+const MGR_SHAME_STEP=45,MGR_SHAME_MAX=300,MGR_SHOO_HOLD=0.4,MGR_SHOO_REST=20,MGR_SHAME_SPEED=50,MGR_LOOK_TIME=4;
 function tickManager(dt){
   const M=S.mgr;if(!M)return;const L=lvl("manager");
   if(M.sayT>0)M.sayT-=dt;
+  S.mgrShame=Math.max(0,(S.mgrShame||0)-dt);
   const imp=importantMail().length,sp=110;
   M.dec-=dt;
   // decide what to do next when idle or guarding
@@ -1101,7 +1105,7 @@ function tickManager(dt){
     const patchCh=[0,0.05,0.01,0.005][L],chatCh=[0,0.2,0.05,0.03][L],mailAt=L>=3?3:1;
     const racks=S.racks.filter(a=>a&&!a.hidden&&!a.down&&a.fire===0);
     const free=S.users.filter(u=>!u.hunter&&!u.chat&&!u.mgrChat&&S.p.heldBy!==u);
-    if(racks.length&&Math.random()<patchCh){M.state="patch";M.tgt=pick(racks);M.work=0;mgrSay("patch");}
+    if(racks.length&&S.mgrShame<=0&&Math.random()<patchCh){M.state="patch";M.tgt=pick(racks);M.work=0;M.shoo=0;mgrSay("patch");}
     else if(free.length&&Math.random()<chatCh){M.state="chat";M.tgt=pick(free);M.work=0;}
     else if(imp>=mailAt){M.state="email";M.work=0;}
     else M.state=L>=3?"guard":"idle";
@@ -1119,12 +1123,23 @@ function tickManager(dt){
   if(M.state==="patch"){
     const a=M.tgt;if(!a||S.racks[a.slot]!==a||a.down||a.hidden){M.state="idle";return;}
     const p=RACKS[a.slot];if(!goTo(M,p.x,p.y+44,sp,dt))return;
+    if(M.work===0)fl(p,"👔 Hold E to shoo",C.leak);
     M.work+=dt;
-    if(M.work>=2){
+    // the player can step in: hold E at the same server and the manager backs off
+    const P=S.p;M.shoo=keys.fix&&!P.heldBy&&P.stun<=0&&dist(P,p)<80?(M.shoo||0)+dt:0;
+    if(M.shoo>=MGR_SHOO_HOLD){sfx("grab");fl(p,"🙅 Shooed",C.ok);M.sayT=0;mgrSay("shoo");S.mgrShame=Math.max(S.mgrShame,MGR_SHOO_REST);M.state="email";M.work=0;M.tgt=null;return;}
+    if(M.work>=MGR_LOOK_TIME){
       if(Math.random()<0.5){sfx("offline");a.down=true;a.downT=S.time;a.fire=0;a.prog=0;S.ss.lost++;fl(p,"OFFLINE",C.danger);mgrSay("oops");
-        toast(`👔 Your manager looked at ${a.name}. It's offline now.`);}
-      else mgrSay("fine");
+        toast(`👔 Your manager looked at ${a.name}. It's offline now.`);
+        // each server broken makes the next absence from the data center longer, for the whole career
+        S.mgrBreaks=(S.mgrBreaks||0)+1;S.mgrShame=Math.min(MGR_SHAME_MAX,MGR_SHAME_STEP*S.mgrBreaks);M.state="shame";M.tgt=null;M.work=0;return;}
+      mgrSay("fine");
       M.state="idle";M.dec=2;}
+    return;
+  }
+  if(M.state==="shame"){
+    if(!goTo(M,480,98,MGR_SHAME_SPEED,dt))return;
+    mgrSay("shame");M.state="email";M.work=0;
     return;
   }
   if(M.state==="chat"){
@@ -1464,7 +1479,7 @@ const PHONE_PORTRAIT=matchMedia("(pointer:coarse) and (orientation:portrait) and
 let S;
 function newRun(){
   S={songOffset:Math.floor(Math.random()*3),sprint:0,budget:0,cost:{},retro:{},secLoss:{},secWarned:false,tierTot:{},movedT:{},career:[],gen:{},lz:0,wave:[],run:{mig:0,audits:0,breaches:0,lost:0,unplanned:0,fails:0,rollbacks:0,missed:0,esc:0,held:0,heldT:0,vendor:0},err:ERR_BUDGET,errMax:ERR_BUDGET,security:100,energy:50,points:0,upgrades:{},racks:Array(12).fill(null),cloud:Array(16).fill(null),
-     rival:0,bots:[],totalApps:0,lostTotal:0,alert:false,t:0,offers:[],
+     rival:0,bots:[],totalApps:0,lostTotal:0,alert:false,t:0,offers:[],mgrBreaks:0,mgrShame:0,
      p:{x:480,y:280,stun:0,inv:0,heldBy:null,userImm:0},users:[],cbots:[],fx:[],carry:null,inv:[],tk:[],st:[],fl:[],fix:null,fixP:0,fixKey:null,fixNeed:1,warnT:-9,prompt:"",diff:DIFF};
   startSprint(1);
 }
@@ -2506,7 +2521,7 @@ function howToPlay(){
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and a 4-second speed boost (you glow). 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
     <div><span class="ic">🤖</span><span><b>Patch Bot (upgrade).</b> Patches overdue servers for you, but never fights fires. Level 1 succeeds 50% of the time, level 2 66%, level 3 90%. A failed patch leaves a red AUTOMATION ERROR on the rack: patch it yourself to clear it, or if its compliance timer runs out, the audit fails and the error resets so the bot can try again.</span></div>
     <div><span class="ic">🧠</span><span><b>AI Agent (upgrade, after client 3).</b> A fast purple agent that answers email, closes tickets, patches servers and seals leaks. Every attempt costs tokens. At level 1 it only touches bronze servers and only half its work is right; the rest does nothing (while claiming success) or breaks something. Level 2 adds silver servers and level 3 adds gold, with far better odds; level 4 adds guardrails that block harmful actions. When it breaks something it apologizes and stays to try one fix, billed in tokens. If that fails, the problem is yours. It also amplifies the practices you already have. Patching improves with Patch Bot, Runbooks and Observability; tickets with Self-Service Portal and Runbooks; email with your Manager and Status Page; leaks with Policy as Code, Vulnerability Scanner and Cloud Auto-Patching. The shop shows its odds for each job and what's missing. Check its ✓ / ✗ marks.</span></div>
-    <div><span class="ic">👔</span><span><b>Your manager (upgrade).</b> Level 1 answers your email, but chats with users and sometimes wanders over to look at a server. Half the time, just looking takes it offline. Every level speeds up uptime recovery. Level 2 sticks to email. Level 3 also guards your doorway and shoves users out of your way as you cross the hallway.</span></div>
+    <div><span class="ic">👔</span><span><b>Your manager (upgrade).</b> Level 1 answers your email, but chats with users and sometimes wanders over to look at a server. Half the time, just looking takes it offline. While they're at a server, hold E there to shoo them away. Each one they break sends them on a slow walk of shame to the inbox, and they stay out of the data center longer every time. Every level speeds up uptime recovery. Level 2 sticks to email. Level 3 also guards your doorway and shoves users out of your way as you cross the hallway.</span></div>
     <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, gets unknown racks 10–75% investigated (you finish the job), then quits. Users ignore them, 15% of their patches take a server down, and some only want snacks. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds. <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
     <div><span class="ic">❓</span><span><b>Unknown rack.</b> The client forgot to mention these. Hold E on one to investigate (6 seconds, free) and you'll find it with a healthy timer. Hidden servers never reveal themselves through migration progress. From client 4 on they can be any tier, even gold. They may come with an expired or approaching license. Escalations can ignite unknown racks; going offline reveals them. Asset Inventory cuts investigation time to 3 seconds.</span></div>
   </div>

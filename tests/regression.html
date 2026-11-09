@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -246,10 +246,43 @@ test("Redefine Uptime raises the rate and cap; a manager raises the rate", () =>
 test("a manager looking at a server takes it offline half the time", () => {
   for (const [roll, breaks] of [[0.4, true], [0.6, false]]) {
     const S = fresh(); S.upgrades.manager = 1; const a = firstRack(S), p = G.RACKS[a.slot];
-    S.mgr = {x: p.x, y: p.y + 44, state: "patch", tgt: a, work: 1.99, dec: 5, say: "", sayT: 0, wx: 480, wy: 300};
+    S.mgr = {x: p.x, y: p.y + 44, state: "patch", tgt: a, work: 3.99, dec: 5, say: "", sayT: 0, wx: 480, wy: 300};
     fixedRandom(roll); G.tickManager(0.05);
-    check(a.down === breaks && S.mgr.state === "idle", `roll ${roll}: down ${a.down}, state ${S.mgr.state}`);
+    check(a.down === breaks && S.mgr.state === (breaks ? "shame" : "idle"), `roll ${roll}: down ${a.down}, state ${S.mgr.state}`);
   }
+});
+const mgrAtRack = (S, a, work) => { const p = G.RACKS[a.slot]; S.mgr = {x: p.x, y: p.y + 44, state: "patch", tgt: a, work, dec: 5, say: "", sayT: 0, wx: 480, wy: 300}; return p; };
+test("each server the manager breaks makes the cooldown longer, and it blocks more visits", () => {
+  const S = fresh(); S.upgrades.manager = 1; const a = firstRack(S); S.users = [];
+  const seen = [];
+  for (let n = 0; n < 3; n++) {
+    a.down = false; a.fire = 0; mgrAtRack(S, a, 3.99); S.mgrShame = 0;
+    fixedRandom(0.4); G.tickManager(0.05); seen.push(S.mgrShame);
+    check(S.mgr.state === "shame", "no walk of shame");
+  }
+  check(near(seen[0], 45) && near(seen[1], 90) && near(seen[2], 135), `cooldowns ${seen}`);
+  S.mgrBreaks = 50; a.down = false; mgrAtRack(S, a, 3.99); fixedRandom(0.4); G.tickManager(0.05);
+  check(near(S.mgrShame, 300), `cap ${S.mgrShame}`);
+  a.down = false; S.em = []; S.mgr.state = "idle"; S.mgr.dec = 0;
+  fixedRandom(0); G.tickManager(0.05);
+  check(S.mgr.state !== "patch", "visited during cooldown");
+  S.mgrShame = 0; S.mgr.state = "idle"; S.mgr.dec = 0; fixedRandom(0); G.tickManager(0.05);
+  check(S.mgr.state === "patch", "never came back after cooldown");
+});
+test("the walk of shame goes straight to the inbox at a slow pace", () => {
+  const S = fresh(); S.upgrades.manager = 1; S.mgr = {x: 480, y: 298, state: "shame", tgt: null, work: 0, dec: 0, say: "", sayT: 0, wx: 480, wy: 300};
+  G.tickManager(1); check(S.mgr.state === "shame" && near(S.mgr.y, 248), `y ${S.mgr.y}`);
+  S.mgr.y = 99; G.tickManager(1); check(S.mgr.state === "email", `state ${S.mgr.state}`);
+});
+test("holding E at the manager's server shoos them, but only there and only if held", () => {
+  const start = () => { const S = fresh(); S.upgrades.manager = 1; const a = firstRack(S), p = mgrAtRack(S, a, 0.5); S.p.x = p.x + 30; S.p.y = p.y + 40; S.p.stun = 0; S.p.heldBy = null; return {S, a, p}; };
+  fixedRandom(0.4);
+  try {
+    let {S, a} = start(); G.keys.fix = true; G.tickManager(0.2); check(S.mgr.state === "patch", "a tap shooed the manager");
+    G.tickManager(0.25); check(S.mgr.state === "email" && !a.down, `state ${S.mgr.state}`); check(S.mgrShame > 0 && !S.mgrBreaks, "shoo counted as a break or left no rest");
+    let far = start(); far.S.p.x = far.p.x + 400; G.tickManager(0.5); check(far.S.mgr.state === "patch", "shooed from across the room");
+    let walk = start(); walk.S.mgr.x = 480; walk.S.mgr.y = 260; walk.S.mgr.work = 0; G.tickManager(0.5); check(walk.S.mgr.state === "patch", "shooed before arriving");
+  } finally { G.keys.fix = false; }
 });
 
 /* ---------- blue-green ---------- */

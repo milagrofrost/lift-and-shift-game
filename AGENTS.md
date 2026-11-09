@@ -59,7 +59,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 ### Uptime recovery
 
 - Outages burn the uptime budget by tier: gold 3/s, silver 1/s, bronze 0.25/s. Bronze and silver outages are survivable; gold is what gets you fired.
-- The uptime budget recovers slowly unless a gold server is offline or something is breached: up to half the budget by default. Redefine "Uptime" raises the rate and cap; managers raise the rate. A manager's server visit is an inspection that takes the server offline half the time.
+- The uptime budget recovers slowly unless a gold server is offline or something is breached: up to half the budget by default. Redefine "Uptime" raises the rate and cap; managers raise the rate. A manager's server visit is an inspection that takes the server offline half the time. A break sends the manager on a slow walk to the inbox and blocks visits for 45 seconds per career break, capped at 300. Holding E at that server during the inspection cancels it without counting as a break.
 
 ### Career and balance
 
