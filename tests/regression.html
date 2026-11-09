@@ -29,7 +29,7 @@
    Results: the page title becomes "PASS n/n" or "FAIL k/n", and window.__RESULTS holds the details. */
 const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
-const NAMES = ("rollOffers,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
+const NAMES = ("migrateBurn,migrateMult,rollOffers,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
   "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
@@ -485,6 +485,17 @@ test("the agent calls off its own escalation, even after it lands", () => {
   const a = firstRack(S), e2 = S.atk[0]; e2.a = a; e2.dead = true; a.fire = 20;
   fixedRandom(0.1); G.tickAgent(3.1);
   check(a.fire === 0, "landed escalation still burning");
+});
+
+/* ---------- migration uptime burn ---------- */
+test("moving a server burns a quarter of an outage, and only if it is really shut down", () => {
+  const S = fresh(); S.bots = []; S.pipe = []; const a = firstRack(S); a.tier = "gold"; const slot = a.slot;
+  check(G.migrateBurn() === 0, "burn with nothing moving");
+  S.racks[slot] = null; S.carry = a; check(near(G.migrateBurn(), 0.75), `one gold ${G.migrateBurn()}`);
+  S.carry = null; S.pipe = [0, 1, 2].map(lane => ({a: {tier: "gold", slot: 11}, t: 0, dur: 6, lane})); S.racks[11] = null;
+  check(near(G.migrateBurn(), 2.25), `three gold ${G.migrateBurn()}`);
+  S.pipe = []; S.racks[slot] = a; S.carry = a; check(G.migrateBurn() === 0, "blue-green copy burned uptime");
+  S.racks[slot] = null; S.upgrades.spin = 3; check(near(G.migrateBurn(), 0.3), `spin ${G.migrateBurn()}`);
 });
 
 /* ---------- give me a break ---------- */

@@ -50,6 +50,11 @@ body{font-family:var(--f-body)}
 @keyframes hbflash{from{box-shadow:0 0 0 0 rgba(255,93,77,0)}to{box-shadow:0 0 0 3px rgba(255,93,77,.5)}}
 @keyframes hbfill{from{opacity:1}to{opacity:.35}}
 @media (prefers-reduced-motion:reduce){.hb.flash,.hb.flash .ht i{animation:none}.hb.flash{box-shadow:0 0 0 2px var(--danger)}}
+/* what is draining uptime: a slow pulse for migrations, quicker when heavy, a hard fast one for outages */
+.hb[data-burn="migrate"],.hb[data-burn="heavy"],.hb[data-burn="outage"]{border-color:var(--danger);animation:hbflash 1.4s ease-in-out infinite alternate}
+.hb[data-burn="heavy"]{animation-duration:.8s}
+.hb[data-burn="outage"]{animation-duration:.2s}
+@media (prefers-reduced-motion:reduce){.hb[data-burn="migrate"],.hb[data-burn="heavy"],.hb[data-burn="outage"]{animation:none;box-shadow:0 0 0 2px var(--danger)}}
 
 .chip.critical{border-color:var(--danger);animation:critp .7s ease-in-out infinite alternate}
 @keyframes critp{from{box-shadow:0 0 0 0 rgba(255,93,77,.0)}to{box-shadow:0 0 0 3px rgba(255,93,77,.55)}}
@@ -261,7 +266,7 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
   </div>
   <div class="modline" id="h-mod"></div>
   <div class="health" id="health" aria-label="Health bars">
-    <div class="hb" id="hb-up" title="Uptime error budget. Offline servers burn it, gold fastest. Each client has its own budget."><div class="hl"><span>Uptime</span><b></b></div><div class="ht"><i></i></div><small>Empty = fired</small></div>
+    <div class="hb" id="hb-up" title="Uptime error budget. Offline servers burn it, gold fastest. Servers shut down for migration burn it far more slowly. Each client has its own budget."><div class="hl"><span>Uptime</span><b></b></div><div class="ht"><i></i></div><small>Empty = fired</small></div>
     <div class="hb" id="hb-sec" title="Breaches and failed audits drain it. +25 at each security review between clients."><div class="hl"><span>Security</span><b></b></div><div class="ht"><i></i></div><small>Empty = fired</small></div>
     <div class="hb" id="hb-lease" title="Days into this engagement vs the client's lease target. Late costs 10% more on-prem per day and a star."><div class="hl"><span>Lease</span><b></b></div><div class="ht"><i></i></div><small>Late = costs + a lost star</small></div>
     <div class="hb" id="hb-stars" title="The rating this client would give you right now."><div class="hl"><span>Client rating</span><b></b></div><div class="ht"><i></i></div><small>Your career score</small></div>
@@ -491,7 +496,7 @@ const UPGRADES=[
   {id:"autopatch",name:"Cloud Auto-Patching",icon:"🩹",cost:5,sec:true,desc:"Cloud apps get patched automatically, so they never drift into riskier states, and new leaks are 20% less likely. Covered apps show a green shield."},
   {id:"pipeline",name:"CI/CD Pipeline",icon:"🏭",cost:5,max:3,desc:"Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud. No walking: about 6 seconds (3 with Terraform), with +10% odds from automated tests. Each level adds a lane, so more jobs can run at once."},
   {id:"bluegreen",name:"Blue-Green Cutovers",icon:"🔀",cost:6,desc:"Run old and new side by side. You carry a see-through copy while the original stays live in its rack, so moving it costs no downtime. The original still takes fires and escalations, and if it goes offline the copy is canceled. Failed cloud deployments stay gray; hold E there to retry."},
-  {id:"spin",name:"Redefine \"Uptime\"",icon:"🎤",cost:3,max:3,desc:"Leadership skills. That outage was a \"planned degradation event.\" Your uptime recovers faster and can recover further: up to 65%, 80%, then 95% of the budget."},
+  {id:"spin",name:"Redefine \"Uptime\"",icon:"🎤",cost:3,max:3,desc:"Leadership skills. That outage was a \"planned degradation event.\" Your uptime recovers faster and can recover further: up to 65%, 80%, then 95% of the budget. Migrations also cost 20% less uptime per level."},
   {id:"statuspage",name:"Status Page",icon:"📣",cost:3,desc:"During a red alert, users check the status page instead of grabbing you. (Execs you ignored still come find you.)"},
   {id:"postmortem",name:"Blameless Postmortems",icon:"📝",cost:3,desc:"Learn from every incident. Each red alert you resolve gives back half the story point it cost."},
   {id:"oncall",name:"On-Call Rotation",icon:"📟",cost:3,desc:"You're not the only hero anymore. Energy regenerates 50% faster."},
@@ -1553,7 +1558,7 @@ function startSprint(n){
   S.wave=all.filter(x=>!first.includes(x));
   for(const x of all){const t=x.hidden?x.e[1]:x.e[2];S.totalApps++;S.tierTot[t]=(S.tierTot[t]||0)+1;}
   for(const x of first)addApp(x.e,x.hidden,true);
-  Object.assign(S,{em:[],tk:[],atk:[],st:[],fl:[],fx:[],shake:0,carry:null,fix:null,fixP:0,fixKey:null,emT:4,tkT:5,stT:3,err:ec.err,alert:false,frozen:false,sp:[],spT:rand(18,28),temp:null,pipe:[],window:0,focus:0,pizza:null});
+  Object.assign(S,{em:[],tk:[],atk:[],st:[],fl:[],fx:[],shake:0,carry:null,fix:null,fixP:0,fixKey:null,emT:4,tkT:5,stT:3,err:ec.err,burnT:0,alert:false,frozen:false,sp:[],spT:rand(18,28),temp:null,pipe:[],window:0,focus:0,pizza:null});
   // license deadlines (in seconds of this engagement); gold ones come due later so you can build experience first
   const T=ec.days*DAY;
   S.racks.forEach(a=>{if(a&&!a.hidden&&a.licBase)a.lic=(a.tier==="gold"?rand(0.8,1.1):rand(0.4,0.75))*T;});
@@ -1654,6 +1659,11 @@ function noteRestored(a){if(a.downT!=null){S.ss.mttrSum+=S.time-a.downT;S.ss.mtt
 /* Blue-green: what you carry (or pipeline) is a copy. The original stays live in its rack, still taking fires and
    escalations, until the cloud copy comes up. */
 const liveCopy=a=>!!a&&S.racks[a.slot]===a;
+// a server being moved is shut down, unless blue-green kept the original running. It costs far less than a real outage.
+const MIGRATE_BURN=0.25,MIGRATE_WARN=1.5;
+const migrateMult=()=>MIGRATE_BURN*(1-0.2*lvl("spin"));
+const shutDownMoving=()=>[...new Set([S.carry,...S.bots.map(b=>b.carry),...(S.pipe||[]).map(j=>j.a)].filter(a=>a&&!liveCopy(a)))];
+const migrateBurn=()=>shutDownMoving().reduce((n,a)=>n+TIER[a.tier].sla*migrateMult(),0);
 // you have to stand on the spot you're putting a server into
 const DROP_REACH=38;
 const slotUnder=()=>{let bi=-1,bd=DROP_REACH;S.cloud.forEach((c,i)=>{if(c)return;const d=dist(S.p,SLOTS[i]);if(d<bd){bd=d;bi=i;}});return bi;};
@@ -2082,8 +2092,9 @@ function update(dt){
   doFix(dt);
   tickPipeline(dt);
   // a server being moved is in its cutover window: it counts as down at half the normal rate
-  {const moving=[];if(S.carry)moving.push(S.carry);S.bots.forEach(b=>{if(b.carry)moving.push(b.carry);});S.pipe.forEach(j=>moving.push(j.a));
-   for(const a of moving){if(liveCopy(a))continue;S.err-=TIER[a.tier].sla*0.5*dt;spend("downtime",TIER[a.tier].drain*0.5*dt);}}
+  {const moving=shutDownMoving(),m=migrateMult();
+   for(const a of moving){S.err-=TIER[a.tier].sla*m*dt;spend("downtime",TIER[a.tier].drain*m*dt);}
+   if(migrateBurn()>=MIGRATE_WARN&&S.time>=(S.burnT||0)){S.burnT=S.time+30;toast(`⚠️ ${moving.length} servers are shut down for migration and uptime is draining.${S.upgrades.bluegreen?" Slow down, or move fewer at once.":" Move fewer at once, or get Blue-Green Cutovers."}`);}}
   tickOnPrem(dt);cancelDeadCopies();tickCloud(dt);observeTick();spawns(dt);tickHazards(dt);
   const ai=aiOn();for(const b of S.bots){b.flash=Math.max(0,b.flash-dt);(b.kind==="patch"?patchBot:moverBot)(b,dt,ai,ai?170:85);}
   S.fl=S.fl.filter(f=>(f.t+=dt)<f.life);
@@ -2147,8 +2158,8 @@ function drawPipeline(){
   for(const j of S.pipe){
     const y=236+j.lane*44,f=Math.min(1,j.t/j.dur),x=322+(640-322)*f;
     if(liveCopy(j.a)){ctx.globalAlpha=.45;ctx.fillStyle="#7fd4ff";rr(x-16,y-12,32,22,3);ctx.fill();ctx.globalAlpha=1;ctx.strokeStyle="#7fd4ff";ctx.lineWidth=1;rr(x-16,y-12,32,22,3);ctx.stroke();}
-    else{ctx.fillStyle="#b9874f";rr(x-16,y-12,32,22,3);ctx.fill();ctx.fillStyle="#efdcae";ctx.fillRect(x-2,y-12,4,22);}
-    tx(j.a.name,x,y-20,8.5,C.ink,{max:80,weight:600});
+    else{ctx.fillStyle="#4b5560";rr(x-16,y-12,32,22,3);ctx.fill();ctx.strokeStyle="#7b8894";ctx.lineWidth=1;rr(x-16,y-12,32,22,3);ctx.stroke();tx("OFF",x,y-1,9,"#cfd8df",{font:DISP,weight:700});}
+    tx(j.a.name,x,y-20,8.5,liveCopy(j.a)?C.ink:C.muted,{max:80,weight:600});
     bar(x-16,y+13,32,3,f,C.leak,"rgba(0,0,0,.4)");
   }
 }
@@ -2301,7 +2312,7 @@ function drawBot(b){
   em(b.kind==="patch"?"🤖":"🦾",b.x,b.y,19);
   if(ai)em("✨",b.x+13,b.y-12,11);
   tx(b.kind==="patch"?"PATCH BOT":"MOVER BOT",b.x,b.y+23,8.5,ai?C.ai:C.ok,{weight:600});
-  if(b.carry){ctx.fillStyle="#3a2f20";rr(b.x-30,b.y-40,60,16,4);ctx.fill();tx("📦 "+b.carry.name,b.x,b.y-32,9,C.amber,{max:56});}
+  if(b.carry){ctx.fillStyle="#3a2f20";rr(b.x-30,b.y-40,60,16,4);ctx.fill();tx((liveCopy(b.carry)?"📦 ":"OFF · ")+b.carry.name,b.x,b.y-32,9,liveCopy(b.carry)?C.amber:"#cfd8df",{max:56});}
 }
 // the donut next to you is the timer: it gets eaten away clockwise until it's gone
 const DONUT_TIME=8;
@@ -2349,9 +2360,9 @@ function drawPlayer(){
     tx("COPY",P.x,P.y,9,"#dff4ff",{font:DISP,weight:700});
   }else if(S.carry){
     // the box sits on top of you (you can still see yourself through it), and the dashed ring is your bigger hitbox
-    ctx.globalAlpha=.72;ctx.fillStyle="#b9874f";rr(P.x-21,P.y-15,42,30,4);ctx.fill();
-    ctx.fillStyle="#efdcae";ctx.fillRect(P.x-3,P.y-15,6,30);ctx.globalAlpha=1;
-    ctx.strokeStyle="#7a5530";ctx.lineWidth=1.5;rr(P.x-21,P.y-15,42,30,4);ctx.stroke();
+    ctx.globalAlpha=.72;ctx.fillStyle="#4b5560";rr(P.x-21,P.y-15,42,30,4);ctx.fill();ctx.globalAlpha=1;
+    ctx.strokeStyle="#7b8894";ctx.lineWidth=1.5;rr(P.x-21,P.y-15,42,30,4);ctx.stroke();
+    tx("OFF",P.x,P.y,10,"#e3e9ee",{font:DISP,weight:700});
   }
   if(S.carry){
     ctx.strokeStyle=C.amber;ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.beginPath();ctx.arc(P.x,P.y,PR_CARRY,0,7);ctx.stroke();ctx.setLineDash([]);
@@ -2413,8 +2424,8 @@ function setBar(id,frac,label,level,flash){
 }
 const lvlOf=f=>f>0.6?"ok":f>0.3?"warn":"bad";
 function healthBars(){
-  $("hb-up").querySelector("small").textContent=uptimeRegen()>0?"Recovering · empty = fired":"Empty = fired";
-  const up=S.err/S.errMax;setBar("hb-up",up,`${Math.max(0,Math.ceil(up*100))}%`,lvlOf(up),up<0.2);
+  const mb=migrateBurn();$("hb-up").querySelector("small").textContent=mb>0?`Migrating: −${mb.toFixed(1)}/s`:uptimeRegen()>0?"Recovering · empty = fired":"Empty = fired";
+  const up=S.err/S.errMax;setBar("hb-up",up,`${Math.max(0,Math.ceil(up*100))}%`,lvlOf(up),up<0.2);$("hb-up").dataset.burn=mode!=="play"?"":downCount()>0?"outage":mb>=MIGRATE_WARN?"heavy":mb>0?"migrate":"";
   const sec=Math.max(0,S.security)/100;setBar("hb-sec",sec,`${Math.round(Math.max(0,S.security))}`,lvlOf(sec),sec<0.3);
   const d=dayNum(),late=overdue(),lf=d/S.cdays;
   setBar("hb-lease",late?1:lf,late?`${late} day${late>1?"s":""} late`:`Day ${d}/${S.cdays}`,late?"bad":lf>0.75?"warn":"ok",late>0);
