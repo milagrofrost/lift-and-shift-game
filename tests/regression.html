@@ -342,6 +342,7 @@ test("blue-green: Space on-prem discards the carried copy", () => {
 test("the emergency freeze uses its charge and extends up to a 30-second cap", () => {
   const S = fresh(); S.upgrades.freezecharge = true;
   G.useFreeze(); check(!S.upgrades.freezecharge && near(S.freezeT, 12), `charge ${S.upgrades.freezecharge}, freeze ${S.freezeT}`);
+  check(W.document.getElementById("toasts").textContent.includes("You pulled the emergency freeze"), "the message doesn't say who froze");
   G.startFreeze(25); check(near(S.freezeT, 30), `freeze not capped: ${S.freezeT}`);
 });
 test("an incident gets one automatic freeze, then respects the cooldown", () => {
@@ -349,6 +350,9 @@ test("an incident gets one automatic freeze, then respects the cooldown", () => 
   check(gold, "no gold server on client 1");
   gold.down = true; G.update(0.05);
   check(S.freezeT > 3 && S.freezeCooldown > 50, `freeze ${S.freezeT}, cooldown ${S.freezeCooldown}`);
+  const band = W.document.getElementById("freeze-banner");
+  check(band && band.classList.contains("show") && band.textContent === "CHANGE FREEZE", `banner: ${band && band.textContent}`);
+  check(W.document.getElementById("toasts").textContent.includes(`Change freeze: 4s. ${gold.name} is down`), "the message doesn't say what froze everyone");
   gold.down = false; S.freezeT = 0; G.update(0.05); gold.down = true; G.update(0.05);
   check(!(S.freezeT > 0), "froze again inside the cooldown");
 });

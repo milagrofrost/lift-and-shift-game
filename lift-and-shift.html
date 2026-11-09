@@ -288,6 +288,17 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
 .sharestatus{font-size:12.5px;color:var(--muted);margin:0;min-height:1.4em}
 @media (max-width:560px){.share{grid-template-columns:1fr}.share canvas{max-width:220px}}
 @media (max-width:560px){.card h1{font-size:30px}.card{padding:18px}}
+/* change freeze: the words drop in with icicles hanging off them, hold, then fall away. About a second. */
+#freeze-banner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;visibility:hidden}
+#freeze-banner b{position:relative;font-family:var(--f-display);font-weight:700;font-size:clamp(34px,7.5vw,76px);letter-spacing:.12em;line-height:1;padding-left:.12em;opacity:0;
+  background:linear-gradient(180deg,#ffffff 0%,#e3f8ff 45%,#8fdcff 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 10px rgba(111,214,255,.85)) drop-shadow(0 2px 2px rgba(6,30,44,.9))}
+#freeze-banner b::after{content:"";position:absolute;left:.1em;right:.04em;top:86%;height:.62em;background:linear-gradient(180deg,#f2fcff 0%,#bfeeff 45%,rgba(143,220,255,.25) 100%);
+  clip-path:polygon(0% 0%,100% 0%,100% 16%,98.44% 62%,96.88% 16%,95.31% 34%,93.75% 16%,92.19% 88%,90.62% 16%,89.06% 41%,87.50% 16%,85.94% 70%,84.38% 16%,82.81% 28%,81.25% 16%,79.69% 96%,78.12% 16%,76.56% 48%,75.00% 16%,73.44% 66%,71.88% 16%,70.31% 31%,68.75% 16%,67.19% 80%,65.62% 16%,64.06% 38%,62.50% 16%,60.94% 58%,59.38% 16%,57.81% 26%,56.25% 16%,54.69% 92%,53.12% 16%,51.56% 44%,50.00% 16%,48.44% 72%,46.88% 16%,45.31% 33%,43.75% 16%,42.19% 84%,40.62% 16%,39.06% 40%,37.50% 16%,35.94% 64%,34.38% 16%,32.81% 29%,31.25% 16%,29.69% 100%,28.12% 16%,26.56% 46%,25.00% 16%,23.44% 68%,21.88% 16%,20.31% 35%,18.75% 16%,17.19% 86%,15.62% 16%,14.06% 39%,12.50% 16%,10.94% 60%,9.38% 16%,7.81% 27%,6.25% 16%,4.69% 90%,3.12% 16%,1.56% 45%,0.00% 16%)}
+#freeze-banner.show{visibility:visible}
+#freeze-banner.show b{animation:freezedrop 1s ease-in-out forwards}
+@keyframes freezedrop{0%{opacity:0;transform:scale(1.7)}22%{opacity:1;transform:scale(1)}70%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.6)}}
+@media (prefers-reduced-motion:reduce){#freeze-banner.show b{animation:freezefade 1s linear forwards}@keyframes freezefade{0%,85%{opacity:1}100%{opacity:0}}}
 @media (prefers-reduced-motion:reduce){.toast{animation-duration:4.2s;animation-name:fade}@keyframes fade{0%,90%{opacity:1}100%{opacity:0}}}
 </style>
 
@@ -311,6 +322,7 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
   </div>
   <div class="stage">
     <canvas id="c" width="960" height="560" aria-label="Game floor: on-prem server room on the left, hallway in the middle, cloud on the right"></canvas>
+    <div id="freeze-banner" aria-hidden="true"><b>CHANGE FREEZE</b></div>
     <div id="toasts" aria-live="polite"></div>
   </div>
   <div class="help">
@@ -496,20 +508,32 @@ const upCost=u=>u.cost+(u.max?lvl(u.id):0);
 // during a red alert the hallway panics: users run around and shout these
 const ALERT_LINES=["Oh my God, we're all gonna die!","Think of my stocks!","What about my stocks?!","Nobody's fixing my printer!","Is this why my printer is broken?","I KNEW the cloud was a fad!","Should I unplug something?!","Who touched production?!","I'm telling the CEO!","Is it the hackers?!","My fantasy league is down!","Can I still expense lunch?","I only clicked one link!","Have you tried turning it off?!","Are we on the news?","Save the spreadsheets!","Is the Wi-Fi part of this?","I'm updating my LinkedIn.","Does this mean no Friday donuts?","Abandon ship!"];
 const freezeActive=()=>!!(S&&S.freezeT>0);
-function startFreeze(seconds){
+function startFreeze(seconds,why="Incident response"){
   S.freezeT=Math.min(30,(S.freezeT||0)+seconds);S.thawWarned=false;
   if(S.p.heldBy){S.p.heldBy=null;S.p.stun=0;}
   S.p.userImm=Math.max(S.p.userImm||0,seconds);
-  toast(`❄ Change freeze: ${Math.ceil(S.freezeT)}s. Contain the incident; downtime still counts.`);
+  toast(`❄ Change freeze: ${Math.ceil(S.freezeT)}s. ${why}. Contain the incident; downtime still counts.`);
+  freezeBanner();
 }
-function useFreeze(){if(mode!=="play"||!S.upgrades.freezecharge)return;S.upgrades.freezecharge=false;startFreeze(12);}
+// replays the banner from the start, even if one is still fading
+function freezeBanner(){
+  const e=$("freeze-banner");if(!e)return;
+  e.classList.remove("show");void e.offsetWidth;e.classList.add("show");
+}
+// what set off an automatic freeze, in plain words
+function freezeWhy(){
+  const c=critList()[0];if(!c)return"Incident response";
+  const who=c.kind==="breach"?`${c.a.name} is breached`:`${c.a.name} is down${c.kind==="cloudrestore"?" in the cloud":""}`;
+  return lvl("manager")?`${who}, so your manager froze changes`:who;
+}
+function useFreeze(){if(mode!=="play"||!S.upgrades.freezecharge)return;S.upgrades.freezecharge=false;startFreeze(12,"You pulled the emergency freeze");}
 function tickFreeze(dt){
   S.freezeT=Math.max(0,(S.freezeT||0)-dt);S.freezeCooldown=Math.max(0,(S.freezeCooldown||0)-dt);
   if(S.freezeT>0&&S.freezeT<=3&&!S.thawWarned){S.thawWarned=true;toast("❄ Change freeze ends in 3 seconds.");}
   const critical=critList().length>0;
   if(critical&&!S.freezeIncident){
     S.freezeIncident=true;
-    if(!S.freezeCooldown){const level=lvl("manager");startFreeze(level?[0,10,14,18][level]:4);S.freezeCooldown=level?[0,60,50,40][level]:60;}
+    if(!S.freezeCooldown){const level=lvl("manager");startFreeze(level?[0,10,14,18][level]:4,freezeWhy());S.freezeCooldown=level?[0,60,50,40][level]:60;}
   }
   if(!critical)S.freezeIncident=false;
 }
@@ -2622,7 +2646,7 @@ function howToPlay(){
     <div><span class="ic">💧</span><span><b>Cloud leak.</b> Hold E to seal it by hand (it costs energy; security upgrades make leaks rarer). Ignore it and it becomes a breach that spreads to the next app every 10 seconds. Unpatched cloud apps drift: the longer since one was last patched (sealed or contained), the more often it leaks, up to twice as often. Cloud Auto-Patching stops the drift.</span></div>
     <div><span class="ic">📧</span><span><b>Email inbox.</b> At the top of the hallway, with a 5-slot bar. ⚖️ legal, 💰 finance and 👔 exec emails fill it; 📣 vendor spam doesn't and disappears by itself. When the bar is full, fines trickle in and a VP comes hunting you, again and again, until you answer some. While you're at the inbox answering, the VP won't interrupt. Answering a finance email also pushes back the closest license renewal.</span></div>
     <div><span class="ic">🎫</span><span><b>Ticket queue.</b> At the bottom of the hallway, with a 5-slot bar. Hold E there to close tickets. When the bar fills, it flashes red and tickets escalate 🚨 one at a time until you work it down. Each one sets a server on fire and costs half a story point. They're at least 12 seconds apart, half as fast while a server is burning, and 75% slower during an outage or breach. Focus time and change freezes pause them.</span></div>
-    <div><span class="ic">❄</span><span><b>Change freeze.</b> Users, new tickets and email, escalations, fire growth and breach spread all stop. Downtime and breach damage still count, so a freeze buys time, it doesn't fix anything. Every incident gets a short 4-second freeze (once a minute). A manager makes it 10/14/18 seconds and lets it return sooner (60/50/40s). The Emergency Freeze Window upgrade gives you one 12-second freeze on F or the Freeze button.</span></div>
+    <div><span class="ic">❄</span><span><b>Change freeze.</b> Users, new tickets and email, escalations, fire growth and breach spread all stop. Downtime and breach damage still count, so a freeze buys time, it doesn't fix anything. Every incident gets a short 4-second freeze (once a minute), CHANGE FREEZE flashes across the floor, and the message says what caused it. A manager makes it 10/14/18 seconds and lets it return sooner (60/50/40s). The Emergency Freeze Window upgrade gives you one 12-second freeze on F or the Freeze button.</span></div>
     <div><span class="ic">⏪</span><span><b>Restore from backup.</b> Open the terminal (the &gt;_ at the top left, or the &#96; key) and type <code>journalctl</code> for this client's event log. Rows marked 💾 are restore points, roughly every 30 seconds. Pick one, or type <code>restore 05:40</code>, to go back to that moment. Easy gets 3 for the whole career, Normal 2, Hard 1, and Hardcore none. They also work from the screen where you get fired. Restore points only cover the current client, and the future can go differently the second time.</span></div>
     <div><span class="ic">👤</span><span><b>Users.</b> They wander the hallway. Bump into one and you're stuck for a "quick question." The better dressed, the longer: an intern holds you 1 second, the CIO almost 5.</span></div>
     <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
