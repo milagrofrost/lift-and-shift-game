@@ -2909,6 +2909,7 @@ function showEnd(reason){
   const grade=reason?"✗":`${avg.toFixed(1)}★`;
   const ai=lvl("agent")?`<p style="font-size:13.5px;color:var(--muted)">Achievement: <b style="color:var(--ai)">Vibe Ops</b>. You finished with an AI agent on the team.</p>`:(S.bots.length===0&&!reason?`<p style="font-size:13.5px;color:var(--muted)">Achievement: <b style="color:var(--ok)">Artisanal Migration</b>. No bots, all by hand.</p>`:"");
   const rows=S.career.map(c=>`<span>${c.name}<small>Day ${c.days}${c.late?`, ${c.late} days late`:", on time"}</small></span><span class="stars sm">${stars(c.stars)}</span>`).join("");
+  const nmp=notMyProblem();
   let bestClients=0;try{bestClients=+(localStorage.getItem("liftshift-clients")||0);}catch(e){}
   const brag=sharePanel(shareFacts(reason?"fired":"retired",reason?{o:reason==="uptime"?"u":title==="Fired: Failed compliance"?"c":"b",head:"Open to work",sub:`Official reason: ${title.replace("Fired: ","")}. Nobody needs to know that part.`,who:reason==="uptime"?"the SLA":title==="Fired: Failed compliance"?"the auditors":"the security team"}:{o:"r",head:title,sub:"Nobody ever found out about the resume."}));
   show(`<div class="eyebrow">${reason?`Game over · engagement ${S.sprint}`:"Career complete"}</div>
@@ -2919,7 +2920,9 @@ function showEnd(reason){
     <div class="stat"><div class="k">Longest career</div><div class="v">${Math.max(bestClients,n)}</div></div>
     <div class="stat"><div class="k">Title</div><div class="v" style="font-size:14px">${careerTitle()}</div></div>
     <div class="stat"><div class="k">Security</div><div class="v">${Math.max(0,Math.round(S.security))}</div></div>
+    ${reason?`<div class="stat"><div class="k">Not my problem</div><div class="v${nmp.n?" bad":""}">${nmp.n}</div></div>`:""}
   </div>
+  ${reason&&nmp.n?`<p style="font-size:13px;color:var(--muted)">Left on your way out: ${nmpLine(nmp)}. Somebody else's pager now.</p>`:""}
   <h3>The bill</h3>
   <div class="bill">${Object.keys(COST_LABELS).filter(k=>Math.round(S.cost[k]||0)).map(k=>{const v=-S.cost[k];return`<span>${COST_LABELS[k]}</span><span class="${v<0?"neg":"pos"}">${money(v)}</span>`;}).join("")}
     <span class="total">Total IT spend (your score)</span><span class="total ${S.budget<0?"neg":"pos"}">${money(S.budget)}</span>
@@ -2933,11 +2936,21 @@ function showEnd(reason){
   <div class="row">${reason&&BK.left>0&&bkPoints().length?`<button class="btn" data-act="restorelog">⏪ Restore from backup (${BK.left} left)</button>`:""}<button class="btn${reason&&BK.left>0&&bkPoints().length?" ghost":""}" data-act="again">Play again (${diffLabel()})</button><button class="btn ghost" data-act="menu">Main menu</button></div>`);
   shareMount();
 }
+/* "Not my problem": what's about to go wrong as you walk out the door. Uncovered racks in the last half of
+   their cycle (the yellow/red warning circle) are about to fail an audit; cloud leaks past the Observability
+   alert line are about to become breaches. Hidden servers stay hidden. Reads S, never changes it. */
+function notMyProblem(){
+  const audits=S.racks.filter(a=>a&&!a.hidden&&!a.down&&!a.covered&&a.timer/a.maxT<=0.5).length;
+  const breaches=S.cloud.filter(a=>leakRisk(a)&&!a.breach&&!a.down).length;
+  return{audits,breaches,n:audits+breaches};
+}
+const nmpLine=p=>[p.audits?`${p.audits} about to fail an audit`:"",p.breaches?`${p.breaches} about to be breached`:""].filter(Boolean).join(", ");
 /* ---------- giving up: a randomly generated resignation letter + how much you sucked ---------- */
 function runStats(){
   const t={...S.run};for(const k of["mig","audits","breaches","lost","unplanned"])t[k]+=S.ss[k];
   t.left=S.racks.filter(Boolean).length+(S.carry&&!liveCopy(S.carry)?1:0)+S.cloud.filter(a=>a&&a.down).length;
   t.spend=-S.budget;t.secLost=100-Math.max(0,S.security);t.upLeft=Math.round(clamp(S.err/S.errMax,0,1)*100);
+  t.nmp=notMyProblem();
   return t;
 }
 function suckRows(t){
@@ -2950,6 +2963,7 @@ function suckRows(t){
     ["Rollbacks",t.rollbacks,3,"Two steps forward, one step back."],
     ["Missed legal/finance/exec emails",t.missed,3,"Inbox zero, but backwards."],
     ["Tickets left to escalate",t.esc,2,"They set the building on fire."],
+    ["Not my problem",t.nmp.n,1,t.nmp.n?`${nmpLine(t.nmp)}. Your replacement's first week will be memorable.`:"You left it tidier than you found it. Suspicious."],
     ["Seconds held in the hallway",Math.round(t.heldT),0.5,"Quick questions are never quick."],
     ["Vendor emails you answered",t.vendor,2,"Why. Just why."],
     ["Security lost",Math.round(t.secLost),0.25,""],

@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("outageBurn,migrateBurn,migrateMult,rollOffers,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,notMyProblem").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -768,6 +768,25 @@ test("all three end screens offer sharing, and it leaves the run alone", () => {
     }
     check(opened.length === 12 && opened.some(u => u.includes("x.com/intent")) && opened.some(u => u.includes("facebook.com/sharer")), `opened ${opened.length}`);
   } finally { W.open = realOpen; }
+});
+test("Not my problem counts racks about to fail an audit and leaks about to breach, without touching the run", () => {
+  const S = fresh(), racks = S.racks.filter(Boolean);
+  check(G.notMyProblem().n === 0, "a healthy room already had problems");
+  const [late, covered, early] = racks;
+  late.timer = late.maxT * 0.3;                          // uncovered, warning circle: counts
+  covered.timer = covered.maxT * 0.1; covered.covered = true; // covered: not a problem
+  early.timer = early.maxT * 0.9;                        // plenty of time left: not a problem
+  S.cloud[0] = {name: "L", tier: "bronze", leakOn: true, leak: 80, breach: false, down: false};
+  S.cloud[1] = {name: "M", tier: "bronze", leakOn: true, leak: 20, breach: false, down: false};
+  S.cloud[2] = {name: "B", tier: "bronze", leakOn: false, leak: 0, breach: true, down: false};
+  const before = JSON.stringify([S.budget, S.security, S.err, racks.map(a => [a.timer, a.covered])]);
+  const p = G.notMyProblem();
+  check(p.audits === 1 && p.breaches === 1 && p.n === 2, JSON.stringify(p));
+  G.resign();
+  check(/Not my problem/.test(W.document.body.textContent), "exit interview has no Not my problem row");
+  G.showEnd("uptime");
+  check(/Not my problem/.test(W.document.body.textContent) && /1 about to be breached/.test(W.document.body.textContent), "fired screen has no Not my problem stat");
+  check(before === JSON.stringify([S.budget, S.security, S.err, racks.map(a => [a.timer, a.covered])]), "counting changed the run");
 });
 
 /* ---------- runner ---------- */
