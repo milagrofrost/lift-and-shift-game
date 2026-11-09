@@ -179,7 +179,12 @@ test("with a pipeline the Mover Bot only uses free lanes and waits when they are
   check(S.pipe.length === 1 && S.pipe[0].a === a && S.pipe[0].byBot && !b.carry && !S.racks[a.slot], "bot did not use the free lane");
   S = fresh(); S.upgrades.pipeline = 1; ({a, b} = atRack(S)); S.pipe = [{a: {}, t: 0, dur: 6, lane: 0}];
   G.moverBot(b, 0.05, false, 85);
-  check(!b.carry && S.pipe.length === 1 && S.racks[a.slot] === a && !b.tgt, "bot did not wait for a free lane");
+  check(!b.carry && S.pipe.length === 1 && S.racks[a.slot] === a && b.tgt === a && b.work === 0, "bot did not wait at its server for a free lane");
+  const slot = a.slot; S.racks[slot] = null; S.carry = a; G.moverBot(b, 0.05, false, 85);
+  check(b.tgt && b.tgt !== a && !b.carry, "bot did not move on after the player took its server");
+  S = fresh(); S.upgrades.pipeline = 1; b = G.mkBot("move"); b.x = 480; b.y = 470; S.bots = [b]; S.pipe = [{a: {}, t: 0, dur: 6, lane: 0}];
+  G.moverBot(b, 0.05, false, 85);
+  check(b.tgt && (b.x !== 480 || b.y !== 470), "bot stayed at its resting spot with servers left");
   S = fresh(); ({a, b} = atRack(S));
   G.moverBot(b, 0.05, false, 85);
   check(b.carry === a && S.pipe.length === 0, "bot used a pipeline that doesn't exist");

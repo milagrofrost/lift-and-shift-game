@@ -2013,8 +2013,6 @@ function moverBot(b,dt,ai,sp){
     }else migrate(a,b.slot,true);
     b.slot=-1;return;
   }
-  // once there is a pipeline the bot only uses it, and waits for a free lane; carrying by hand is the player's faster option
-  if(pipeLanes()>0&&freePipelineLane()<0){b.tgt=null;b.work=0;goTo(b,480,470,sp*0.5,dt);return;}
   if(!validRack(b.tgt)||migrationBusy(b.tgt)||b.tgt.fire>0||b.tgt.down){
     b.tgt=null;b.work=0;let best=null,sc=9;
     // the mover bot plays it safe: highest cutover odds first, then the most overdue
@@ -2024,6 +2022,8 @@ function moverBot(b,dt,ai,sp){
   if(!b.tgt){goTo(b,480,470,sp*0.5,dt);return;}
   const p=RACKS[b.tgt.slot];
   if(!goTo(b,p.x,p.y+44,sp,dt))return;
+  // once there is a pipeline the bot only uses it: it waits at its next server for a free lane; carrying by hand is the player's faster option
+  if(pipeLanes()>0&&freePipelineLane()<0){b.work=0;return;}
   b.work+=dt;if(b.work<(ai?0.4:1.0))return;
   b.work=0;const a=b.tgt;if(a.touchT==null)a.touchT=S.time;if(!S.upgrades.bluegreen)S.racks[a.slot]=null;b.tgt=null;
   // with a pipeline, the bot always sends servers down a lane; without one, it carries them
