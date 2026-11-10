@@ -256,10 +256,6 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
 .shop{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
 .up{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
 .up.owned{border-color:var(--ok)}
-.up .nope{font-size:12px;padding:4px 10px;color:var(--muted);align-self:flex-start}
-.snoozed{font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
-.snoozed span{display:inline-flex;align-items:center;gap:6px}
-.snoozed .btn{font-size:11.5px;padding:3px 8px}
 .up .t{display:flex;align-items:center;gap:8px;font-weight:600}
 .up .t .i{font-size:20px}
 .up p{font-size:13px;color:var(--muted)}
@@ -1600,7 +1596,7 @@ let S;
 function newRun(){
   BK.left=restoresForRun();BK.used=0;BK.fired=false;
   S={songOffset:Math.floor(Math.random()*3),sprint:0,budget:0,cost:{},retro:{},secLoss:{},secWarned:false,tierTot:{},movedT:{},career:[],gen:{},lz:0,wave:[],run:{mig:0,audits:0,breaches:0,lost:0,unplanned:0,fails:0,rollbacks:0,missed:0,esc:0,held:0,heldT:0,vendor:0},err:ERR_BUDGET,errMax:ERR_BUDGET,security:100,energy:50,points:0,upgrades:{},racks:Array(12).fill(null),cloud:Array(16).fill(null),
-     rival:0,bots:[],totalApps:0,lostTotal:0,alert:false,t:0,offers:[],missed:{},snooze:{},mgrBreaks:0,mgrShame:0,
+     rival:0,bots:[],totalApps:0,lostTotal:0,alert:false,t:0,offers:[],missed:{},mgrBreaks:0,mgrShame:0,
      p:{x:480,y:280,stun:0,inv:0,heldBy:null,userImm:0},users:[],cbots:[],fx:[],carry:null,inv:[],tk:[],st:[],fl:[],fix:null,fixP:0,fixKey:null,fixNeed:1,warnT:-9,prompt:"",diff:DIFF,hardcore:HARDCORE};
   startSprint(1);
 }
@@ -2662,7 +2658,7 @@ function howToPlay(){
     <div><span class="ic">❄</span><span><b>Change freeze.</b> Users, new tickets and email, escalations, fire growth and breach spread all stop. Downtime and breach damage still count, so a freeze buys time, it doesn't fix anything. Every incident gets a short 4-second freeze (once a minute), CHANGE FREEZE flashes across the floor, and the message says what caused it. A manager makes it 10/14/18 seconds and lets it return sooner (60/50/40s). The Emergency Freeze Window upgrade gives you one 12-second freeze on F or the Freeze button.</span></div>
     <div><span class="ic">⏪</span><span><b>Restore from backup.</b> Open the terminal (the &gt;_ at the top left, or the &#96; key) and type <code>journalctl</code> for this client's event log. Rows marked 💾 are restore points, roughly every 30 seconds. Pick one, or type <code>restore 05:40</code>, to go back to that moment. Easy gets 3 for the whole career, Normal 2, Hard 1, and Hardcore none. They also work from the screen where you get fired. Restore points only cover the current client, and the future can go differently the second time.</span></div>
     <div><span class="ic">👤</span><span><b>Users.</b> They wander the hallway. Bump into one and you're stuck for a "quick question." The better dressed, the longer: an analyst holds you under 2 seconds, the CIO almost 5. Interns just blurt their question as you walk past.</span></div>
-    <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. Stackable tools you haven't started keep turning up: the longer one goes unseen, the likelier it is to show up. Mark anything 🙅 Not interested to hide it for 10 clients. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
+    <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. Stackable tools you haven't started keep turning up: the longer one goes unseen, the likelier it is to show up. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
     <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. Once you have a pipeline, the Mover Bot only uses it and waits for a free lane; carry servers yourself to go faster. The pipeline and the Mover Bot find a free cloud slot on their own; only you have to walk to one. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at half rate.</span></div>
     <div><span class="ic">📅</span><span><b>Lease target.</b> Each client's data center lease has a target day. Going late never ends the game, but on-prem costs rise 10% per overdue day and the client's rating drops.</span></div>
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and a 4-second speed boost (you glow). 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
@@ -2675,17 +2671,12 @@ function howToPlay(){
   <p style="color:var(--muted);font-size:13px">On a phone, play in landscape: drag anywhere on the left half to move, hold FIX and tap GRAB on the right. Move with WASD or arrows. Your hands are full while carrying, so you can't fix anything until you drop it.</p>
   <button class="btn" data-act="menu">Back to menu</button>`);
 }
-// 6 offers per planning, at least 2 of them security. Maxed-out items are left out, and so is anything you're "not interested" in.
+// 6 offers per planning, at least 2 of them security. Maxed-out items are left out.
 // the shop after a "Give me a break" client stocks every big-ticket tool you don't own yet, plus Patch Bot
-const breakMust=()=>S.breakN===S.sprint?UPGRADES.filter(u=>(u.cost>=5||u.id==="patchbot")&&offerable(u)&&!S.upgrades[u.id]):[];
+const breakMust=()=>S.breakN===S.sprint?UPGRADES.filter(u=>(u.cost>=5||u.id==="patchbot")&&canBuy(u)&&!S.upgrades[u.id]):[];
 function canBuy(u){return(u.max?lvl(u.id)<u.max:!S.upgrades[u.id])&&(!u.req||u.req());}
-/* "Not interested": an item stays off the shelf for the next SNOOZE_CLIENTS improvement sprints, then comes back. */
-const SNOOZE_CLIENTS=10;
-const snoozed=id=>(S.snooze||{})[id]>S.sprint;
-const offerable=u=>canBuy(u)&&!snoozed(u.id);
-// until you own a Patch Bot, the more points you have to spend, the likelier it's on the shelf:
-// 0% below its 4-point price, then +10% per point above it (8 pts 40%, 10 pts 60%, 13+ pts 90%), on top of the normal draw
-const patchBotOdds=()=>lvl("patchbot")?0:clamp(((S.points||0)-4)/10,0,0.9);
+// until you own a Patch Bot, it's always on the shelf whenever you have the points to buy it (no odds involved)
+const patchBotStocked=()=>!lvl("patchbot")&&(S.points||0)>=upCost(UPGRADES.find(u=>u.id==="patchbot"));
 /* Stackable tools you haven't started (level 0) get likelier the longer they go unseen. S.missed counts the improvement
    sprints since the shelf last showed one; each missed sprint adds 1 to its draw weight (normal items weigh 1), up to
    PITY_MAX extra. Never a guarantee: you can still go a while without seeing it. */
@@ -2695,27 +2686,13 @@ const offerWeight=u=>unstarted(u)?1+Math.min(PITY_MAX,(S.missed||{})[u.id]||0):1
 // weighted shuffle: heavier items tend to come first (Efraimidis-Spirakis keys)
 const wshuffle=a=>a.map(u=>[Math.pow(Math.random(),1/offerWeight(u)),u]).sort((x,y)=>y[0]-x[0]).map(x=>x[1]);
 const shownOffers=ids=>{S.missed=S.missed||{};for(const id of ids)S.missed[id]=0;};
-function missShops(){S.missed=S.missed||{};for(const u of UPGRADES)if(unstarted(u)&&offerable(u))S.missed[u.id]=(S.missed[u.id]||0)+1;}
+function missShops(){S.missed=S.missed||{};for(const u of UPGRADES)if(unstarted(u)&&canBuy(u))S.missed[u.id]=(S.missed[u.id]||0)+1;}
 function rollOffers(){
-  const must=breakMust(),avail=UPGRADES.filter(offerable),pb=UPGRADES.find(u=>u.id==="patchbot");
-  if(!must.includes(pb)&&offerable(pb)&&Math.random()<patchBotOdds())must.push(pb);
+  const must=breakMust(),avail=UPGRADES.filter(canBuy),pb=UPGRADES.find(u=>u.id==="patchbot");
+  if(!must.includes(pb)&&canBuy(pb)&&patchBotStocked())must.push(pb);
   const sec=wshuffle(avail.filter(u=>u.sec&&!must.includes(u))).slice(0,Math.max(0,2-must.filter(u=>u.sec).length));
   const rest=wshuffle(avail.filter(u=>!sec.includes(u)&&!must.includes(u))).slice(0,Math.max(0,6-sec.length-must.length));
   return shuffle([...must,...sec,...rest]).map(u=>u.id);
-}
-// take one item off the shelf for SNOOZE_CLIENTS sprints and put something else in its slot
-function notInterested(id){
-  const u=UPGRADES.find(x=>x.id===id),i=S.offers.indexOf(id);if(!u||i<0)return;
-  S.snooze=S.snooze||{};S.snooze[id]=S.sprint+SNOOZE_CLIENTS;(S.missed||{})[id]=0;sfx("click");
-  const next=wshuffle(UPGRADES.filter(x=>offerable(x)&&!S.offers.includes(x.id)))[0];
-  if(next){S.offers[i]=next.id;shownOffers([next.id]);}else S.offers.splice(i,1);
-  S.rerollMsg=`🙅 ${u.icon} ${u.name} is off the shelf until after client ${S.sprint+SNOOZE_CLIENTS}.`;review();
-}
-function unsnooze(id){if(S.snooze)delete S.snooze[id];sfx("click");review();}
-function snoozeLine(){
-  const ids=Object.keys(S.snooze||{}).filter(snoozed);if(!ids.length)return"";
-  return`<p class="snoozed">Not interested: ${ids.map(id=>{const u=UPGRADES.find(x=>x.id===id);
-    return`<span>${u.icon} ${u.name} <small>(back after client ${S.snooze[id]})</small> <button class="btn ghost sm" data-unsnooze="${id}">Bring back</button></span>`;}).join("")}</p>`;
 }
 function statBlock(){
   const ss=S.ss,db=Math.round(S.budget-ss.budget0),dsec=Math.round(S.security-ss.sec0),last=S.career[S.career.length-1];
@@ -2741,7 +2718,7 @@ function review(){
   const cards=S.offers.map(id=>{const u=UPGRADES.find(x=>x.id===id),L=lvl(id),done=u.max?L>=u.max:!!S.upgrades[id],c=upCost(u);
     const pips=u.max?`<span class="pips" aria-label="Level ${L} of ${u.max}">${Array.from({length:u.max},(_,k)=>`<i class="${k<L?"on":""}"></i>`).join("")}</span>`:"";
     const btn=done?`<span style="color:var(--ok);font-size:13px;font-weight:600">${u.max?"Maxed out":"Installed"}</span>`
-      :`<button class="btn sm" data-buy="${id}" ${S.points<c?"disabled":""}>${u.max&&L?`Level ${L+1}`:"Buy"} · ${c} pts</button><button class="btn ghost sm nope" data-nope="${id}" title="Hide this for the next ${SNOOZE_CLIENTS} clients and show something else">🙅 Not interested</button>`;
+      :`<button class="btn sm" data-buy="${id}" ${S.points<c?"disabled":""}>${u.max&&L?`Level ${L+1}`:"Buy"} · ${c} pts</button>`;
     return`<div class="up ${done?"owned":""} ${u.ai?"ai":""} ${u.sec?"sec":""}"><div class="t"><span class="i">${u.icon}</span>${u.name}${pips}</div><p>${u.desc}</p>${id==="agent"?agentReadinessHtml():foundationTag(id)}${btn}</div>`;}).join("");
   const owned=UPGRADES.filter(u=>u.max&&lvl(u.id)).map(u=>`${u.icon} ${u.name} ${lvl(u.id)}/${u.max}`).join(" · ");
   const done=S.career[S.career.length-1],nx=getClient(S.sprint+1),nec=engagementCfg(S.sprint+1),cnt=nec.apps.length;
@@ -2763,7 +2740,6 @@ function review(){
   <div class="shop">${cards||'<p style="color:var(--muted)">Nothing left to buy.</p>'}</div>
   <div class="row reroll"><button class="btn ghost sm" data-act="reroll" ${S.points<rerollCost()?"disabled":""}>💡 Brainstorm new ideas · ${rerollCost()} pt${rerollCost()>1?"s":""}</button>
     <span>${S.rerollMsg||"Don't like these options? Hold a meeting. Each one this sprint costs a point more than the last."}</span></div>
-  ${snoozeLine()}
   ${owned?`<p style="font-size:12.5px;color:var(--muted)">Stacked so far: ${owned}</p>`:""}
   <div class="modcard">Next client: <b>${nx.name}.</b> ${cnt} known servers (plus whatever they forgot to mention)${cnt+nec.hidden.length>12?`. Too big for one room, so they'll arrive in ${Math.ceil((cnt+nec.hidden.length)/12)} waves`:""}. Lease target: ${nec.days} days.${nx.trait?` <b>${nx.trait.name}:</b> ${nx.trait.desc}`:""}</div>
   <div class="row"><button class="btn" data-act="next">Start engagement: ${nx.short}</button><button class="btn ghost sm" data-act="retire">Retire and see your career</button></div>`);
@@ -3300,8 +3276,6 @@ ov.addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
   if(b.dataset.share)return shareAct(b.dataset.share);
   if(b.dataset.buy)return buy(b.dataset.buy);
-  if(b.dataset.nope)return notInterested(b.dataset.nope);
-  if(b.dataset.unsnooze)return unsnooze(b.dataset.unsnooze);
   if(b.dataset.retro){if(!S.retroPick){S.retroPick=b.dataset.retro;if(b.dataset.retro==="break")S.breakN=S.sprint+1;S.retro[b.dataset.retro]=(S.retro[b.dataset.retro]||0)+1;sfx("buy");}return review();}
   if(b.dataset.diff){setDifficulty(b.dataset.diff,false);return titleScreen();}
   const a=b.dataset.act;

@@ -29,7 +29,7 @@
    Results: the page title becomes "PASS n/n" or "FAIL k/n", and window.__RESULTS holds the details. */
 const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
-const NAMES = ("outageBurn,migrateBurn,migrateMult,rollOffers,patchBotOdds,missShops,shownOffers,offerable,SNOOZE_CLIENTS,PITY_MAX,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
+const NAMES = ("outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
   "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
@@ -576,16 +576,15 @@ test("the shop after a break client always stocks the key tools you don't own", 
   let always = true; for (let i = 0; i < 40; i++) always = always && G.rollOffers().includes("terraform");
   check(!always, "guarantee leaked into a normal shop");
 });
-test("an unowned Patch Bot shows up more often the more points you have", () => {
-  const S = fresh(); S.upgrades = {}; S.sprint = 5; S.breakN = 0;
-  const rate = pts => { S.points = pts; let n = 0; for (let i = 0; i < 400; i++) n += G.rollOffers().includes("patchbot"); return n / 400; };
-  check(G.patchBotOdds() >= 0 && (S.points = 3, G.patchBotOdds()) === 0, "boost below its price");
-  S.points = 8; check(Math.abs(G.patchBotOdds() - 0.4) < 1e-9, `8 pts ${G.patchBotOdds()}`);
-  S.points = 20; check(G.patchBotOdds() === 0.9, `capped ${G.patchBotOdds()}`);
-  const lo = rate(4), mid = rate(10), hi = rate(15);
-  check(lo < mid && mid < hi && hi > 0.85 && lo < 0.4, `rates ${lo} ${mid} ${hi}`);
-  S.upgrades = {patchbot: 1}; S.points = 15; check(G.patchBotOdds() === 0, "boost kept after owning it");
-  check(rate(15) < 0.5, "level 2 still boosted");
+test("an unowned Patch Bot is always on the shelf when you can afford it", () => {
+  const S = fresh(); S.upgrades = {}; S.sprint = 5; S.breakN = 0; S.missed = {};
+  for (const pts of [4, 5, 13]) { S.points = pts; for (let i = 0; i < 40; i++) check(G.rollOffers().includes("patchbot"), `missing at ${pts} pts`); }
+  S.points = 3; check(!G.patchBotStocked(), "stocked below its price");
+  let always = true; for (let i = 0; i < 60; i++) always = always && G.rollOffers().includes("patchbot");
+  check(!always, "guaranteed below its price");
+  S.upgrades = {patchbot: 1}; S.points = 13; check(!G.patchBotStocked(), "still forced after owning it");
+  always = true; for (let i = 0; i < 60; i++) always = always && G.rollOffers().includes("patchbot");
+  check(!always, "level 2 guaranteed");
 });
 test("unstarted stackable tools get likelier the longer they go unseen, but are never guaranteed", () => {
   const S = fresh(); S.upgrades = {}; S.sprint = 6; S.breakN = 0; S.points = 0; S.missed = {};
@@ -603,15 +602,6 @@ test("unstarted stackable tools get likelier the longer they go unseen, but are 
     check(o.filter(id => G.UPGRADES.find(u => u.id === id).sec).length >= 2, "lost the security offers"); }
   S.missed = {suppress: 9}; S.upgrades = {suppress: 1}; const started = rate(9);
   S.upgrades = {}; check(started < rate(9), "a started tool still got the bonus");
-});
-test("Not interested hides an item for 10 clients, then it comes back", () => {
-  const S = fresh(); S.upgrades = {}; S.sprint = 4; S.breakN = 4; S.points = 13;
-  check(G.SNOOZE_CLIENTS === 10, "snooze length");
-  S.snooze = {patchbot: 4 + G.SNOOZE_CLIENTS, pipeline: 4 + G.SNOOZE_CLIENTS};
-  for (let i = 0; i < 40; i++) { const o = G.rollOffers(); check(!o.includes("patchbot") && !o.includes("pipeline"), `snoozed item offered: ${o}`); }
-  S.missed = {patchbot: 9}; G.missShops(); check(S.missed.patchbot === 9, "a snoozed item kept counting");
-  S.sprint = 13; check(!G.offerable(G.UPGRADES.find(u => u.id === "patchbot")), "came back a client early");
-  S.sprint = 14; check(G.offerable(G.UPGRADES.find(u => u.id === "patchbot")), "never came back");
 });
 test("Patch Bot and the CI/CD Pipeline each cost a point less", () => {
   fresh(); const cost = id => G.UPGRADES.find(u => u.id === id).cost;
