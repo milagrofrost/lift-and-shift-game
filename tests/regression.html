@@ -586,11 +586,11 @@ test("an unowned Patch Bot is always on the shelf when you can afford it", () =>
   always = true; for (let i = 0; i < 60; i++) always = always && G.rollOffers().includes("patchbot");
   check(!always, "level 2 guaranteed");
 });
-test("unstarted stackable tools get likelier the longer they go unseen, but are never guaranteed", () => {
+test("tools you don't own get likelier the longer they go unseen, but are never guaranteed", () => {
   const S = fresh(); S.upgrades = {}; S.sprint = 6; S.breakN = 0; S.points = 0; S.missed = {};
-  G.missShops(); check(S.missed.suppress === 1 && S.missed.portal === 1 && !S.missed.terraform, `counts ${JSON.stringify(S.missed)}`);
+  G.missShops(); check(S.missed.suppress === 1 && S.missed.portal === 1 && S.missed.terraform === 1, `counts ${JSON.stringify(S.missed)}`);
   G.shownOffers(["suppress"]); check(S.missed.suppress === 0, "showing it didn't reset the count");
-  S.upgrades = {portal: 1}; G.missShops(); check(S.missed.portal === 1, "a started stackable kept counting");
+  S.upgrades = {portal: 1, terraform: true}; G.missShops(); check(S.missed.portal === 1 && S.missed.terraform === 1, "an owned tool kept counting");
   const rate = m => { S.missed = {suppress: m}; let n = 0; for (let i = 0; i < 400; i++) n += G.rollOffers().includes("suppress"); return n / 400; };
   S.upgrades = {};
   const fresh0 = rate(0), later = rate(4), capped = rate(50);

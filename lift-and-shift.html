@@ -2658,7 +2658,7 @@ function howToPlay(){
     <div><span class="ic">❄</span><span><b>Change freeze.</b> Users, new tickets and email, escalations, fire growth and breach spread all stop. Downtime and breach damage still count, so a freeze buys time, it doesn't fix anything. Every incident gets a short 4-second freeze (once a minute), CHANGE FREEZE flashes across the floor, and the message says what caused it. A manager makes it 10/14/18 seconds and lets it return sooner (60/50/40s). The Emergency Freeze Window upgrade gives you one 12-second freeze on F or the Freeze button.</span></div>
     <div><span class="ic">⏪</span><span><b>Restore from backup.</b> Open the terminal (the &gt;_ at the top left, or the &#96; key) and type <code>journalctl</code> for this client's event log. Rows marked 💾 are restore points, roughly every 30 seconds. Pick one, or type <code>restore 05:40</code>, to go back to that moment. Easy gets 3 for the whole career, Normal 2, Hard 1, and Hardcore none. They also work from the screen where you get fired. Restore points only cover the current client, and the future can go differently the second time.</span></div>
     <div><span class="ic">👤</span><span><b>Users.</b> They wander the hallway. Bump into one and you're stuck for a "quick question." The better dressed, the longer: an analyst holds you under 2 seconds, the CIO almost 5. Interns just blurt their question as you walk past.</span></div>
-    <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. Stackable tools you haven't started keep turning up: the longer one goes unseen, the likelier it is to show up. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
+    <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. Tools you don't own yet keep turning up: the longer one goes unseen, the likelier it is to show up. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
     <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. Once you have a pipeline, the Mover Bot only uses it and waits for a free lane; carry servers yourself to go faster. The pipeline and the Mover Bot find a free cloud slot on their own; only you have to walk to one. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at half rate.</span></div>
     <div><span class="ic">📅</span><span><b>Lease target.</b> Each client's data center lease has a target day. Going late never ends the game, but on-prem costs rise 10% per overdue day and the client's rating drops.</span></div>
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and a 4-second speed boost (you glow). 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
@@ -2677,16 +2677,16 @@ const breakMust=()=>S.breakN===S.sprint?UPGRADES.filter(u=>(u.cost>=5||u.id==="p
 function canBuy(u){return(u.max?lvl(u.id)<u.max:!S.upgrades[u.id])&&(!u.req||u.req());}
 // until you own a Patch Bot, it's always on the shelf whenever you have the points to buy it (no odds involved)
 const patchBotStocked=()=>!lvl("patchbot")&&(S.points||0)>=upCost(UPGRADES.find(u=>u.id==="patchbot"));
-/* Stackable tools you haven't started (level 0) get likelier the longer they go unseen. S.missed counts the improvement
+/* Anything you don't own yet (a stackable at level 0 counts) gets likelier the longer it goes unseen, so nothing gets crowded out. S.missed counts the improvement
    sprints since the shelf last showed one; each missed sprint adds 1 to its draw weight (normal items weigh 1), up to
    PITY_MAX extra. Never a guarantee: you can still go a while without seeing it. */
 const PITY_MAX=5;
-const unstarted=u=>u.max&&!lvl(u.id);
-const offerWeight=u=>unstarted(u)?1+Math.min(PITY_MAX,(S.missed||{})[u.id]||0):1;
+const unowned=u=>u.max?!lvl(u.id):!S.upgrades[u.id];
+const offerWeight=u=>unowned(u)?1+Math.min(PITY_MAX,(S.missed||{})[u.id]||0):1;
 // weighted shuffle: heavier items tend to come first (Efraimidis-Spirakis keys)
 const wshuffle=a=>a.map(u=>[Math.pow(Math.random(),1/offerWeight(u)),u]).sort((x,y)=>y[0]-x[0]).map(x=>x[1]);
 const shownOffers=ids=>{S.missed=S.missed||{};for(const id of ids)S.missed[id]=0;};
-function missShops(){S.missed=S.missed||{};for(const u of UPGRADES)if(unstarted(u)&&canBuy(u))S.missed[u.id]=(S.missed[u.id]||0)+1;}
+function missShops(){S.missed=S.missed||{};for(const u of UPGRADES)if(unowned(u)&&canBuy(u))S.missed[u.id]=(S.missed[u.id]||0)+1;}
 function rollOffers(){
   const must=breakMust(),avail=UPGRADES.filter(canBuy),pb=UPGRADES.find(u=>u.id==="patchbot");
   if(!must.includes(pb)&&canBuy(pb)&&patchBotStocked())must.push(pb);
