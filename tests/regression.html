@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -615,6 +615,22 @@ test("a level 4 AI agent never gives up on offline servers or failed cutovers", 
   fixedRandom(0.001); for (let t = 0; t < 20 && cl.down; t += 0.1) G.tickAgent(0.1);
   check(!cl.down, "cutover never started once the odds allowed");
 });
+test("the obsolete ending fades to black, shows the credits, boots LaS OS, then returns to the main menu", () => {
+  const doc = W.document; let S = fresh(); S.upgrades = {agent: 4}; G.showEnd("obsolete");
+  check(doc.querySelector('[data-act="credits"]') && !doc.querySelector('[data-act="again"]') && !doc.querySelector('[data-act="menu"]'), "obsolete still offers play again / main menu");
+  doc.querySelector('[data-act="credits"]').click();
+  const roll = doc.getElementById("credits");
+  check(G.mode === "credits" && roll, "no credits");
+  const text = roll.textContent;
+  for (const [, line] of G.CREDITS) check(text.includes(line), `credits miss "${line}"`);
+  check(text.indexOf("Matt Frost") < text.indexOf("his boss") && text.indexOf("his boss") < text.indexOf("Claude Opus 5.5"), "credits out of order");
+  const boot = roll.querySelector(".boot");
+  check(boot && boot.textContent.includes("LaS OS") && boot.querySelector(".bar"), "no LaS OS boot screen with a progress bar");
+  W.dispatchEvent(new W.KeyboardEvent("keydown", {code: "Backquote", key: "`"}));
+  check(G.mode !== "credits" && doc.querySelector('[data-act="start"]'), "a key press did not skip to the main menu");
+  check(W.document.getElementById("devterm").hidden, "the skip key also opened the terminal");
+  G.showEnd("uptime"); check(doc.querySelector('[data-act="again"]') && !doc.querySelector('[data-act="credits"]'), "other endings lost play again or got credits");
+});
 test("a level 4 AI agent lets you fire your manager; the freeze and recovery stay, the walker goes", () => {
   const S = fresh(), doc = W.document; S.upgrades = {agent: 3, manager: 3}; S.career = [{name: "A", days: 1, stars: 4, late: 0}];
   G.finishEngagement(); check(!doc.querySelector('[data-act="fireboss"]'), "offered below level 4");
@@ -630,7 +646,7 @@ test("finishing a client without lifting a finger gets you fired as obsolete; on
   let S = fresh(); S.ss.human = 0; G.finishEngagement();
   check(S.obsolete && doc.querySelector('[data-act="obsolete"]') && !doc.querySelector('[data-act="next"]'), "no firing meeting after a hands-off client");
   S.upgrades.agent = 4; G.finishEngagement();
-  check(doc.querySelector('[data-act="obsolete"]').textContent.includes("AI agent"), "the AI agent is not the one firing you");
+  check(doc.querySelector('[data-act="obsolete"]').closest(".card").textContent.includes("AI agent has been sending them"), "the AI agent is not behind the firing");
   S.bossFired = true; S.upgrades.manager = 3; G.finishEngagement();
   check(doc.body.textContent.includes("new manager"), "after firing your manager, the agent is not your new manager");
   doc.querySelector('[data-act="obsolete"]').click();

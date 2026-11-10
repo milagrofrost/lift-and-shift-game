@@ -166,6 +166,22 @@ kbd{font-family:var(--f-mono);font-size:11.5px;background:var(--panel-2);border:
 #devbtn:hover,#devbtn:focus-visible{opacity:.8}
 #devterm{position:fixed;inset:0;z-index:35;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.72);padding:12px}
 #devterm[hidden]{display:none}
+#credits{position:fixed;inset:0;z-index:60;background:#000;opacity:0;transition:opacity 1.2s ease;overflow:hidden;cursor:pointer}
+#credits.on{opacity:1}
+#credits .roll,#credits .boot{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;padding:0 16px;opacity:0;transition:opacity 1.2s ease}
+#credits .roll.show,#credits .boot.show{opacity:1}
+#credits .roll{color:#e6edf3;font-family:"IBM Plex Sans","Segoe UI",sans-serif}
+#credits h2{font-family:"Chakra Petch","Segoe UI",sans-serif;font-size:clamp(30px,6vw,48px);letter-spacing:.12em;text-transform:uppercase;color:#ffb547;margin:0 0 6vh}
+#credits p{font-size:clamp(20px,3.6vw,30px);margin:0 0 3vh}
+#credits p.small{font-size:clamp(15px,2.4vw,19px);color:#8aa0b0;font-style:italic;margin-bottom:1.5vh}
+#credits p.who{font-family:"Chakra Petch","Segoe UI",sans-serif;font-weight:700;margin-bottom:5vh}
+#credits .boot{transition-duration:.25s;color:#fff;font-family:"Chakra Petch","Segoe UI",sans-serif}
+#credits .boot b{display:block;font-size:clamp(28px,5vw,40px);letter-spacing:.08em;margin-bottom:22px}
+#credits .bar{width:min(220px,60vw);height:6px;margin:0 auto;border:1px solid #fff;border-radius:3px;overflow:hidden}
+#credits .bar i{display:block;height:100%;width:0;background:#fff;transition:width 2.25s cubic-bezier(.3,.1,.4,1)}
+#credits .bar.full i{width:100%}
+#credits .skip{position:absolute;right:16px;bottom:14px;font-size:12px;color:#55636e;font-family:"IBM Plex Mono",Consolas,monospace}
+@media (prefers-reduced-motion: reduce){#credits,#credits .roll,#credits .boot{transition-duration:.01s}#credits .bar i{transition:width 2.25s steps(4)}}
 .devbox{width:min(100%,680px);max-height:100%;overflow:auto;background:#05090c;border:1px solid #2f6b47;border-radius:6px;padding:10px 12px;color:#7dffa8;font:13px/1.45 var(--f-mono)}
 #devlog{white-space:pre-wrap;margin:0;min-height:3em}
 .devline{display:flex;gap:6px;align-items:center}
@@ -635,6 +651,8 @@ const SFX={
   chaching:()=>{tone(392,0.05,{type:"square",vol:0.09});tone(523,0.05,{type:"square",vol:0.09,delay:0.07});tone(1568,0.1,{type:"square",vol:0.09,delay:0.14});tone(2093,0.32,{type:"square",vol:0.08,delay:0.2});tone(3136,0.2,{vol:0.07,delay:0.28});},
   licenseRenewed:()=>{tone(1568,0.05,{type:"square",vol:0.09});tone(1109,0.05,{type:"square",vol:0.09,delay:0.07});tone(392,0.1,{type:"square",vol:0.1,delay:0.14});tone(196,0.36,{type:"square",vol:0.1,delay:0.2});tone(98,0.26,{type:"triangle",vol:0.2,delay:0.28});},
   fired:()=>[392,330,262,196].forEach((f,i)=>tone(f,0.32,{type:"triangle",vol:0.2,delay:i*0.22})),
+  // a warm, slightly strummed major chord that rings out: the computer starting up
+  boot:()=>{[[175,0],[349,0.01],[440,0.02],[523,0.03],[698,0.04]].forEach(([f,d])=>{tone(f,2.4,{type:"sine",vol:0.16,delay:d,attack:0.02});tone(f*2,1.2,{type:"triangle",vol:0.03,delay:d,attack:0.02});});},
   siren:()=>{tone(620,0.35,{type:"sawtooth",vol:0.06,slide:260});tone(880,0.35,{type:"sawtooth",vol:0.06,slide:-260,delay:0.36});},
 };
 function sfx(n){
@@ -1612,6 +1630,7 @@ document.getElementById("mus").addEventListener("click",()=>{audio();setMusic(!M
 setMusic(MUS.on);
 addEventListener("keydown",e=>{
   if(!$("devterm").hidden)return;
+  if(mode==="credits"){e.preventDefault();if(!e.repeat&&!["Shift","Control","Alt","Meta"].includes(e.key))creditsDone();return;}
   if(mode==="restored"){e.preventDefault();if(!e.repeat)play();return;}
   if(e.code==="Backquote"&&!e.repeat){e.preventDefault();devShow();return;}
   if(e.code==="KeyF"&&!e.repeat){useFreeze();return;}
@@ -2761,7 +2780,7 @@ function howToPlay(){
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and a 4-second speed boost (you glow). 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
     <div><span class="ic">🤖</span><span><b>Patch Bot (upgrade).</b> Patches overdue servers for you, but never fights fires. Level 1 succeeds 50% of the time, level 2 66%, level 3 90%, and each level walks faster. A failed patch leaves a red AUTOMATION ERROR on the rack: patch it yourself to clear it, let an AI Agent trusted with that server tier try at its usual patching odds, or if its compliance timer runs out, the audit fails and the error resets so the bot can try again.</span></div>
     <div><span class="ic">🧠</span><span><b>AI Agent (upgrade, after client 3).</b> A fast purple agent (faster at every level) that answers email, closes tickets, patches servers and seals leaks. Every attempt costs tokens. At level 1 it only touches bronze servers and only half its work is right; the rest does nothing (while claiming success) or breaks something. It works the email and ticket queues once either is half full; otherwise it hunts for fixes on-prem and in the cloud. Level 2 adds silver servers and investigates unknown racks start to finish. Level 3 adds gold, with far better odds, and chases an escalation it caused to the server to clean it up. Level 4 adds guardrails that block harmful actions and answers incidents (fires, outages, breaches, failed cutovers), and you can fire your manager between clients. When it breaks something it apologizes and stays to try one fix, billed in tokens. If that fails, the problem is yours. It also amplifies the practices you already have. Patching improves with Patch Bot, Runbooks and Observability; tickets with Self-Service Portal and Runbooks; email with your Manager and Status Page; leaks with Policy as Code, Vulnerability Scanner and Cloud Auto-Patching. The shop shows its odds for each job and what's missing. Check its ✓ / ✗ marks.</span></div>
-    <div><span class="ic">🏆</span><span><b>Automate yourself out of a job.</b> Finish a whole client without doing a single thing yourself and, after the client review the AI agent fires you as obsolete. That's a win. Do even one thing (hold E, grab a server, pull a freeze) and you keep your job.</span></div>
+    <div><span class="ic">🏆</span><span><b>Automate yourself out of a job.</b> Finish a whole client without doing a single thing yourself and, after the client review the AI agent gets you fired as obsolete. That's a win. Do even one thing (hold E, grab a server, pull a freeze) and you keep your job.</span></div>
     <div><span class="ic">👔</span><span><b>Your manager (upgrade).</b> Level 1 answers your email, but chats with users and sometimes wanders over to look at a server. Half the time, just looking takes it offline. While they're at a server, hold E there to shoo them away. Each one they break sends them on a slow walk of shame to the inbox, and they stay out of the data center longer every time. Every level speeds up uptime recovery. Level 2 sticks to email. Level 3 also guards your doorway and shoves users out of your way as you cross the hallway.</span></div>
     <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, gets unknown racks 10–75% investigated (you finish the job), then quits. Users ignore them, 15% of their patches take a server down, and some only want snacks. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds. <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
     <div><span class="ic">❓</span><span><b>Unknown rack.</b> The client forgot to mention these. Hold E on one to investigate (6 seconds, free) and you'll find it with a healthy timer. Hidden servers never reveal themselves through migration progress. From client 4 on they can be any tier, even gold. They may come with an expired or approaching license. Escalations can ignite unknown racks; going offline reveals them. Asset Inventory cuts investigation time to 3 seconds.</span></div>
@@ -2823,9 +2842,9 @@ function fireBossBlock(){
    (Without an agent, which makes a hands-off client nearly impossible, HR does it.) */
 function obsoleteBlock(){
   const ai=!!lvl("agent");
-  const who=!ai?"<b>HR would like a quick word.</b>":S.bossFired?"<b>Your new manager would like a quick word.</b> Since you fired your old one, that's the AI agent.":"<b>The AI agent booked a 15-minute 1:1 with you.</b>";
-  return`<div class="modcard" style="border-color:var(--ai)">🧠 ${who} ${client().name} went from start to finish without a single action from you. ${ai?"It did all of it, and it has run the numbers on your salary.":"The bots did all of it. Finance has noticed that your salary is the last on-prem cost."}</div>
-  <div class="row"><button class="btn" data-act="obsolete">${ai?"Go to your 1:1 with the AI agent":"Go to the meeting with HR"}</button></div>`;
+  const who=!ai?"<b>HR would like a quick word.</b>":S.bossFired?"<b>Your new manager would like a quick word.</b> Since you fired your old one, that's the AI agent.":"<b>Your manager would like a quick word.</b> The AI agent has been sending them a lot of email about you.";
+  return`<div class="modcard" style="border-color:var(--ai)">🧠 ${who} ${client().name} went from start to finish without a single action from you. ${ai?"The agent did all of it, and it has run the numbers on your salary.":"The bots did all of it. Finance has noticed that your salary is the last on-prem cost."}</div>
+  <div class="row"><button class="btn" data-act="obsolete">${!ai?"Go to the meeting with HR":S.bossFired?"Go to your 1:1 with the AI agent":"Go to the meeting with your manager"}</button></div>`;
 }
 function review(){
   mode="review";
@@ -2899,7 +2918,7 @@ const SHARE_SPIN={
   },
   obsolete:{
     li:[f=>`Some personal news: after ${shareCount(f.n,"client")}, I have successfully automated my role at Lift & Shift Consulting out of existence.`,
-        f=>`I'm proud to announce that the AI agent I onboarded is now doing my job. It agreed so strongly that it fired me itself.`],
+        f=>`I'm proud to announce that the AI agent I onboarded is now doing my job. It explained why to leadership in a rich tapestry of convincing emails.`],
     short:[f=>`Automated myself out of a job after ${shareCount(f.n,"client")}. Leadership calls it a success story.`,
            f=>`The AI ran a whole migration without me, then ran my exit interview. Open to work.`],
   },
@@ -3043,13 +3062,13 @@ function shareAct(act){
   shareSay(`${opened?"Facebook only takes the link, and it previews your report.":"Your browser blocked the Facebook tab, so allow pop-ups and try again."} ${copied?"Your post is on the clipboard, so paste it in.":"Copy the text above to add it."}`);
 }
 function showEnd(reason){
-  // obsolete is a win: the AI ran a whole client without you, then fired you itself. It scores like retiring.
+  // obsolete is a win: the AI ran a whole client without you, then got you fired. It scores like retiring.
   const obs=reason==="obsolete";if(obs){reason=null;sfx("celebrate");}
   mode="end";BK.fired=!!reason;setHiss(false);if(reason==="uptime"||reason==="security")sfx("fired");
   const n=S.career.length,avg=n?S.career.reduce((s,c)=>s+c.stars,0)/n:0;let title,body;
   if(reason==="uptime"){title="Fired: SLA blown";body=`${client().name} had too much downtime. The uptime budget ran out, and so did your badge access.`;}
   else if(reason==="security"){const sl=S.secLoss||{};if((sl.audit||0)>(sl.breach||0)){title="Fired: Failed compliance";body=`The auditors at ${client().name} wrote you up ${S.run.audits+S.ss.audits} times. Your badge didn't pass inspection either.`;}else{title="Fired: Breached";body=`${client().name} is in the news, and not for the cloud migration.`;}}
-  else if(obs){title="Fired: Obsolete";body=`${lvl("agent")?`You watched ${client().name} migrate itself. Then the AI agent${S.bossFired?", your manager since you fired the last one,":""} thanked you for your contributions, revoked your badge and closed your ticket as "resolved." It was very polite about it.`:`You watched ${client().name} migrate itself. The bots handled everything, so HR handled you.`} You automated yourself out of a job, which was the job. ${n} client${n===1?"":"s"}, average rating ${avg.toFixed(1)} stars.`;}
+  else if(obs){title="Fired: Obsolete";body=`${lvl("agent")?`You watched ${client().name} migrate itself. ${S.bossFired?"You fired your manager and gave the job to the AI agent. Its first decision as your new manager: fire you. It":"The AI agent persuaded your manager to fire you, via a rich tapestry of convincing emails. Your manager"} thanked you for your contributions, revoked your badge and closed your ticket as "resolved." ${S.bossFired?"It":"The agent cc'd everyone. It"} was very polite about it.`:`You watched ${client().name} migrate itself. The bots handled everything, so HR handled you.`} You automated yourself out of a job, which was the job. ${n} client${n===1?"":"s"}, average rating ${avg.toFixed(1)} stars.`;}
   else{title=`Retired as ${careerTitle()}`;body=`${n} client${n===1?"":"s"}, all in the cloud. Average rating ${avg.toFixed(1)} stars. Nobody ever found out about the resume.`;}
   // best score is only kept for runs that weren't cut short by getting fired
   let best=null,newBest=false;
@@ -3081,7 +3100,7 @@ function showEnd(reason){
   ${ai}
   ${BK.used?`<p style="font-size:13.5px;color:var(--muted)">Rewrote history ${BK.used} time${BK.used===1?"":"s"}. The change record says it was planned.</p>`:""}
   ${brag}
-  <div class="row">${reason&&BK.left>0&&bkPoints().length?`<button class="btn" data-act="restorelog">⏪ Restore from backup (${BK.left} left)</button>`:""}<button class="btn${reason&&BK.left>0&&bkPoints().length?" ghost":""}" data-act="again">Play again (${diffLabel()})</button><button class="btn ghost" data-act="menu">Main menu</button></div>`);
+  <div class="row">${reason&&BK.left>0&&bkPoints().length?`<button class="btn" data-act="restorelog">⏪ Restore from backup (${BK.left} left)</button>`:""}${obs?`<button class="btn" data-act="credits">Fade to black</button>`:`<button class="btn${reason&&BK.left>0&&bkPoints().length?" ghost":""}" data-act="again">Play again (${diffLabel()})</button><button class="btn ghost" data-act="menu">Main menu</button>`}</div>`);
   shareMount();
 }
 /* "Not my problem": everything flashing red as you walk out the door, left for whoever they hire next.
@@ -3148,6 +3167,31 @@ function letter(t){
   const close=pick(["I wish the team the best of luck with Phase 2.","Please forward all future tickets to the chatbot.","I'll be at the donut place. Do not email me.","Have you tried turning it off and on again? I did. Myself. Goodbye."]);
   const sign=pick(["Regards,","Best of luck,","Sincerely (not really),","Unsubscribe,"]);
   return`<div class="letter"><p>${to}</p><p>${open}</p><p>${reasons.join(" ")}</p><p>${close}</p><p>${sign}<br>Your former ${careerTitle()}</p></div>`;
+}
+/* Obsolete ending: fade to black, the credits fade in and out, a boot chime, a quick "LaS OS" boot screen with a
+   white progress bar that fades quickly to black once full, then the black fades into the main menu. Any key or click skips straight to the menu. */
+const CREDITS=[["h2","Credits"],["p who","Matt Frost"],["p small","and"],["p small","his boss...."],["p who","Claude Opus 5.5"]];
+const CRED={timers:[],el:null};
+function rollCredits(){
+  mode="credits";hide();setHiss(false);
+  const el=CRED.el=document.createElement("div");el.id="credits";el.setAttribute("role","dialog");el.setAttribute("aria-label","Credits");
+  el.innerHTML=`<div class="roll">${CREDITS.map(([t,x])=>{const[tag,cls]=t.split(" ");return`<${tag}${cls?` class="${cls}"`:""}>${x}</${tag}>`;}).join("")}</div>
+    <div class="boot" aria-label="LaS OS is starting"><b>LaS OS</b><div class="bar"><i></i></div></div><div class="skip">Press any key to skip</div>`;
+  document.body.appendChild(el);el.addEventListener("click",creditsDone);
+  const roll=el.querySelector(".roll"),boot=el.querySelector(".boot"),later=(ms,f)=>CRED.timers.push(setTimeout(f,ms));
+  requestAnimationFrame(()=>el.classList.add("on"));                              // fade to black
+  later(1400,()=>roll.classList.add("show"));                                      // credits fade in
+  later(6400,()=>roll.classList.remove("show"));                                   // and out, to black
+  later(8200,()=>{sfx("boot");boot.classList.add("show");requestAnimationFrame(()=>boot.querySelector(".bar").classList.add("full"));}); // chime, LaS OS
+  later(10650,()=>boot.classList.remove("show"));                                   // bar full: LaS OS fades out quickly, to black
+  later(11250,creditsDone);                                                        // black fades into the main menu
+}
+function creditsDone(){
+  if(mode!=="credits")return;
+  CRED.timers.forEach(clearTimeout);CRED.timers=[];
+  const el=CRED.el;CRED.el=null;
+  newRun();titleScreen();
+  if(el){el.style.pointerEvents="none";el.classList.remove("on");setTimeout(()=>el.remove(),1300);}
 }
 function resign(){
   mode="end";BK.fired=false;
@@ -3412,6 +3456,7 @@ ov.addEventListener("click",e=>{
   else if(a==="resume")play();
   else if(a==="retire")showEnd(null);
   else if(a==="obsolete")showEnd("obsolete");
+  else if(a==="credits")rollCredits();
   else if(a==="fireboss"){if(lvl("agent")>=4&&lvl("manager")&&!S.bossFired){S.bossFired=true;S.mgr=null;sfx("fired");S.offers=S.offers.filter(id=>id!=="manager");}review();}
   else if(a==="reroll")reroll();
   else if(a==="restart"){newRun();toast(`New career (${diffLabel()}). First client: ${client().name}.`);play();}

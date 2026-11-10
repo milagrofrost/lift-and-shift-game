@@ -29,7 +29,7 @@ The game uses satire and compressed time. Its probabilities, costs, DORA-style r
 
 Later clients bring larger environments, hidden applications, and more operational pressure. Tools carry forward. You can continue your consulting career or retire between clients.
 
-There is one more way to win: automate yourself out of a job. A level 4 AI Agent with every foundation in place (plus Mover Bot for the migrations) can run a whole client by itself. Finish a client without doing a single thing yourself, and after the client review the AI agent fires you as obsolete instead of handing you the next client. Do even one thing and you stay employed.
+There is one more way to win: automate yourself out of a job. A level 4 AI Agent with every foundation in place (plus Mover Bot for the migrations) can run a whole client by itself. Finish a client without doing a single thing yourself, and after the client review the AI agent gets you fired as obsolete instead of handing you the next client. Do even one thing and you stay employed.
 
 ![The on-premises room, operational hallway, and cloud migration floor](docs/screenshots/gameplay.png)
 
