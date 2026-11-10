@@ -996,15 +996,19 @@ function useSpecial(s){sfx("special");
   else{S.focus=15;toast("🎧 Focus mode: no new tickets or emails, and the queues stop aging for 15 seconds.");}
 }
 /* Temp worker: 30 seconds of help with servers (fires, restarts, patches) and tickets. Never migrates, never does email.
-   Users ignore them. 15% of patches take the server down. 10% of temps only want coffee and donuts. */
+   Users ignore them. 15% of patches take the server down. One temp in ten is a dud, split evenly: 5% only want
+   coffee and donuts, and 5% were never onboarded, so their badge doesn't work and they quit early. */
 const TEMP_NAMES=["Kyle","Brenda","Dustin","Tiffany","Gary","Skyler","Doug","Crystal","Chad","Pam"];
 const TEMP_HI=["Hi! Where's the bathroom?","Which one's the server?","The agency said this was data entry.","I can start right now!"];
 const TEMP_SNACK=["Is this free?","Ooh, donuts!","I'll be right back.","Is there more coffee?"];
 const TEMP_WORK=["Am I doing this right?","Is this on the test?","This one's warm. Is that normal?","Do we get a lunch break?","My last job had a ping pong table."];
+const TEMP_NOBADGE=["My badge doesn't work.","HR said it'd be active by Tuesday.","Is there a temp badge?","Can you let me in? No? Okay.","I filled out the form. Twice.","The agency said someone would meet me."];
+const TEMP_NOBADGE_TIME=12; // a temp who was never onboarded tries the door this long, then gives up
 const TEMP_ASK=["Hey, is this the right server?","Quick question, what's a VLAN?","Where do I put my timesheet?","Do you know the Wi-Fi password?"];
 function tempSay(s){S.temp.say=s;S.temp.sayT=2.6;}
 function spawnTemp(){
-  S.temp={x:480,y:H-24,t:30,name:pick(TEMP_NAMES),snack:modId()==="donut"||Math.random()<0.1,tgt:null,work:0,say:"",sayT:0,quit:false,wx:480,wy:300,wT:0};
+  const r=Math.random(),snack=modId()==="donut"||r<0.05,nobadge=!snack&&r<0.1;
+  S.temp={x:480,y:H-24,t:nobadge?TEMP_NOBADGE_TIME:30,name:pick(TEMP_NAMES),snack,nobadge,tgt:null,work:0,say:"",sayT:0,quit:false,wx:480,wy:300,wT:0};
   tempSay(S.temp.snack?pick(TEMP_SNACK):pick(TEMP_HI));
   toast(`🧑‍💼 The staffing agency sent ${S.temp.name}. They're here for 30 seconds to help with servers and tickets.`);
 }
@@ -1013,13 +1017,19 @@ function tickTemp(dt){
   if(T.sayT>0)T.sayT-=dt;
   if(T.quit){if(goTo(T,480,H-8,140,dt)||T.y>=H-12)S.temp=null;return;}
   T.t-=dt;
-  if(T.t<=0){T.quit=true;sfx("quit");tempSay("I quit!");toast(`🧑‍💼 ${T.name}: "I quit!"`);return;}
+  if(T.t<=0){T.quit=true;sfx("quit");const q=T.nobadge?"I quit! Nobody set up my badge.":"I quit!";tempSay(q);toast(`🧑‍💼 ${T.name}: "${q}"`);return;}
   const sp=80;
   // helpful, but a little annoying: phone breaks, one "quick question" for you per shift, and running commentary
   if(T.idle>0){T.idle-=dt;return;}
   if(Math.random()<dt*0.12){T.idle=rand(1.2,2.2);tempSay(pick(["One sec, checking my phone.","Hold on, my mom's texting.","Brb, posting on LinkedIn."]));return;}
   if(!T.asked&&!T.snack&&dist(T,S.p)<60&&!S.p.heldBy&&!(S.p.ghost>0)&&S.p.stun<=0){T.asked=true;S.p.stun=1.2;tempSay(pick(TEMP_ASK));return;}
   if(T.sayT<=0&&T.work>0&&Math.random()<dt*0.25)tempSay(pick(TEMP_WORK));
+  // never onboarded: stands at the server-room door getting denied every few seconds until they give up
+  if(T.nobadge){
+    const R=READERS[0];
+    if(goTo(T,R.vx,R.vy+4,sp,dt)){T.badgeT=(T.badgeT||0)-dt;if(T.badgeT<=0){T.badgeT=BADGE_GAP;(S.doorNo||(S.doorNo={}))[0]=S.t+0.6;sfx("badgeNo");tempSay(pick(TEMP_NOBADGE.filter(l=>l!==T.say)));}}
+    return;
+  }
   if(T.snack){
     let s=null,bd=1e9;for(const x of S.st){const d=dist(x,T);if(d<bd){bd=d;s=x;}}
     if(s){if(goTo(T,s.x,s.y,sp,dt)){S.st=S.st.filter(x=>x!==s);fl(s,`${T.name}: nom`,C.amber);if(Math.random()<0.5)tempSay(pick(TEMP_SNACK));}}
@@ -1081,7 +1091,7 @@ function drawSpecials(){
   ctx.fillStyle="#ff5fa2";rr(T.x-6,T.y+4,12,8,2);ctx.fill();tx("VISITOR",T.x,T.y+8,3.6,"#fff",{weight:700});
   ctx.fillStyle="#a9b6c0";ctx.beginPath();ctx.arc(T.x,T.y-10,7.5,0,7);ctx.fill();
   if(T.work>0&&T.tgt){ctx.strokeStyle="#4fd1c5";ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(T.x,T.y,20,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,T.work/(T.tgt.kind==="desk"?1.4:2.2)));ctx.stroke();}
-  tx(T.quit?`${T.name.toUpperCase()} · QUIT`:`TEMP · ${T.name.toUpperCase()}${T.snack?" (SNACK BREAK)":""} · ${Math.ceil(T.t)}s`,T.x,T.y+26,8,"#4fd1c5",{font:DISP,weight:700});
+  tx(T.quit?`${T.name.toUpperCase()} · QUIT`:`TEMP · ${T.name.toUpperCase()}${T.snack?" (SNACK BREAK)":T.nobadge?" (NO BADGE)":""} · ${Math.ceil(T.t)}s`,T.x,T.y+26,8,"#4fd1c5",{font:DISP,weight:700});
 }
 function tickShouts(dt){
   for(const u of S.users){if(u.shoutT>0)u.shoutT-=dt;
@@ -2390,7 +2400,7 @@ function update(dt){
   if(S.carry)sp*=S.carry.heavy===2?0.5:S.carry.heavy?0.62:0.78;
   if(P.stun>0)sp=0;
   moveEnt(P,mx/m*sp*dt,my/m*sp*dt,playerR());doorCross(P,false);
-  tickFreeze(dt);tickUsers(dt);tickShouts(dt);if(!freezeActive())tickChatbots(dt);tickSpecials(dt);tickTemp(dt);tickManager(dt);if(S.mgr)doorCross(S.mgr,false);tickAgent(dt);
+  tickFreeze(dt);tickUsers(dt);tickShouts(dt);if(!freezeActive())tickChatbots(dt);tickSpecials(dt);tickTemp(dt);if(S.temp)doorCross(S.temp,false);tickManager(dt);if(S.mgr)doorCross(S.mgr,false);tickAgent(dt);
   // red alert: any gold server offline or any cloud breach
   const crit=critList(),was=S.alert;S.alert=crit.length>0;
   if(S.alert&&!was){
@@ -2955,7 +2965,7 @@ function howToPlay(){
     <div><span class="ic">🧠</span><span><b>AI Agent (upgrade, after client 3).</b> A fast purple agent (faster at every level) that answers email, closes tickets, patches servers and seals leaks. Every attempt costs tokens. At level 1 it only touches bronze servers and only half its work is right; the rest does nothing (while claiming success) or breaks something. It works the email and ticket queues once either is half full; otherwise it hunts for fixes on-prem and in the cloud. Level 2 adds silver servers and investigates unknown racks start to finish. Level 3 adds gold, with far better odds, and chases an escalation it caused to the server to clean it up. Level 4 adds guardrails that block harmful actions and answers incidents (fires, outages, breaches, failed cutovers), and you can fire your manager between clients. When it breaks something it apologizes and stays to try one fix, billed in tokens. If that fails, the problem is yours. It also amplifies the practices you already have. Patching improves with Patch Bot, Runbooks and Observability; tickets with Self-Service Portal and Runbooks; email with your Manager and Status Page; leaks with Policy as Code, Vulnerability Scanner and Cloud Auto-Patching. The shop shows its odds for each job and what's missing. Check its ✓ / ✗ marks.</span></div>
     <div><span class="ic">🏆</span><span><b>Automate yourself out of a job.</b> Finish a whole client without doing a single thing yourself and, after the client review the AI agent gets you fired as obsolete. That's a win. Do even one thing (hold E, grab a server, pull a freeze) and you keep your job.</span></div>
     <div><span class="ic">👔</span><span><b>Your manager (upgrade).</b> Level 1 answers your email, but chats with users and sometimes wanders over to look at a server. Half the time, just looking takes it offline. While they're at a server, hold E there to shoo them away. Each one they break sends them on a slow walk of shame to the inbox, and they stay out of the data center longer every time. Every level speeds up uptime recovery. Level 2 sticks to email. Level 3 also guards your doorway and shoves users out of your way as you cross the hallway.</span></div>
-    <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, gets unknown racks 10–75% investigated (you finish the job), then quits. Users ignore them, 15% of their patches take a server down, and some only want snacks. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds. <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
+    <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, gets unknown racks 10–75% investigated (you finish the job), then quits. Users ignore them, 15% of their patches take a server down, some only want snacks, and some were never onboarded: their badge doesn't work, so they stand at the door and quit early. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds. <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
     <div><span class="ic">❓</span><span><b>Unknown rack.</b> The client forgot to mention these. Hold E on one to investigate (6 seconds, free) and you'll find it with a healthy timer. Hidden servers never reveal themselves through migration progress. From client 4 on they can be any tier, even gold. They may come with an expired or approaching license. Escalations can ignite unknown racks; going offline reveals them. Asset Inventory cuts investigation time to 3 seconds.</span></div>
   </div>
   <p style="color:var(--muted);font-size:13px">On a phone, play in landscape: drag anywhere on the left half to move, hold FIX and tap GRAB on the right. Move with WASD or arrows. Your hands are full while carrying, so you can't fix anything until you drop it.</p>

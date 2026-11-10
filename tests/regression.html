@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -1115,8 +1115,10 @@ test("Badge Access Audit: a VP is denied 3 times, calls Bob, then gets in and ke
     let green = false;
     for (let k = 0; k < 200 && !S.p.heldBy; k++) { S.p.x = 200; S.p.y = 280; G.tickUsers(0.05); green = green || G.doorOpen(0); }
     check(S.p.heldBy === vp && green, `no audit: held ${!!S.p.heldBy}, green ${green}`); }
-  // with it: three denials 3 s apart, a call, then access
+  // with it: three denials 3 s apart, a call, then access; the same with or without a red alert
+  for (const alert of [false, true]) {
   const S = fresh(); S.upgrades.badge = true; S.p.x = 200; S.p.y = 280; S.p.lz = 0;
+  if (alert) { S.alert = true; S.slow = 0.85; }
   const vp = vpAt(480, 280); S.users = [vp];
   const denials = []; let accessAt = -1, inAt = -1;
   for (let k = 0; k < 600 && !S.p.heldBy; k++) {
@@ -1126,9 +1128,10 @@ test("Badge Access Audit: a VP is denied 3 times, calls Bob, then gets in and ke
     if (inAt < 0 && vp.x < 360) inAt = k * 0.05;
     if (!vp.access) check(vp.x >= 382, `got in without access at x ${vp.x}`);
   }
-  check(denials.length === 3 && near(denials[1] - denials[0], 3, 0.06) && near(denials[2] - denials[1], 3, 0.06), `denials ${denials}`);
+  check(denials.length === 3 && near(denials[1] - denials[0], 3, 0.06) && near(denials[2] - denials[1], 3, 0.06), `alert ${alert}: denials ${denials}`);
   check(accessAt > denials[2] + 5.9 && accessAt < denials[2] + 6.1, `access at ${accessAt}, last denial ${denials[2]}`);
-  check(inAt > accessAt && S.p.heldBy === vp, `in at ${inAt}, held ${!!S.p.heldBy}`);
+  check(inAt > accessAt && S.p.heldBy === vp, `alert ${alert}: in at ${inAt}, held ${!!S.p.heldBy}`);
+  }
   // piggyback: right after you badge in, a VP without access can slip through the green door
   { const S = fresh(); S.upgrades.badge = true; S.p.x = 380; S.p.y = 280; S.p.lz = 1; const vp = vpAt(400, 280); vp.cd = 9; S.users = [vp];
     S.p.x = 340; G.doorCross(S.p, false); check(G.doorOpen(0), "your badge-in didn't open the door");
@@ -1139,6 +1142,24 @@ test("Badge Access Audit: a VP is denied 3 times, calls Bob, then gets in and ke
     S.p.x = 380; G.doorCross(S.p, false);
     check(G.doorOpen(0) && !G.doorOpen(2), "walking out didn't turn the door green"); }
   check(G.UPGRADES.some(u => u.id === "badge"), "no Badge Access Audit in the shop");
+});
+test("temps badge in; one temp in ten is a dud, split between snack hoarders and never-onboarded", () => {
+  const kind = r => { const S = fresh(); fixedRandom(r); G.spawnTemp(); seed(5); const T = S.temp; return T.snack ? "snack" : T.nobadge ? "nobadge" : "ok"; };
+  check(kind(0.02) === "snack" && kind(0.07) === "nobadge" && kind(0.12) === "ok", `kinds ${kind(0.02)} ${kind(0.07)} ${kind(0.12)}`);
+  // a normal temp walking into the server room opens the door
+  { const S = fresh(); fixedRandom(0.5); G.spawnTemp(); seed(5); const T = S.temp; T.x = 380; T.y = 280; T.lz = 1; S.doorG = {};
+    T.x = 340; G.doorCross(T, false); check(G.doorOpen(0), "the temp didn't badge in"); }
+  // a never-onboarded temp gets denied every 3 s at the door, never gets in, does no work, and quits at 12 s
+  const S = fresh(); fixedRandom(0.07); G.spawnTemp(); seed(5); const T = S.temp; T.asked = true;
+  const rack = S.racks.find(a => a); rack.fire = 50;
+  let denials = 0, quitAt = -1;
+  for (let k = 0; k < 400 && S.temp; k++) {
+    const no = (S.doorNo || {})[0] || 0; T.idle = 0; S.t += 0.05; G.tickTemp(0.05);
+    if (((S.doorNo || {})[0] || 0) !== no) denials++;
+    check(T.x >= 360, `no-badge temp got into the room at x ${T.x}`);
+    if (T.quit && quitAt < 0) quitAt = k * 0.05;
+  }
+  check(near(quitAt, 12, 0.06) && denials >= 2 && rack.fire === 50, `quit ${quitAt}, denials ${denials}, fire ${rack.fire}`);
 });
 test("Mouse Jiggler: under 10% of the work over 3+ clients, but never zero; a hold-E job counts once", () => {
   const doc = W.document;
