@@ -85,6 +85,9 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 ### Career and balance
 
 - After two rough clients in a row (5–6 sprint points or at most 2 stars), the retrospective offers "Give me a break": one small client, sized and paced like the first, in place of that retrospective's action item. The shop after that client always stocks Patch Bot and every upgrade with a base cost of 5 or more that is not owned yet, including the AI Agent once unlocked.
+- Until the player owns a Patch Bot, the shop is likelier to stock it the more points they have: no boost below its 4-point price, then +10% per point above it, capped at 90%, on top of the normal draw. Later levels use normal odds.
+- Stackable tools still at level 0 get likelier the longer they go unshown: each missed improvement sprint adds 1 to their draw weight (normal items weigh 1), capped at +5. This is never a guarantee. Showing one, including after a brainstorm, resets its count.
+- Every unbought shop card has "Not interested": it hides that item for the next 10 clients and fills the slot with something else. The shop lists hidden items with "Bring back". Hidden items are left out of the break-client shop and the Patch Bot boost too.
 - Short successful careers and early retirement fit the job-jumping satire. Do not automatically redesign scoring to punish them.
 - Lower-tier-first migration advice must be feasible with wave ordering. Avoid requiring future-wave work to unlock progress in the current wave.
 - Distinguish client completion from inter-wave consolidation; do not silently change risk ownership between them.
