@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -1110,11 +1110,15 @@ test("red alert slow-mo: hunting VPs approach slower on Easy, a little on Normal
 });
 test("Badge Access Audit: a VP is denied 3 times, calls Bob, then gets in and keeps following; piggybacking works", () => {
   const vpAt = (x, y) => ({x, y, rank: 4, hunter: true, life: 999, cd: 0, line: "", vx: 0, vy: 0, turn: 0});
-  // without the audit, the VP badges in and the reader goes green
+  // without the audit, the VP badges in: the reader goes green and plays the ting as they cross the doorway
   { const S = fresh(); S.p.x = 200; S.p.y = 280; S.p.lz = 0; const vp = vpAt(480, 280); S.users = [vp];
-    let green = false;
-    for (let k = 0; k < 200 && !S.p.heldBy; k++) { S.p.x = 200; S.p.y = 280; G.tickUsers(0.05); green = green || G.doorOpen(0); }
-    check(S.p.heldBy === vp && green, `no audit: held ${!!S.p.heldBy}, green ${green}`); }
+    const ting = G.SFX.badgeOK, on = G.AU.on; let green = false, tings = 0, tingX = null;
+    G.SFX.badgeOK = () => { tings++; tingX = vp.x; }; G.AU.on = true; G.AU.last.badgeOK = 0;
+    try {
+      for (let k = 0; k < 200 && !S.p.heldBy; k++) { S.p.x = 200; S.p.y = 280; G.tickUsers(0.05); green = green || G.doorOpen(0); }
+    } finally { G.SFX.badgeOK = ting; G.AU.on = on; }
+    check(S.p.heldBy === vp && green, `no audit: held ${!!S.p.heldBy}, green ${green}`);
+    check(tings === 1 && tingX < 360, `no audit: ${tings} tings, at x ${tingX}`); }
   // with it: three denials 3 s apart, a call, then access; the same with or without a red alert
   for (const alert of [false, true]) {
   const S = fresh(); S.upgrades.badge = true; S.p.x = 200; S.p.y = 280; S.p.lz = 0;
