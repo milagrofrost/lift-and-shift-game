@@ -882,6 +882,9 @@ async function run() {
     const realRandom = W.Math.random;
     for (const t of tests.slice(1)) { await runOne(t); W.Math.random = realRandom; }
   }
+  // silence the test frame once the checks are done: stop its music loop and close its audio, without
+  // touching the saved music setting the real game shares with this origin
+  if (W) { W.clearInterval(W.__liftShiftMusicTimer); if (W.__liftShiftAudio) W.__liftShiftAudio.close().catch(() => {}); }
   const failed = results.filter(r => !r.ok).length;
   sum.textContent = failed ? `${failed} of ${results.length} failed` : `All ${results.length} passed`;
   sum.className = failed ? "bad" : "ok";
