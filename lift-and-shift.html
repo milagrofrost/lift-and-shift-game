@@ -1225,7 +1225,7 @@ function tickManager(dt){
     if(!goTo(M,480,98,sp,dt))return;
     M.work+=dt;
     if(M.work>=1.2){M.work=0;const imp2=importantMail();
-      if(imp2.length){const m=imp2.reduce((a,b)=>b.age>a.age?b:a);S.em=S.em.filter(x=>x!==m);fl(INBOX,"👔 Manager replied",C.ok);if(Math.random()<0.4)mgrSay("email");}
+      if(imp2.length){const m=imp2.reduce((a,b)=>b.age>a.age?b:a);S.em=S.em.filter(x=>x!==m);fl(INBOX,"👔 Manager replied",C.ok);if(m.type==="finance")financeExtension("manager");if(Math.random()<0.4)mgrSay("email");}
       // levels 1-2 get distracted between replies (they re-decide); level 3 keeps going until the inbox is under control
       if(L<3){M.state="idle";M.dec=0;}
       else if(importantMail().length<2){M.state="guard";M.dec=0.3;}}
@@ -1899,8 +1899,16 @@ function doFix(dt){
   else if(f.kind==="leak"){sfx("sealed");f.a.age=0;f.a.leakOn=false;f.a.leak=0;f.a.grace=4;fl(f.pos,"Sealed by hand",C.ok);}
   else if(f.kind==="email"){sfx("sent");S.em=S.em.filter(x=>x!==f.m);if(f.m.type==="vendor")S.run.vendor++;
     // answering a finance email negotiates a 20s extension on the license closest to renewing
-    if(f.m.type==="finance"){const l=onPremApps().filter(a=>a.lic>0).sort((a,b)=>a.lic-b.lic)[0];if(l){l.lic+=20;sfx("chaching");toast(`🤝 Finance negotiated an extension: ${l.name}'s license renewal pushed back 20 seconds.`);}}fl(f.pos,f.m.type==="vendor"?"Replied to a vendor. Why?":"Replied",f.m.type==="vendor"?C.muted:C.ok);}
+    if(f.m.type==="finance")financeExtension("player");fl(f.pos,f.m.type==="vendor"?"Replied to a vendor. Why?":"Replied",f.m.type==="vendor"?C.muted:C.ok);}
   else{sfx("closed");S.tk=S.tk.filter(x=>x!==f.t);fl(f.pos,"Ticket closed",C.ok);}
+}
+// answering a finance email (player or manager) negotiates a 20s extension on the license closest to renewing;
+// the server that got it glitters briefly so you can see which one it was
+function financeExtension(by){
+  const l=onPremApps().filter(a=>a.lic>0).sort((a,b)=>a.lic-b.lic)[0];if(!l)return null;
+  l.lic+=20;l.glitter=S.t;sfx("chaching");
+  toast(by==="manager"?`👔 Your manager's finance reply bought an extension: ${l.name}'s license renewal pushed back 20 seconds.`:`🤝 Finance negotiated an extension: ${l.name}'s license renewal pushed back 20 seconds.`);
+  return l;
 }
 
 /* ---------- simulation ---------- */
@@ -2271,7 +2279,7 @@ function drawRack(i,a){
     tx(T.label,x+w-5,y+12,7.5,T.c,{align:"right",weight:600});
     if(a.prog>0)bar(x+6,y+h-10,w-12,5,a.prog/T.restore,C.ok,"#1a252d");
     tx(a.prog>0?"restarting":"down",p.x,y+h+9,10,a.prog>0?C.ok:C.danger,{weight:600});
-    drawLicense(a,p,y+h);
+    drawLicense(a,p,y+h);drawGlitter(a,x,y,w,h);
     return;
   }
   ctx.save();
@@ -2298,7 +2306,28 @@ function drawRack(i,a){
     if(!(a.fire>0)){const staged=S.cloud.some(c=>c&&c.staged&&c.orig===a);ctx.fillStyle="rgba(12,40,56,.92)";rr(x+2,y-12,w-4,13,3);ctx.fill();tx(staged?"⧉ STAGED IN CLOUD":"⧉ COPYING",p.x,y-5.5,7.5,"#bfeaff",{font:DISP,weight:700,max:w-8});}
   }
   if(a.fire>0){em("🔥",p.x+(Math.sin(S.t*20)*1.5),p.y-12,18+a.fire*0.18);bar(x,y-9,w,5,a.fire/100,C.danger,"#3a1d1a");}
-  drawLicense(a,p,y+h);
+  drawLicense(a,p,y+h);drawGlitter(a,x,y,w,h);
+}
+// a quick golden sparkle around a rack whose license just got extended
+const GLITTER_T=1.4;
+function drawGlitter(a,x,y,w,h){
+  if(a.glitter==null)return;
+  const k=(S.t-a.glitter)/GLITTER_T;if(k<0||k>=1)return;
+  const fade=1-k;
+  ctx.save();
+  ctx.shadowColor="#ffd75e";ctx.shadowBlur=14*fade;ctx.strokeStyle=`rgba(255,215,94,${0.85*fade})`;ctx.lineWidth=2;rr(x-3,y-3,w+6,h+6,8);ctx.stroke();
+  ctx.shadowBlur=0;
+  for(let s=0;s<12;s++){
+    // fixed spots around the rack edge; each twinkles on its own phase and drifts up a little
+    const t=(s*0.6180339887)%1,side=s%4,u=(s*0.37+0.15)%1;
+    const px=side===0?x+u*w:side===1?x+w+4:side===2?x+(1-u)*w:x-4;
+    const py=(side===0?y-4:side===1?y+u*h:side===2?y+h+4:y+(1-u)*h)-(RM?0:k*10);
+    const tw=RM?1:Math.max(0,Math.sin((k*3+t)*Math.PI));
+    const r=(2.5+3*((s*7)%3)/2)*tw*fade;if(r<0.4)continue;
+    ctx.fillStyle=s%3?"#fff6c8":"#ffd75e";ctx.globalAlpha=Math.min(1,fade*1.4);
+    ctx.beginPath();ctx.moveTo(px,py-r);ctx.quadraticCurveTo(px,py,px+r,py);ctx.quadraticCurveTo(px,py,px,py+r);ctx.quadraticCurveTo(px,py,px-r,py);ctx.quadraticCurveTo(px,py,px,py-r);ctx.fill();
+  }
+  ctx.restore();
 }
 function drawLicense(a,p,bottom){
   if(a.licenseExpired){tx("📜 EXPIRED · RENEWED",p.x,bottom+23,8,C.amber,{weight:600});return;}
@@ -2647,13 +2676,13 @@ function howToPlay(){
   <div class="legend">
     <div><span class="ic">📦</span><span><b>Migrate.</b> Space to grab an app, carry it to the cloud, stand on an empty cloud slot and press Space to drop it. To put one back, stand on an empty rack; an escalation chasing that server will follow it there. Migrating earns energy, and cloud apps cost less to run than on-prem servers.</span></div>
     <div><span class="ic">🎲</span><span><b>Cutover odds.</b> Each rack shows its chance of coming up in the cloud. Bronze starts high, gold starts around 15%. Moving bronze raises silver's odds; moving bronze and silver raises gold's, up to 100% once they're all moved. A failed cutover lands offline in the cloud: hold E to retry at the same odds (3s bronze, 5s silver, 8s gold), or hold Space to roll it back on-prem.</span></div>
-    <div><span class="ic">📜</span><span><b>License renewal.</b> Some servers show a renewal countdown. Migrate them before it hits zero or you pay for another year. The countdown pauses while a server is being moved and resumes if it comes back. With Blue-Green Cutovers the original keeps running, so its license keeps counting down. Gold licenses come due later, so you have time to build experience. Answering a finance email buys the closest one 20 more seconds.</span></div>
+    <div><span class="ic">📜</span><span><b>License renewal.</b> Some servers show a renewal countdown. Migrate them before it hits zero or you pay for another year. The countdown pauses while a server is being moved and resumes if it comes back. With Blue-Green Cutovers the original keeps running, so its license keeps counting down. Gold licenses come due later, so you have time to build experience. Answering a finance email (you or your manager) buys the closest one 20 more seconds, and that server sparkles gold so you can see which one it was.</span></div>
     <div><span class="ic">⏳</span><span><b>Compliance timer.</b> Every on-prem server runs a compliance cycle. Hold E to patch it: it costs energy and covers the rest of that cycle (green bar, ✓ COVERED). When the cycle ends, a new uncovered one starts and needs another patch. If an uncovered cycle runs out, the audit fails: $12k and 4 security, and a fresh cycle starts. Migrating stops the clock for good, and a server migrated while covered is half as likely to leak for its first 30 seconds in the cloud.</span></div>
     <div><span class="ic">🔥</span><span><b>Fire.</b> Escalated tickets start fires. Escalations run 75% slower during any outage or active breach. Change freezes pause escalations, fire growth and spread. Hold E to put one out. If it burns all the way, the server goes offline, burning your uptime budget until you hold E to bring it back up. While any server is offline, nothing can be moved.</span></div>
     <div><span class="ic">🥇</span><span><b>Tiers.</b> Gold, silver and bronze servers. Gold takes longest to bring back up (5s) and burns uptime fastest: 3 per second, against 1 for silver and 0.25 for bronze.</span></div>
     <div><span class="ic">🚨</span><span><b>Red alert.</b> A gold server offline or any cloud breach. You drop everything and can only fix incidents until it's over. Incident fixes never cost energy.</span></div>
     <div><span class="ic">💧</span><span><b>Cloud leak.</b> Hold E to seal it by hand (it costs energy; security upgrades make leaks rarer). Ignore it and it becomes a breach that spreads to the next app every 10 seconds. Unpatched cloud apps drift: the longer since one was last patched (sealed or contained), the more often it leaks, up to twice as often. Cloud Auto-Patching stops the drift.</span></div>
-    <div><span class="ic">📧</span><span><b>Email inbox.</b> At the top of the hallway, with a 5-slot bar. ⚖️ legal, 💰 finance and 👔 exec emails fill it; 📣 vendor spam doesn't and disappears by itself. When the bar is full, fines trickle in and a VP comes hunting you, again and again, until you answer some. While you're at the inbox answering, the VP won't interrupt. Answering a finance email also pushes back the closest license renewal.</span></div>
+    <div><span class="ic">📧</span><span><b>Email inbox.</b> At the top of the hallway, with a 5-slot bar. ⚖️ legal, 💰 finance and 👔 exec emails fill it; 📣 vendor spam doesn't and disappears by itself. When the bar is full, fines trickle in and a VP comes hunting you, again and again, until you answer some. While you're at the inbox answering, the VP won't interrupt. Answering a finance email, yours or your manager's, also pushes back the closest license renewal.</span></div>
     <div><span class="ic">🎫</span><span><b>Ticket queue.</b> At the bottom of the hallway, with a 5-slot bar. Hold E there to close tickets. When the bar fills, it flashes red and tickets escalate 🚨 one at a time until you work it down. Each one sets a server on fire and costs half a story point. They're at least 12 seconds apart, half as fast while a server is burning, and 75% slower during an outage or breach. Focus time and change freezes pause them.</span></div>
     <div><span class="ic">❄</span><span><b>Change freeze.</b> Users, new tickets and email, escalations, fire growth and breach spread all stop. Downtime and breach damage still count, so a freeze buys time, it doesn't fix anything. Every incident gets a short 4-second freeze (once a minute), CHANGE FREEZE flashes across the floor, and the message says what caused it. A manager makes it 10/14/18 seconds and lets it return sooner (60/50/40s). The Emergency Freeze Window upgrade gives you one 12-second freeze on F or the Freeze button.</span></div>
     <div><span class="ic">⏪</span><span><b>Restore from backup.</b> Open the terminal (the &gt;_ at the top left, or the &#96; key) and type <code>journalctl</code> for this client's event log. Rows marked 💾 are restore points, roughly every 30 seconds. Pick one, or type <code>restore 05:40</code>, to go back to that moment. Easy gets 3 for the whole career, Normal 2, Hard 1, and Hardcore none. They also work from the screen where you get fired. Restore points only cover the current client, and the future can go differently the second time.</span></div>

@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -317,6 +317,20 @@ test("the walk of shame goes straight to the inbox at a slow pace", () => {
   const S = fresh(); S.upgrades.manager = 1; S.mgr = {x: 480, y: 298, state: "shame", tgt: null, work: 0, dec: 0, say: "", sayT: 0, wx: 480, wy: 300};
   G.tickManager(1); check(S.mgr.state === "shame" && near(S.mgr.y, 248), `y ${S.mgr.y}`);
   S.mgr.y = 99; G.tickManager(1); check(S.mgr.state === "email", `state ${S.mgr.state}`);
+});
+test("a finance reply, yours or the manager's, extends the closest license and marks that server to glitter", () => {
+  const setup = () => { const S = fresh(); const apps = S.racks.filter(Boolean); apps.forEach(x => { x.lic = 0; x.glitter = undefined; }); apps[0].lic = 30; apps[1].lic = 10; return {S, near: apps[1], far: apps[0]}; };
+  let {S, near: n, far: f} = setup(); S.t = 5;
+  check(G.financeExtension("player") === n && n.lic === 30 && n.glitter === 5 && f.glitter === undefined && f.lic === 30, `player: lic ${n.lic}, glitter ${n.glitter}`);
+  ({S, near: n, far: f} = setup()); S.upgrades.manager = 3; S.t = 7;
+  S.mgr = {x: 480, y: 98, state: "email", tgt: null, work: 1.19, dec: 0, say: "", sayT: 0, wx: 480, wy: 98};
+  S.em = [{type: "finance", age: 3}]; fixedRandom(0.9); G.tickManager(0.05);
+  check(!S.em.length, "manager didn't reply");
+  check(n.lic === 30 && n.glitter === 7 && f.glitter === undefined, `manager: lic ${n.lic}, glitter ${n.glitter}`);
+  ({S, near: n} = setup()); S.upgrades.manager = 3;
+  S.mgr = {x: 480, y: 98, state: "email", tgt: null, work: 1.19, dec: 0, say: "", sayT: 0, wx: 480, wy: 98};
+  S.em = [{type: "legal", age: 3}]; fixedRandom(0.9); G.tickManager(0.05);
+  check(n.lic === 10 && n.glitter === undefined, "a legal reply extended a license");
 });
 test("holding E at the manager's server shoos them, but only there and only if held", () => {
   const start = () => { const S = fresh(); S.upgrades.manager = 1; const a = firstRack(S), p = mgrAtRack(S, a, 0.5); S.p.x = p.x + 30; S.p.y = p.y + 40; S.p.stun = 0; S.p.heldBy = null; return {S, a, p}; };
