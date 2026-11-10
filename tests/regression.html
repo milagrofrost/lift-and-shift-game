@@ -29,7 +29,7 @@
    Results: the page title becomes "PASS n/n" or "FAIL k/n", and window.__RESULTS holds the details. */
 const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
-const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
+const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
   "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
@@ -701,7 +701,7 @@ test("Give me a break is offered only after two rough clients in a row", () => {
   S.career = [good, tight, low, good, low]; check(!G.needsBreak(), "older clients counted");
 });
 test("a break makes one small, first-client-paced job, then the career resumes", () => {
-  const S = fresh(); S.sprint = 9; S.breakN = 10;
+  const S = fresh(); S.sprint = 9; S.breaks = [10];
   const small = G.engagementCfg(10), [k, h] = G.DIFFS ? G.DIFFS.normal.counts[0] : [4, 1];
   check(small.apps.length === k && small.hidden.length === h, `size ${small.apps.length}+${small.hidden.length}`);
   check(!G.getClient(10).trait && G.getClient(10) === G.BREAK_CLIENTS[0], "break client not used");
@@ -711,10 +711,20 @@ test("a break makes one small, first-client-paced job, then the career resumes",
   check(near(G.haz(), 1), `haz ${G.haz()}`);
   const on = S.racks.filter(Boolean); check(on.length === k + h, `${on.length} racks`);
   G.startSprint(11);
-  check(G.haz() > 1.5, `haz after break ${G.haz()}`);
+  check(G.haz() > 1.4, `haz after break ${G.haz()}`);
+});
+test("a break is inserted between clients and never skips one", () => {
+  const S = fresh(); S.breaks = [3];
+  check(G.getClient(2) === G.CLIENTS[1], "client 2 moved");
+  check(G.isBreak(3) && G.getClient(3) === G.BREAK_CLIENTS[0], "break not at 3");
+  check(G.getClient(4) === G.CLIENTS[2] && G.stage(4) === 3, "the third client was skipped instead of delayed");
+  const k3 = G.DIFFS ? G.DIFFS.normal.counts[2][0] : 10;
+  check(G.engagementCfg(4).apps.length === k3, `delayed client sized ${G.engagementCfg(4).apps.length}`);
+  G.startSprint(4); check(near(G.haz(), 1), `delayed client 3 paced like client ${G.haz()}`);
+  S.breaks = [3, 6]; check(G.stage(7) === 5 && G.isBreak(6), "two breaks miscounted");
 });
 test("the shop after a break client always stocks the key tools you don't own", () => {
-  const S = fresh(); S.upgrades = {}; S.sprint = 5; S.breakN = 5;
+  const S = fresh(); S.upgrades = {}; S.sprint = 5; S.breaks = [5];
   for (let i = 0; i < 40; i++) {
     const o = G.rollOffers();
     check(o.length >= 6 && new Set(o).size === o.length, `offers ${o}`);
@@ -725,12 +735,12 @@ test("the shop after a break client always stocks the key tools you don't own", 
   S.career = [{}, {}, {}]; check(G.rollOffers().includes("agent"), "AI Agent missing once unlocked"); S.career = [];
   S.upgrades = {pipeline: 1, terraform: true};
   check(!G.rollOffers().includes("terraform"), "offered Terraform twice");
-  S.upgrades = {}; S.breakN = 4;
+  S.upgrades = {}; S.breaks = [4];
   let always = true; for (let i = 0; i < 40; i++) always = always && G.rollOffers().includes("terraform");
   check(!always, "guarantee leaked into a normal shop");
 });
 test("an unowned Patch Bot is always on the shelf when you can afford it", () => {
-  const S = fresh(); S.upgrades = {}; S.sprint = 5; S.breakN = 0; S.missed = {};
+  const S = fresh(); S.upgrades = {}; S.sprint = 5; S.breaks = []; S.missed = {};
   for (const pts of [4, 5, 13]) { S.points = pts; for (let i = 0; i < 40; i++) check(G.rollOffers().includes("patchbot"), `missing at ${pts} pts`); }
   S.points = 3; check(!G.patchBotStocked(), "stocked below its price");
   let always = true; for (let i = 0; i < 60; i++) always = always && G.rollOffers().includes("patchbot");
@@ -740,7 +750,7 @@ test("an unowned Patch Bot is always on the shelf when you can afford it", () =>
   check(!always, "level 2 guaranteed");
 });
 test("tools you don't own get likelier the longer they go unseen, but are never guaranteed", () => {
-  const S = fresh(); S.upgrades = {}; S.sprint = 6; S.breakN = 0; S.points = 0; S.missed = {};
+  const S = fresh(); S.upgrades = {}; S.sprint = 6; S.breaks = []; S.points = 0; S.missed = {};
   G.missShops(); check(S.missed.suppress === 1 && S.missed.portal === 1 && S.missed.terraform === 1, `counts ${JSON.stringify(S.missed)}`);
   G.shownOffers(["suppress"]); check(S.missed.suppress === 0, "showing it didn't reset the count");
   S.upgrades = {portal: 1, terraform: true}; G.missShops(); check(S.missed.portal === 1 && S.missed.terraform === 1, "an owned tool kept counting");
