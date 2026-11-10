@@ -54,9 +54,15 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 ### AI Agent foundations
 
 - The AI Agent amplifies existing practices. With no foundations for a job, it keeps its base level odds; each relevant upgrade improves that job only (patching: Patch Bot, Runbooks, Observability). Foundations shift results toward success; they do not add a penalty or stop tokens being billed.
+- Patch Bot walks faster at each level (85/110/140) and the AI Agent moves faster at each level (300/340/380/420); level 1 keeps the original pace.
 - Level 1 only touches bronze servers, level 2 adds silver, level 3 adds gold; tickets and email are open at every level. Baselines are 50%, 80% and 90% right, and never certain.
 - A Patch Bot automation error draws the agent ahead of tickets and email, within its server tiers, using its normal patching odds.
 - When the agent breaks something it stays, apologizes, and makes one billed repair attempt. A failed repair leaves the problem to the player and never causes further damage. Damage already charged stays charged.
+- Priorities: at level 4, incidents first (breaches, outages, fires, failed cutovers). Then the email or ticket queue, whichever is fuller, once either is at least half full. Below that it looks for fixes: leaks, automation errors, at-risk patches, unknown racks (level 2+), routine patches. Then whatever is left in the queues.
+- Level 2+ investigates unknown racks start to finish (any tier, billed once, always succeeds), unlike a temp. Level 3+ follows an escalation it caused to its target server (keeping server identity) and repairs there, including an outage that escalation caused.
+- Level 4 incident response is hands-on work with no right/wrong roll; failed-cutover retries still roll the normal cutover odds. It never migrates.
+- At AI level 4 the player can fire the manager between clients, once per career. The manager's freezes, uptime recovery bonus and email foundation stay (the agent runs them); the walker, chatting, guarding and inspections go, and the manager can't be bought again.
+- Obsolete ending: finishing a client with zero human actions (any hold-E work, grab/drop, pipeline send, rollback, freeze, shoo) shows the normal client review, then the AI agent fires you (HR if no agent is owned) instead of the shop and next client. If you fired your manager, the agent does it as your new manager. It is a win, scored like retiring. One action keeps the job. A level 4 agent with full foundations plus Mover Bot should sustain a client hands-off.
 
 ### Uptime recovery
 
@@ -73,7 +79,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 
 ### Sharing the end report
 
-- Every end screen offers LinkedIn, Facebook, X and Instagram. Posts spin the outcome for laughs, but the stats on them are real.
+- Every end screen (retired, fired, obsolete, resigned) offers LinkedIn, Facebook, X and Instagram. Posts spin the outcome for laughs, but the stats on them are real.
 - Sharing only reads the run. It must never change `S`, and it never posts for the player.
 - Report links (`/r/<code>`) carry only numbers and fixed choices, never free text, so nobody can put their own words on an image served from this domain. `functions/_lib/report.js` mirrors the game's titles and verdicts.
 

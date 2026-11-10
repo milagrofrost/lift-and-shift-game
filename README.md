@@ -29,6 +29,8 @@ The game uses satire and compressed time. Its probabilities, costs, DORA-style r
 
 Later clients bring larger environments, hidden applications, and more operational pressure. Tools carry forward. You can continue your consulting career or retire between clients.
 
+There is one more way to win: automate yourself out of a job. A level 4 AI Agent with every foundation in place (plus Mover Bot for the migrations) can run a whole client by itself. Finish a client without doing a single thing yourself, and after the client review the AI agent fires you as obsolete instead of handing you the next client. Do even one thing and you stay employed.
+
 ![The on-premises room, operational hallway, and cloud migration floor](docs/screenshots/gameplay.png)
 
 ## What you learn by playing
@@ -96,13 +98,16 @@ Read [AGENTS.md](AGENTS.md) before making changes. It records the teaching goals
 ### Blue-green staging
 With Blue-Green Cutovers, you carry (or pipeline) a see-through copy while the original stays online in its rack until a successful cutover retires it. The original can still catch fire and take escalations while the copy is in flight; if it goes offline, the copy is canceled and you restore it and migrate again. Failed cloud deployments stay gray; hold E there to retry. Migrating a currently patched server reduces new-leak risk by 50% for the first 30 seconds after cutover.
 
+### The AI Agent
+The AI Agent unlocks after the third client and amplifies the practices you already have. It works the email and ticket queues whenever either is at least half full; otherwise it goes looking for fixes on-prem and in the cloud (leaks, Patch Bot automation errors, overdue patches) before clearing whatever is left. Level 2 also investigates unknown racks start to finish, unlike a temp. Level 3 chases an escalation it caused to the server and cleans it up there. Level 4 adds guardrails and answers incidents too: fires, outages, breaches and failed cutovers. At level 4 you can also fire your manager between clients: the automatic change freezes, the faster uptime recovery and the agent's email know-how stay, and the wandering, chatting, guarding and server "inspections" go.
+
 ### Restore from backup
 The terminal keeps a play-by-play event log for the current client and a restore point (💾) roughly every 30 seconds. Selecting one plays a "Restoring to mm:ss state" progress bar and returns the game to that moment. You get three restores per career on Easy, two on Normal, one on Hard, and none with the Hardcore checkbox (Hard otherwise unchanged). They also work from the screen where you get fired. Restore points don't cross client boundaries, and the future can play out differently after a restore.
 
 ### Humble brag
 If you get fired or resign mid-client, the report also counts what you're leaving behind as "Not my problem": everything flashing red as you walk out — visible racks that are uncovered and showing the red circle (the last quarter of their compliance cycle), and cloud leaks with a red border, about to be breached. You migrated what you could; those are for whoever gets hired next. On the resignation exit interview's carnage report each one adds a carnage point.
 
-Every end screen (retired, fired, or resigned) has a share panel with a post written for LinkedIn, Facebook, X, or Instagram. Getting fired is reported as "Open to work"; the numbers are real. Each post links to a personal `/r/...` page whose 1200×630 preview image shows that report, so it appears as the picture on LinkedIn, Facebook, and X. No network lets a website attach an image directly: LinkedIn and X open with the post filled in and the square card on the clipboard to paste instead, Facebook takes only the link with the post on the clipboard, and Instagram uses the phone share sheet or a manual upload. Nothing is published until you do it yourself.
+Every end screen (retired, fired, obsolete, or resigned) has a share panel with a post written for LinkedIn, Facebook, X, or Instagram. Getting fired is reported as "Open to work"; the numbers are real. Each post links to a personal `/r/...` page whose 1200×630 preview image shows that report, so it appears as the picture on LinkedIn, Facebook, and X. No network lets a website attach an image directly: LinkedIn and X open with the post filled in and the square card on the clipboard to paste instead, Facebook takes only the link with the post on the clipboard, and Instagram uses the phone share sheet or a manual upload. Nothing is published until you do it yourself.
 
 The report page and image are Cloudflare Pages Functions in `functions/`, with no dependencies or build step. Report links hold only numbers and fixed choices. To try them locally, run `npx wrangler pages dev .`; a plain static server doesn't run them.
 

@@ -8,7 +8,7 @@ const FINE = ["Results not audited. The auditors have been through enough.", "Se
 
 // outcome_role_clients_rating×10_migrated_spend_fineprint_verdict, e.g. r_3_2_35_23_-412_0_0
 export function parseCode(code) {
-  const m = /^([rucbq])_(\d)_(\d{1,3})_(\d{1,2})_(\d{1,4})_(-?\d{1,7})_([0-2])_([0-4])$/.exec(String(code));
+  const m = /^([rucbqo])_(\d)_(\d{1,3})_(\d{1,2})_(\d{1,4})_(-?\d{1,7})_([0-2])_([0-4])$/.exec(String(code));
   if (!m) return null;
   const [, outcome, role, n, avg, mig, spend, fine, verdict] = m;
   if (+role >= TITLES.length || +avg > 50) return null;
@@ -18,6 +18,7 @@ export function parseCode(code) {
 export function describe(r) {
   let head, sub;
   if (r.outcome === "r") { head = `Retired as ${TITLES[r.role]}`; sub = "Nobody ever found out about the resume."; }
+  else if (r.outcome === "o") { head = "Replaced by AI"; sub = "Automated myself out of a job. That was the job."; }
   else if (r.outcome === "q") { head = "Pursuing other opportunities"; sub = `Exit interview: ${VERDICTS[r.verdict]}.`; }
   else { head = "Open to work"; sub = `Official reason: ${FIRED[r.outcome]}. Nobody needs to know that part.`; }
   const money = `${r.spend < 0 ? "-" : ""}$${Math.abs(r.spend)}k`;

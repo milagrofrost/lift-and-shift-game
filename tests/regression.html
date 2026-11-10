@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -532,6 +532,114 @@ test("the agent calls off its own escalation, even after it lands", () => {
   fixedRandom(0.1); G.tickAgent(3.1);
   check(a.fire === 0, "landed escalation still burning");
 });
+const agentAt = (S, job) => { S.agent = {x: job.x, y: job.y, job, work: 0, say: "", sayT: 0, wx: 480, wy: 260, wT: 0}; };
+const runAgent = (secs, step = 0.1) => { for (let t = 0; t < secs; t += step) G.tickAgent(step); };
+test("the AI agent works the queues once either is half full, otherwise it goes looking for fixes", () => {
+  const S = fresh(); S.upgrades = {agent: 1}; S.agent = {};
+  const racks = S.racks.filter(Boolean); racks.forEach(a => { a.tier = "bronze"; a.botErr = false; });
+  const a = racks[0]; a.botErr = true;
+  const half = Math.ceil(G.ticketLimit() / 2);
+  S.tk = Array.from({length: half - 1}, () => ({age: 0})); S.em = [];
+  check(G.agentPick().kind === "patch", "a queue under half full beat an automation error");
+  S.tk.push({age: 0}); check(G.agentPick().kind === "ticket", "a half-full ticket queue was ignored");
+  S.tk = []; S.em = Array.from({length: half}, () => ({type: "legal", age: 0, life: 30})); check(G.agentPick().kind === "email", "a half-full inbox was ignored");
+  S.em = []; a.botErr = false; S.cloud[0] = {name: "C", tier: "bronze", leakOn: true, leak: 5, breach: false, down: false};
+  check(G.agentPick().kind === "leak", "a small growing leak was ignored");
+});
+test("a level 2 AI agent investigates an unknown rack start to finish; level 1 leaves it", () => {
+  const S = fresh({reveal: false}); S.agent = {};
+  const h = S.racks.find(a => a && a.hidden); check(h, "no hidden rack in the first client");
+  S.upgrades = {agent: 1}; check(!G.agentPick() || G.agentPick().kind !== "discover", "level 1 investigated");
+  S.upgrades = {agent: 2}; const j = G.agentPick(); check(j && j.kind === "discover" && j.a === h, "level 2 did not investigate");
+  agentAt(S, j); const spent = S.cost.ai || 0;
+  runAgent(G.discoverTime() - 0.5); check(h.hidden && h.disc > 0, "revealed too early or made no progress");
+  runAgent(1); check(!h.hidden, "level 2 did not finish the investigation");
+  check((S.cost.ai || 0) > spent && S.ss.ai.ok === 1, "investigation was not billed once");
+});
+test("a level 3 AI agent chases the escalation it caused to the server and puts it out there", () => {
+  const S = fresh(); S.upgrades = {agent: 3}; S.atk = []; S.tk = [{age: 0}];
+  agentBreaks(S, {kind: "ticket"});
+  const job = S.agent.job, e = S.atk[0]; check(job.follow, "level 3 did not follow its escalation");
+  const a = firstRack(S); e.a = a; e.dead = true; a.fire = 20; S.agent.x = 480; S.agent.y = 470;
+  fixedRandom(0.1); runAgent(1); check(a.fire > 0, "put out from across the room");
+  let closest = 1e9;
+  for (let t = 0; t < 4 && S.agent.job; t += 0.1) { G.tickAgent(0.1); closest = Math.min(closest, Math.hypot(S.agent.x - G.RACKS[a.slot].x, S.agent.y - G.RACKS[a.slot].y - 44)); }
+  check(a.fire === 0 && e.dead && !S.agent.job, "did not clean up at the server");
+  check(closest < 8, "agent never walked to the server");
+});
+test("a level 4 AI agent answers incidents: fires, outages, breaches and failed cutovers", () => {
+  const S = fresh(); S.upgrades = {agent: 4}; S.agent = {}; S.tk = []; S.em = []; S.atk = [];
+  const a = firstRack(S); a.down = true; a.downT = S.time; a.prog = 0;
+  let j = G.agentPick(); check(j && j.kind === "restore" && j.a === a, "outage ignored");
+  agentAt(S, j); runAgent(20); check(!a.down, "outage not restored");
+  a.fire = 40; j = G.agentPick(); check(j.kind === "fire", "fire ignored"); agentAt(S, j); runAgent(3); check(a.fire === 0, "fire still burning");
+  S.cloud[0] = {name: "C", tier: "gold", breach: true, leakOn: true, leak: 100, down: false, prog: 0};
+  j = G.agentPick(); check(j.kind === "contain", "breach ignored"); agentAt(S, j); runAgent(20); check(!S.cloud[0].breach, "breach not contained");
+  S.upgrades = {agent: 3}; S.cloud[0].breach = true; a.fire = 40; j = G.agentPick();
+  check(!j || !["contain", "fire", "restore", "cutover"].includes(j.kind), "level 3 answered an incident");
+});
+test("Patch Bot and the AI Agent move faster at every level", () => {
+  const step = (S, who, run) => { who.x = 480; who.y = 300; run(); return Math.hypot(who.x - 480, who.y - 300); };
+  let last = 0;
+  for (const L of [1, 2, 3]) {
+    const S = fresh(); S.upgrades = {patchbot: L}; const a = firstRack(S); a.timer = 1; a.covered = false; a.botErr = false;
+    const b = G.mkBot("patch"); S.bots = [b]; b.tgt = null;
+    const d = step(S, b, () => G.update(0.1));
+    check(d > last, `Patch Bot level ${L} moved ${d.toFixed(1)}, not faster than ${last.toFixed(1)}`); last = d;
+  }
+  last = 0;
+  for (const L of [1, 2, 3, 4]) {
+    const S = fresh(); S.upgrades = {agent: L}; S.tk = []; S.em = [];
+    S.agent = {x: 480, y: 300, job: {kind: "ticket", x: 480, y: 470}, work: 0, say: "", sayT: 0, wx: 480, wy: 260, wT: 0};
+    S.tk = [{age: 0}];
+    const d = step(S, S.agent, () => G.tickAgent(0.1));
+    check(d > last, `AI Agent level ${L} moved ${d.toFixed(1)}, not faster than ${last.toFixed(1)}`); last = d;
+  }
+});
+test("a level 4 AI agent never gives up on offline servers or failed cutovers", () => {
+  const S = fresh(); S.upgrades = {agent: 4}; S.agent = {}; S.tk = []; S.em = []; S.atk = [];
+  S.err = S.errMax = 1e6; S.security = 1e6;
+  const racks = S.racks.filter(a => a && !a.hidden), [a, b, c] = racks;
+  for (const x of [a, b]) { x.down = true; x.downT = S.time; x.prog = 0; } c.fire = 40;
+  S.agent = {x: 480, y: 300, job: null, work: 0, say: "", sayT: 0, wx: 480, wy: 260, wT: 0};
+  // a server that goes down mid-way is picked up too, and nothing is left offline
+  for (let t = 0; t < 60; t += 0.1) { if (Math.abs(t - 5) < 0.05) { const d = racks[3]; d.down = true; d.downT = S.time; } G.tickAgent(0.1); }
+  check(racks.slice(0, 4).every(x => !x.down) && c.fire === 0, `still offline: ${racks.filter(x => x.down).map(x => x.name)}`);
+  // a failed cutover is retried roll after roll until it starts
+  const g = racks[4]; g.tier = "gold"; g.down = false; g.fire = 0; S.racks[g.slot] = null;
+  fixedRandom(0.999); G.migrate(g, 0, true, 0); const cl = S.cloud[0]; check(cl && cl.down, "setup: the cutover did not fail");
+  const fails = S.run.fails;
+  for (let t = 0; t < 40; t += 0.1) G.tickAgent(0.1);
+  check(S.run.fails >= fails + 3 && S.cloud[0] === cl && cl.down, `agent stopped retrying after ${S.run.fails - fails} rolls`);
+  check(S.agent.job && S.agent.job.kind === "cutover", "agent walked away from the failed cutover");
+  fixedRandom(0.001); for (let t = 0; t < 20 && cl.down; t += 0.1) G.tickAgent(0.1);
+  check(!cl.down, "cutover never started once the odds allowed");
+});
+test("a level 4 AI agent lets you fire your manager; the freeze and recovery stay, the walker goes", () => {
+  const S = fresh(), doc = W.document; S.upgrades = {agent: 3, manager: 3}; S.career = [{name: "A", days: 1, stars: 4, late: 0}];
+  G.finishEngagement(); check(!doc.querySelector('[data-act="fireboss"]'), "offered below level 4");
+  S.upgrades.agent = 4; S.ss.human = 1; G.finishEngagement();
+  const btn = doc.querySelector('[data-act="fireboss"]'); check(btn, "no fire button at level 4"); const regen = G.uptimeRegen(); btn.click();
+  check(S.bossFired && !S.mgr, "manager still here"); G.spawnManager(); check(!S.mgr, "manager came back");
+  check(G.uptimeRegen() === regen, "recovery boost lost");
+  check(!G.canBuy(G.UPGRADES.find(u => u.id === "manager")), "manager for sale again");
+  check(doc.querySelector('[data-act="next"]'), "the next client is gone");
+});
+test("finishing a client without lifting a finger gets you fired as obsolete; one action keeps the job", () => {
+  const doc = W.document;
+  let S = fresh(); S.ss.human = 0; G.finishEngagement();
+  check(S.obsolete && doc.querySelector('[data-act="obsolete"]') && !doc.querySelector('[data-act="next"]'), "no firing meeting after a hands-off client");
+  S.upgrades.agent = 4; G.finishEngagement();
+  check(doc.querySelector('[data-act="obsolete"]').textContent.includes("AI agent"), "the AI agent is not the one firing you");
+  S.bossFired = true; S.upgrades.manager = 3; G.finishEngagement();
+  check(doc.body.textContent.includes("new manager"), "after firing your manager, the agent is not your new manager");
+  doc.querySelector('[data-act="obsolete"]').click();
+  check(G.mode === "end" && doc.body.textContent.includes("Obsolete") && !G.BK.fired, "obsolete is not a winning end screen");
+  S = fresh(); G.setMode("play"); S.tk = [{age: 0}]; S.p.x = G.DESK.x; S.p.y = G.DESK.y; G.keys.fix = true; S.energy = 100;
+  try { G.doFix(0.05); } finally { G.keys.fix = false; }
+  check(S.ss.human > 0, "holding E at the desk was not counted"); G.finishEngagement();
+  check(!S.obsolete && doc.querySelector('[data-act="next"]'), "one action did not keep the job");
+});
 
 /* ---------- migration uptime burn ---------- */
 test("moving a server burns a quarter of an outage, and only if it is really shut down", () => {
@@ -780,7 +888,7 @@ test("git blame turns on you after three clients", () => {
 });
 
 /* ---------- sharing the end report ---------- */
-const FACTS = {retired: {o: "r", head: "Retired", sub: "x"}, fired: {o: "u", head: "Open to work", sub: "x", who: "the SLA"}, resigned: {o: "q", x: 2, head: "Pursuing other opportunities", sub: "x"}};
+const FACTS = {retired: {o: "r", head: "Retired", sub: "x"}, fired: {o: "u", head: "Open to work", sub: "x", who: "the SLA"}, resigned: {o: "q", x: 2, head: "Pursuing other opportunities", sub: "x"}, obsolete: {o: "o", head: "Replaced by AI", sub: "x"}};
 test("every outcome has a post for every network, with the real numbers", () => {
   const S = fresh(); S.budget = -412; S.ss.mig = 7;
   for (const outcome of Object.keys(FACTS)) for (const net of Object.keys(G.SHARE_NETS)) for (let v = 0; v < 6; v++) {
@@ -810,7 +918,7 @@ test("report links stay in step with the game and reject anything but numbers", 
   check(r && r.outcome === "c" && r.n === 2 && r.avg === 3.5 && r.mig === 23 && r.spend === -412, `round trip gave ${JSON.stringify(r)}`);
   check(REPORT.describe(r).head === "Open to work" && REPORT.describe(r).sub.includes("Failed compliance"), "fired report lost its reason");
   for (const bad of ["", "r_9_1_1_1_1_0_0", "r_0_1_51_1_1_0_0", "x_0_1_1_1_1_0_0", "r_0_1_1_1_1_0_0<script>", "hello_world"]) check(REPORT.parseCode(bad) === null, `accepted ${bad}`);
-  for (const code of ["r_8_999_50_9999_-9999999_2_0", "u_0_0_0_0_0_0_0", "c_0_0_0_0_0_0_0", "b_0_0_0_0_0_0_0", "q_0_0_0_0_0_0_4"]) check(!/undefined|NaN/.test(JSON.stringify(REPORT.describe(REPORT.parseCode(code)))), `hole in ${code}`);
+  for (const code of ["r_8_999_50_9999_-9999999_2_0", "u_0_0_0_0_0_0_0", "c_0_0_0_0_0_0_0", "b_0_0_0_0_0_0_0", "q_0_0_0_0_0_0_4", "o_0_0_0_0_0_0_0"]) check(!/undefined|NaN/.test(JSON.stringify(REPORT.describe(REPORT.parseCode(code)))), `hole in ${code}`);
 });
 test("the preview image is a real 1200x630 PNG under the size limits", async () => {
   const png = await REPORT.renderCard(REPORT.describe(REPORT.parseCode("c_8_999_50_9999_-9999999_2_0")));
@@ -818,10 +926,10 @@ test("the preview image is a real 1200x630 PNG under the size limits", async () 
   const bmp = await createImageBitmap(new Blob([png], {type: "image/png"}));
   check(bmp.width === 1200 && bmp.height === 630, `${bmp.width}x${bmp.height}`);
 });
-test("all three end screens offer sharing, and it leaves the run alone", () => {
+test("every end screen offers sharing, and it leaves the run alone", () => {
   const S = fresh(), doc = W.document, opened = [], realOpen = W.open; W.open = u => { opened.push(u); return null; };
   try {
-    for (const end of [() => G.showEnd("uptime"), () => G.showEnd("security"), () => G.showEnd(null), () => G.resign()]) {
+    for (const end of [() => G.showEnd("uptime"), () => G.showEnd("security"), () => G.showEnd(null), () => G.showEnd("obsolete"), () => G.resign()]) {
       end();
       for (const k of Object.keys(G.SHARE_NETS)) check(doc.querySelector(`[data-share="${k}"]`), `no ${k} button`);
       check(doc.activeElement && !doc.activeElement.dataset.share, "a share button took the opening focus");
@@ -830,7 +938,7 @@ test("all three end screens offer sharing, and it leaves the run alone", () => {
       check(before === [S.budget, S.security, S.err, S.points, S.career.length, S.sprint, G.BK.left].join(), "sharing changed the run");
       check(doc.getElementById("share-post").textContent.length > 0, "empty post preview");
     }
-    check(opened.length === 12 && opened.some(u => u.includes("x.com/intent")) && opened.some(u => u.includes("facebook.com/sharer")), `opened ${opened.length}`);
+    check(opened.length === 15 && opened.some(u => u.includes("x.com/intent")) && opened.some(u => u.includes("facebook.com/sharer")), `opened ${opened.length}`);
   } finally { W.open = realOpen; }
 });
 test("Not my problem counts racks about to fail an audit and leaks about to breach, without touching the run", () => {
