@@ -4,11 +4,6 @@ Ideas and loose ends. Nothing here is a commitment.
 
 ## To do
 
-### Make the code cheaper to work on (do first, in a fresh session)
-- [ ] Move the embedded logo out of `lift-and-shift.html` into its own file.
-- [ ] Add clear section markers to the game code and a short "where things live" map to `AGENTS.md`.
-- [ ] Put big new systems, such as multiplayer, in their own `.js` files from the start. Don't rewrite or split the existing code.
-
 ### Check by hand
 - [ ] Play with the three songs and judge how the four music stages ramp.
 - [ ] Try phone controls on more real phones: button size, see-through level, stick feel.
@@ -18,10 +13,7 @@ Ideas and loose ends. Nothing here is a commitment.
 
 ### Small fixes and housekeeping
 - [ ] Republish the claude.ai artifact, or retire it now that las.milagrofrost.com is home (it's on version 45).
-- [ ] Retake the README screenshots; they predate most gameplay changes.
-- [ ] Delete old GitHub branches: `feature/blue-green-staging`, `feature/maintenance-and-migration-fixes`.
 - [ ] Decide whether the small "Lift & Shift" header text should become the logo.
-- [ ] Add a doctype to `lift-and-shift.html`; the deployed page currently runs in quirks mode.
 - [ ] Decide whether the donut shop music should ramp with trouble like the other songs.
 - [ ] Decide whether the Mover Bot should leave a lane free when you only have one.
 
@@ -35,10 +27,7 @@ None of these are decided. They came out of simulated careers, which play worse 
 - [ ] Normal for first-timers: get someone new to play it. Seasoned play clears client 3 most times; simulated play mostly did not, and breaches were the usual cause.
 - [ ] VPs during red alerts: with a full inbox they still grab you mid-breach, and email can't be answered during an alert to stop them. Consider having them wait until the alert is over.
 - [ ] Leak pressure at client 3: a 30% lower leak rate was the strongest single lever in testing. Hold unless new players turn out to need it.
-- [ ] "Best retirement" record: least total spend means a one-client career always wins it. Consider spend per client, or a record per career length.
-- [ ] "Give me a break" replaces the next client, so taking it before client 3 skips the hospital. Decide whether it should delay it instead.
 - [ ] Late game: a fully kitted career clears a 22-server client in about 90 seconds with no incidents. Decide whether that needs a new source of tension.
-- [ ] Remove dead code: `expireEmail`, `TICKET_LIFE`, `aiOn`/`errRate`, `S.rival`.
 
 ## AI Agent rework (ideas from the first Living Legend run)
 
@@ -54,25 +43,15 @@ Late-game AI was a disaster on a 10-client career with no Patch Bot: patching sa
 - Today it breaks something and walks away. Instead it stays and tries to fix it, with its own chance of succeeding.
 - If the repair fails, the problem falls to the player as it does now.
 
-**Shop luck**
-- Guarantee key tools show up. Patch Bot has about a 1-in-6 chance per sprint and can be missed for a whole career, even with Brainstorm. Consider always offering Patch Bot, and possibly Chatbots, until owned.
-
-**Ending: replaced by the AI, then rehired**
-- If the AI does about 90% or more of the actions, you're let go because you're no longer needed.
-- Game over, fade to black, then: "You've been rehired." The agent went rogue and everything is on fire.
-- You fix it all with no penalty for the damage already done, finish the migration, collect a $1 million bonus, quit on your own terms and retire to a perpetual vacation.
-
 ## Next up
-0. **Share your results.** A snapshot of the end report to post on social media, including where your time and money went and which upgrades you bought.
 1. **Saved sessions.** Autosave between clients only, with a "Resume career" button. Today a refresh wipes the career.
 2. **Chaos Monkey.** Opt-in modifier for bigger rewards. A monkey randomly kills servers, lanes or the inbox; enough resilience makes it barely matter. Covers the "game day" idea.
 3. **Résumé lies and permanent unlocks.** Earn "LinkedIn endorsements" across careers to unlock starting lies, such as "Claimed Kubernetes experience": start with Terraform, but gold servers are harder.
-4. **Achievements as bad performance reviews.** "Took down prod on a Friday." "Retired after one client."
+4. **More achievements as bad performance reviews.** "Took down prod on a Friday." A few exist already (Mouse Jiggler, Job Hopper, Automated Yourself Out of a Job).
 5. **Daily client.** Same seeded client for everyone, one attempt, lowest-IT-spend leaderboard.
 
 ## Nice to have
 - More odd clients: insolvent crypto startup, slow government agency, the server in Grandpa's closet.
-- Shareable end card: "Fired after 3 clients. Cause: Linda's DB."
 - Vendor swag loot crates: stress ball (+5 energy), conference lanyard (users hold you 10% less), "Cloud Ninja" T-shirt (does nothing), expired cloud credit (-$4k to process).
 - "Days since last incident" streak as the only streak mechanic.
 - A CAB gate on client 3.

@@ -19,6 +19,40 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 - Do not merge branches, rewrite history, publish releases, or change repository visibility without authorization.
 - Keep local machine configuration, credentials, temporary scripts, and personal paths out of commits. `.claude/` is local configuration, not part of the published game.
 
+## Where things live
+
+`lift-and-shift.html` is one file: styles, markup, then one script wrapped in `(()=>{ ... })()`. The logo is `assets/lift-and-shift-logo.png`, loaded by path (the menu and the share card both use it). Sections start with a `==== Name ====` comment; list them with `grep -n "==== " lift-and-shift.html`. In order:
+
+| Section | What's in it |
+| --- | --- |
+| Styles / Markup | CSS tokens and layout; the HUD, canvas, touch controls, overlay and terminal elements |
+| Boot and world layout | live-update guard, room geometry (`WALLS`, `RACKS`) |
+| Clients, careers and difficulty | `CLIENTS`, generated and break clients, `DIFFS`, `engagementCfg`, titles |
+| Core rules | `TIER`, uptime budget, `applyPatch`, cost labels, email types, badge-reader data, `secHit`, `spend`, freezes |
+| Upgrade catalog | `UPGRADES` |
+| Helpers / Sound and music | `$`, `rand`, `dist`; synthesized SFX, heartbeat, the music sequencer and `SONG_SETS` |
+| Retrospective, queue limits, DORA | `RETRO`, "Give me a break", `ticketLimit` / `inboxLimit`, `doraBlock` |
+| Desk and running costs | on-prem and cloud rates, `cloudSpend`, `burnRate` |
+| Hallway | users, chatbots, pickups, specials, temp worker |
+| Manager and AI Agent | agent levels, foundations, `agentPick`, `tickAgent`; `tickManager` |
+| Doors, badge readers, hallway users | `badgeIn`, `badgeTry`, `tickUsers`, `drawUser` |
+| Floor effects | Observability and FinOps marks, celebration, slow-mo edges, red alert, energy feedback |
+| Inbox, VPs, escalation launch, sprint capacity, desk | `INBOX`, `spawnHunter`, `unplanned`, `drawInbox`, `drawDesk` |
+| Canvas setup and input | colors from CSS, keyboard, touch stick |
+| Run state | `S` via `newRun`, `addApp`, waves, `startSprint`, `finishEngagement` |
+| Feedback, movement, player actions | toasts, movement, cutover odds, blue-green, `migrate`, rollback, pipeline, `doFix`, FinOps approval, work counters |
+| Simulation | `tickOnPrem`, discovery, `tickCloud`, breaches, `spawns`, `tickHazards`, `tickEscalation`, Patch Bot, Mover Bot, slow-mo, `update()` |
+| Drawing | floor, readers, pipeline, racks, slots, bots, player, `draw()` |
+| HUD | health bars, `hud()` |
+| Screens | menu, tutorial, notes, how to play |
+| Shop and between-client review | offers and pity weights, `review()`, brainstorm, `buy` |
+| Sharing the end report | posts, report code, share card |
+| End screens, resignation, credits | `showEnd`, "Not my problem", resignation letter, obsolete-ending credits |
+| Dev console, backups, terminal, pause | cheats, restore points, `CLI` commands, `togglePause` |
+| Main loop | `frame()` |
+
+`tests/regression.html` reaches internals through the `NAMES` list and the start-up `HOOK` line; update both when you rename a function it uses or change the last line of the script. Put big new systems, such as multiplayer, in their own `.js` files from the start rather than growing this file; don't rewrite or split the existing code.
+
 ## Accepted gameplay direction
 
 ### Patch cycles
