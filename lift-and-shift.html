@@ -452,7 +452,7 @@ const overdue=()=>Math.max(0,dayNum()-S.cdays);
 /* Difficulty: how many of each client's servers you get (known + hidden), how busy the hazards are,
    and how big the uptime budget is. Normal eases in with 4 + 1 hidden at the first client. */
 const DIFFS={
-  easy:{label:"Easy",counts:[[3,1],[6,1],[8,2]],haz:0.7,err:1.3,days:3,users:0,restores:3,desc:"Smaller rooms, calmer hallways, a bigger uptime budget. Good for learning."},
+  easy:{label:"Easy",counts:[[3,1],[6,1],[8,2]],haz:0.7,err:1.3,days:3,users:0,restores:3,desc:"Smaller rooms, calmer hallways, a bigger uptime budget, and time slows for everyone but you in a red alert. Good for learning."},
   normal:{label:"Normal",counts:[[4,1],[7,2],[10,2]],haz:1,err:1,days:0,users:0,restores:2,desc:"Starts gentle with 4 servers, and the last client is fully stocked."},
   hard:{label:"Hard",counts:[[6,2],[9,2],[10,2]],haz:1.3,err:0.8,days:-2,users:1,restores:1,desc:"Bigger rooms from day one, busier hallways, a tighter uptime budget."},
 };
@@ -558,7 +558,7 @@ const UPGRADES=[
   {id:"terraform",name:"Terraform the cloud",icon:"⚙️",cost:8,desc:"Infrastructure as code. Retrying a failed cutover takes 1–2 seconds instead of 3–8, and consistent builds give every cutover +10% odds. Idle environments get torn down, so cloud apps cost 10% less to run."},
   {id:"moverbot",name:"Mover Bot",icon:"🦾",cost:8,desc:"Moves on-prem apps to the cloud by itself and finds a free cloud slot on its own. Slow but steady. Once you have a CI/CD pipeline it only uses the pipeline and waits for a free lane."},
   {id:"patchbot",name:"Patch Bot",icon:"🤖",cost:4,max:3,desc:"Walks the server room patching the most overdue app. It doesn't fight fires; that's your job. Success rate 50% at level 1, 66% at level 2, 90% at level 3, and each level walks faster. A failed patch leaves an automation error you have to fix by hand, unless an AI Agent trusted with that server tier gets there first."},
-  {id:"finops",name:"FinOps Dashboard",icon:"📊",cost:5,desc:"A red scan sweeps the cloud every 15–20 seconds and flags about a third of the apps with a green $. Tap E on one (or hold E and walk past several) to approve it: that app costs 15% less to run, and it can be flagged again for a second 15%. Egress fees drop 30% and license renewals cost 25% less. An AI agent at any level approves them too."},
+  {id:"finops",name:"FinOps Dashboard",icon:"📊",cost:5,desc:"A blue scan sweeps the cloud every 20–25 seconds and flags about a third of the apps with a green $. Tap E on one (or hold E and walk past several) to approve it: that app costs 19% less to run, and it can be flagged once more for another 11%. Egress fees drop 30% and license renewals cost 25% less. An AI agent at any level approves them too."},
   {id:"runbooks",name:"Runbooks",icon:"📄",cost:3,desc:"Patching and firefighting cost 40% less energy, and fires go out faster."},
   {id:"inventory",name:"Asset Inventory",icon:"🗂️",cost:3,desc:"Investigations take 3 seconds instead of 6. Forgotten servers still need investigation or an outage to reveal them."},
   {id:"coffee",name:"Comfy Sneakers",icon:"👟",cost:1,desc:"Move 15% faster."},
@@ -667,6 +667,19 @@ function setHiss(on){
   if(!AU.hiss){const s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();s.buffer=AU.noise;s.loop=true;f.type="highpass";f.frequency.value=1800;g.gain.value=0;s.connect(f);f.connect(g);g.connect(AU.master);s.start();AU.hiss=s;AU.hissGain=g;}
   AU.hissGain.gain.setTargetAtTime(on&&AU.on?0.09:0,c.currentTime,0.05);
 }
+/* red-alert slow-mo heartbeat: fades in slow and heavy as time slows, speeds back up and fades out as it returns */
+const HB={next:0,beat:-9};
+function heartTick(){
+  const c=AU.ctx,k=mode==="play"?slowDepth():0;
+  if(!c||!AU.on||k<0.02){HB.next=0;return;}
+  const bpm=74-30*k,now=c.currentTime;
+  if(HB.next<now)HB.next=now+0.05;
+  if(HB.next-now>0.12)return;
+  const d=HB.next-now,v=0.07+0.33*k;
+  tone(52,0.22,{vol:v,slide:-14,delay:d,attack:0.012});noiseBurst(0.12,{vol:v*0.35,freq:140,type:"lowpass",delay:d});
+  tone(60,0.18,{vol:v*0.7,slide:-14,delay:d+0.26+0.1*k,attack:0.012});
+  HB.beat=performance.now()+d*1000;HB.next+=60/bpm;
+}
 function setSound(on){
   AU.on=on;try{localStorage.setItem("liftshift-sound",on?"on":"off");}catch(e){}
   if(AU.master)AU.master.gain.setTargetAtTime(on?0.55:0,AU.ctx.currentTime,0.02);
@@ -718,12 +731,13 @@ function mDrum(kind,t){
 function scheduleStep(step,t){
   const M=MOODS[MUS.mood],s=step%16,bar=Math.floor(step/16)%4,ch=M.chords[bar],hot=moodHot(),sx=60/moodBpm()/4;
   if(M.swing&&s%2)t+=sx*M.swing; // swung 16ths: the off-beats land a little late
+  const hb=mode==="play"&&slowDepth()>=0.02; // the slow-mo heartbeat owns the low end: no bass or kick under it
   if(M.pad&&s===0)ch.forEach(n=>mNote(mtof(n),t,sx*16,"sine",M.padVol||0.025));
-  if(M.bass.includes(s))mNote(mtof(ch[0]-24+((M.hop&&s%2)||(M.bassUp&&M.bassUp.includes(s))?12:0)),t,sx*(M.bass.length>8?0.9:1.8),"triangle",0.13);
+  if(M.bass.includes(s)&&!hb)mNote(mtof(ch[0]-24+((M.hop&&s%2)||(M.bassUp&&M.bassUp.includes(s))?12:0)),t,sx*(M.bass.length>8?0.9:1.8),"triangle",0.13);
   if(M.arp.includes(s)){const idx=M.arp.indexOf(s);mNote(mtof(ch[idx%3]+(idx%6>=3?12:0)),t,sx*(M.arpLen||1.1),M.lead,M.arpVol||0.03);}
   if(M.mel)for(const[st,n,len]of M.mel[bar])if(st===s){mNote(mtof(n),t,sx*len*0.92,M.melLead||"triangle",M.melVol||0.045);if(hot)mNote(mtof(n+12),t,sx*len*0.92,"triangle",0.016);}
   // on fire: extra kick, a snare fill at the end of the phrase, and hats on every sixteenth
-  if(M.kick.includes(s)||(hot&&s===14))mDrum("kick",t);
+  if((M.kick.includes(s)||(hot&&s===14))&&!hb)mDrum("kick",t);
   if(M.snare.includes(s)||(hot&&bar===3&&s>=13))mDrum("snare",t);
   if(M.hat.includes(s)||hot)mDrum("hat",t);
 }
@@ -737,7 +751,8 @@ function musicHeat(){
 }
 const moodLevel=m=>m.startsWith("alert")?2:m.startsWith("tense")?1:0;
 const moodHot=()=>MUS.heat>=2&&MUS.mood.startsWith("tense");
-const moodBpm=()=>MOODS[MUS.mood].bpm+(moodHot()?8:0);
+// red-alert slow-mo drags the music down with the rest of the world
+const moodBpm=()=>(MOODS[MUS.mood].bpm+(moodHot()?8:0))*(mode==="play"&&S&&S.slow<1?S.slow:1);
 function wantMood(){
   if(mode==="celebrate")return"victory";
   if(mode!=="play"||!S)return"calm";
@@ -751,7 +766,7 @@ function musicTick(){
   const c=AU.ctx;if(!c||!MUS.bus)return;
   MUS.bus.gain.setTargetAtTime(MUS.on?0.2:0,c.currentTime,0.1);
   // headphones muffle the music, like noise-cancelling
-  MUS.filt.frequency.setTargetAtTime(mode==="play"&&S&&S.focus>0?500:18000,c.currentTime,0.15);
+  MUS.filt.frequency.setTargetAtTime(mode==="play"&&S&&S.focus>0?500:18000-15500*(mode==="play"?slowDepth():0),c.currentTime,0.15);
   if(!MUS.on){MUS.next=c.currentTime+0.05;return;}
   if(MUS.next<c.currentTime)MUS.next=c.currentTime+0.05;
   while(MUS.next<c.currentTime+0.15){
@@ -837,9 +852,9 @@ const playerR=()=>S.carry?PR_CARRY:PR;
 const leaseMult=()=>1+0.1*overdue();
 /* Per-app running costs ($k per second). A plain lift-and-shift costs a little more in the cloud than on-prem:
    same oversized servers, someone else's building. Terraform, Observability and Cloud Auto-Patching each cut it 10%;
-   each FinOps rightsizing you approve cuts that app another 15%, up to two per app. With everything, about 45% cheaper than on-prem. */
-const ONPREM_RATE=0.12,CLOUD_RATE=0.13,RS_CUT=0.15,RS_MAX=2;
-const rsMult=a=>Math.pow(1-RS_CUT,(a&&a.rs)|0);
+   each FinOps rightsizing you approve cuts that app 19%, and a second approval another 11% (about 28% off in all). With everything, about 45% cheaper than on-prem. */
+const ONPREM_RATE=0.12,CLOUD_RATE=0.13,RS_CUTS=[0.19,0.11],RS_MAX=RS_CUTS.length;
+const rsMult=a=>RS_CUTS.slice(0,(a&&a.rs)|0).reduce((m,c)=>m*(1-c),1);
 const CLOUD_CUTS=[["terraform",0.1],["observe",0.1],["autopatch",0.1]];
 // per cloud app that hasn't had a FinOps saving approved
 const cloudRate=()=>CLOUD_CUTS.reduce((r,[id,c])=>S.upgrades[id]?r*(1-c):r,CLOUD_RATE);
@@ -1460,16 +1475,16 @@ function observeTick(){
   S.racks.forEach(a=>{if(!a)return;if(atRisk(a)&&!a.warned){a.warned=true;toast(`📈 Alert: ${a.name} fails compliance in ${Math.ceil(a.timer)}s.`);}else if(!atRisk(a))a.warned=false;});
   S.cloud.forEach(a=>{if(!a)return;if(leakRisk(a)&&!a.warned){a.warned=true;toast(`📈 Alert: ${a.name} is leaking and close to a breach.`);}else if(!leakRisk(a))a.warned=false;});
 }
-// FinOps: a green $ on flagged apps (bottom-left corner) until approved, and the red scan line
+// FinOps: a green $ on flagged apps (bottom-left corner) until approved, and the blue scan line
 function drawFinops(){
   S.cloud.forEach((a,i)=>{if(!a||!a.rsTag||a.staged||a.down)return;const p=SLOTS[i],sz=RM?16:15+2*Math.sin(S.t*5);
     tx("$",p.x-23,p.y+26,sz,"#1f9d55",{font:DISP,weight:800});});
   if(!S.sweep)return;
-  if(RM){ctx.fillStyle="rgba(255,50,40,.07)";ctx.fillRect(SWEEP_X0,0,W-SWEEP_X0,H);tx("FINOPS SCAN",SWEEP_X0+8,H-14,9,"#c0281d",{align:"left",weight:700});return;}
+  if(RM){ctx.fillStyle="rgba(40,130,255,.14)";ctx.fillRect(SWEEP_X0,0,W-SWEEP_X0,H);tx("FINOPS SCAN",SWEEP_X0+8,H-14,9,"#1d5fc0",{align:"left",weight:700});return;}
   const x=sweepX(),g=ctx.createLinearGradient(x-60,0,x,0);
-  g.addColorStop(0,"rgba(255,40,30,0)");g.addColorStop(1,"rgba(255,40,30,.18)");ctx.fillStyle=g;ctx.fillRect(x-60,0,60,H);
-  ctx.save();ctx.shadowColor="#ff2a1a";ctx.shadowBlur=12;ctx.strokeStyle="#ff3b2e";ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();ctx.restore();
-  tx("FINOPS SCAN",Math.min(x,W-40),H-14,9,"#c0281d",{weight:700});
+  g.addColorStop(0,"rgba(40,130,255,0)");g.addColorStop(1,"rgba(40,130,255,.18)");ctx.fillStyle=g;ctx.fillRect(x-60,0,60,H);
+  ctx.save();ctx.shadowColor="#1a6dff";ctx.shadowBlur=12;ctx.strokeStyle="#2e8bff";ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();ctx.restore();
+  tx("FINOPS SCAN",Math.min(x,W-40),H-14,9,"#1d5fc0",{weight:700});
 }
 function drawWarnings(){
   const pulse=0.5+0.5*Math.sin(S.t*7);
@@ -1509,6 +1524,14 @@ function drawCelebration(){
   // glittery fade to the review
   const fade=Math.max(0,(k-(CELEB_TIME-0.7))/0.7);
   if(fade>0){ctx.fillStyle=`rgba(255,240,200,${fade*0.85})`;ctx.fillRect(0,0,W,H);}
+}
+// slow-mo: the edges of the room darken and throb with the heartbeat
+function drawSlowmo(){
+  const k=slowDepth();if(k<0.01)return;
+  const since=(performance.now()-HB.beat)/1000,thump=RM||since<0?0:Math.exp(-since*5);
+  const g=ctx.createRadialGradient(W/2,H/2,H*0.35,W/2,H/2,W*0.62);
+  g.addColorStop(0,"rgba(20,0,0,0)");g.addColorStop(1,`rgba(25,0,4,${k*(0.42+0.18*thump)})`);
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
 }
 function drawAlert(){
   const pulse=0.5+0.5*Math.sin(S.t*9),crit=critList();
@@ -1959,9 +1982,9 @@ function fixTarget(){
 function fixCost(f){return f.kind==="patch"?Math.round(onpremCost(12)):f.kind==="leak"?Math.round(cloudCost(10)):f.kind==="email"?0:Math.round(cloudCost(3));}
 // anything you do with your own hands this client; one action is enough to stay employed.
 // acts counts discrete actions (a whole hold-E job is one) for your share of the work.
-/* FinOps rightsizing: a red scan sweeps the cloud room a few seconds after the first app lands, then every 15–20s,
+/* FinOps rightsizing: a blue scan sweeps the cloud room a few seconds after the first app lands, then every 20–25s,
    and flags about a third of the live apps with a green $. Approving one (E for you, any AI agent level, any tier)
-   clears the $ and cuts that app's running cost 15%; an app can be flagged and approved again, up to twice.
+   clears the $ and cuts that app's running cost 19%; it can be flagged and approved once more for another 11%.
    Flags don't expire; unapproved savings just sit there. Paused during an explicit freeze. */
 const SWEEP_DUR=1.8,SWEEP_X0=604,SWEEP_X1=956,RS_REACH=56;
 const rsEligible=a=>!!a&&!a.staged&&!a.down&&!a.breach&&!a.rsTag&&(a.rs|0)<RS_MAX;
@@ -1978,12 +2001,12 @@ function tickFinops(dt){
   S.sweepT=(S.sweepT==null?3:S.sweepT)-dt;if(S.sweepT>0)return;
   const el=[];S.cloud.forEach((a,i)=>{if(rsEligible(a))el.push(i);});
   if(!el.length){S.sweepT=3;return;} // nothing to scan yet: look again shortly
-  S.sweepT=rand(15,20);
+  S.sweepT=rand(20,25);
   S.sweep={t:0,n:0,pick:shuffle(el).slice(0,Math.max(1,Math.round(el.length/3)))};sfx("scan");
 }
 function approveSavings(a,i,who){
   a.rsTag=false;a.rs=(a.rs|0)+1;sfx("chaching");
-  fl({x:SLOTS[i].x,y:SLOTS[i].y-40},`${who==="agent"?"🧠 ":""}💲 Rightsized · −15%`,C.ok);
+  fl({x:SLOTS[i].x,y:SLOTS[i].y-40},`${who==="agent"?"🧠 ":""}💲 Rightsized · −${Math.round(RS_CUTS[a.rs-1]*100)}%`,C.ok);
 }
 // tap E on a flagged app to approve it; holding E approves every flagged app you walk past
 function approveNear(){
@@ -2295,16 +2318,28 @@ function buildPrompt(){
   }
   S.prompt=(S.ext&&S.t-S.ext.t<0.08)?"":parts.join("  ·  ");
 }
-function update(dt){
+/* Red-alert slow-mo (Easy, and a little on Normal): the world runs slower while you don't. Everything else,
+   NPCs, timers, hazards, costs, uptime burn and animations, gets the slowed clock; you move, fix incidents, roll
+   back and regain energy in real time. It eases in when a red alert starts and back out when it clears. */
+const ALERT_SLOW={easy:0.6,normal:0.85,hard:1};
+const alertSlowGoal=()=>S.alert?(ALERT_SLOW[S.diff||"normal"]??1):1;
+function tickSlow(rdt){
+  const goal=alertSlowGoal(),cur=S.slow??1;
+  S.slow=Math.abs(goal-cur)<0.002?goal:cur+(goal-cur)*Math.min(1,rdt*(goal<cur?1.6:2.2));
+}
+// 0..1: how deep into slow-mo we are right now (1 = as slow as Easy gets)
+const slowDepth=()=>S?clamp((1-(S.slow??1))/(1-ALERT_SLOW.easy),0,1):0;
+function update(rdt){
+  tickSlow(rdt);const dt=rdt*S.slow; // dt: world time; rdt: yours
   S.t+=dt;S.time+=dt;
   const e0=S.energy;
-  const P=S.p;if(P.stun>0)P.stun-=dt;if(P.inv>0)P.inv-=dt;
+  const P=S.p;if(P.stun>0)P.stun-=rdt;if(P.inv>0)P.inv-=rdt;
   const stk=stick.on&&(stick.x||stick.y),mx=stk?stick.x:(keys.r?1:0)-(keys.l?1:0),my=stk?stick.y:(keys.d?1:0)-(keys.u?1:0),m=stk?1:Math.hypot(mx,my)||1;
-  if(P.boost>0)P.boost-=dt;
+  if(P.boost>0)P.boost-=rdt;
   let sp=175*(S.upgrades.coffee?1.15:1)*(P.boost>0?1.3:1);
   if(S.carry)sp*=S.carry.heavy===2?0.5:S.carry.heavy?0.62:0.78;
   if(P.stun>0)sp=0;
-  moveEnt(P,mx/m*sp*dt,my/m*sp*dt,playerR());
+  moveEnt(P,mx/m*sp*rdt,my/m*sp*rdt,playerR());
   tickFreeze(dt);tickUsers(dt);tickShouts(dt);if(!freezeActive())tickChatbots(dt);tickSpecials(dt);tickTemp(dt);tickManager(dt);tickAgent(dt);
   // red alert: any gold server offline or any cloud breach
   const crit=critList(),was=S.alert;S.alert=crit.length>0;
@@ -2312,7 +2347,7 @@ function update(dt){
     if(S.carry){const copy=liveCopy(S.carry);returnToRack(S.carry);S.carry=null;fl(P,copy?"Copy discarded":"Dropped everything",C.danger);}
     toast(`🚨 RED ALERT: ${crit.map(c=>c.a.name).join(", ")}. Nothing else works until it's fixed. Incident fixes cost no energy.`);unplanned(1,"alert");
   }
-  if(S.alert){S.sirenT=(S.sirenT||0)-dt;if(S.sirenT<=0){S.sirenT=1.6;sfx("siren");}}else S.sirenT=0;
+  if(S.alert){S.sirenT=(S.sirenT||0)-rdt;if(S.sirenT<=0){S.sirenT=1.6;sfx("siren");}}else S.sirenT=0;
   if(!S.alert&&was){
     toast("✅ All clear. Back to work.");
     // blameless postmortem: the incident becomes a lesson and gives back 1 story point
@@ -2327,10 +2362,10 @@ function update(dt){
   S.frozen=frozen;
   // rollback: hold Space at an offline cloud app (works during red alerts and move freezes; it's the escape hatch)
   const rbt=rollbackTarget();
-  if(rbt&&keys.grab&&P.stun<=0){grabPressed=false;rbt.a.rb+=dt;S.rbT=rbt;if(rbt.a.rb>=ROLLBACK_TIME)doRollback(rbt.i);}
+  if(rbt&&keys.grab&&P.stun<=0){grabPressed=false;rbt.a.rb+=rdt;S.rbT=rbt;if(rbt.a.rb>=ROLLBACK_TIME)doRollback(rbt.i);}
   else{S.rbT=null;S.cloud.forEach(a=>{if(a&&a.rb&&!keys.grab)a.rb=0;});}
   if(grabPressed){grabPressed=false;grabOrPipeline();}
-  doFix(dt);
+  doFix(rdt); // your own hands, including the red-alert fix bar, run in real time
   tickPipeline(dt);
   // a server being moved is in its cutover window: it counts as down at a quarter of the outage rate (MIGRATE_BURN)
   {const moving=shutDownMoving(),m=migrateMult();
@@ -2340,11 +2375,11 @@ function update(dt){
   const ai=aiOn();for(const b of S.bots){b.flash=Math.max(0,b.flash-dt);(b.kind==="patch"?patchBot:moverBot)(b,dt,ai,b.kind==="patch"?patchBotSpeed():85);}
   S.fl=S.fl.filter(f=>(f.t+=dt)<f.life);
   S.fx=S.fx.filter(f=>(f.t+=dt)<f.life);if(S.shake>0)S.shake-=dt;
-  trackEnergy(S.energy-e0,dt); // everything except passive regen
+  trackEnergy(S.energy-e0,rdt); // everything except passive regen
   // clean streak: after 20s with no breach or failed audit (and no breach open), security slowly recovers
   S.secCalm=(S.secCalm||0)+dt;
   if(S.secCalm>20&&!S.cloud.some(a=>a&&a.breach)&&S.security<100){S.security=Math.min(100,S.security+0.3*dt);if(S.security>=30)S.secWarned=false;}
-  S.energy=clamp(S.energy+(S.upgrades.oncall?0.9:0.6)*dt,0,100);
+  S.energy=clamp(S.energy+(S.upgrades.oncall?0.9:0.6)*rdt,0,100);
   buildPrompt();
   // running costs. The report also tracks what the cloud apps would have cost had they stayed on-prem;
   // it's shown but never scored, and it goes negative while the cloud costs more than on-prem.
@@ -2672,6 +2707,7 @@ function draw(){
   drawTempBubble();
   drawShouts();
   if(S.alert)drawAlert();
+  drawSlowmo();
   if(freezeActive()){ctx.fillStyle="#163947";rr(W/2-170,30,340,28,6);ctx.fill();tx(`❄ CHANGE FREEZE · ${Math.ceil(S.freezeT)}s${S.freezeT<=3?" · THAWING":""}`,W/2,44,14,"#bcecff",{weight:700});}
   for(const f of S.fl){ctx.globalAlpha=1-f.t/f.life;tx(f.text,f.x,f.y-f.t*26,11,f.color,{weight:600});ctx.globalAlpha=1;}
   if(mode==="celebrate")drawCelebration();
@@ -2721,7 +2757,7 @@ function hud(){
   $("h-sprint").textContent=`#${S.sprint}`;
   // (lease, uptime, security and points now live in the health bars below)
   $("h-enbar").style.width=`${S.energy}%`;$("h-en").textContent=Math.floor(S.energy);$("c-en").classList.toggle("bad",S.energy<12);
-  $("h-budget").textContent=money(S.budget);$("h-rate").textContent=`−$${burnRate().toFixed(2)}k/s`;{const t=`Total IT spend. This is your score: the least negative total wins. Per app: $${ONPREM_RATE.toFixed(3)}k/s on-prem, $${cloudRate().toFixed(3)}k/s in the cloud ($${(cloudRate()*(1-RS_CUT)**RS_MAX).toFixed(3)}k/s with both FinOps savings approved). Terraform, Observability and Cloud Auto-Patching lower the cloud rate; FinOps flags apps for you to rightsize.`,c=$("h-rate").parentNode;if(c.title!==t)c.title=t;}
+  $("h-budget").textContent=money(S.budget);$("h-rate").textContent=`−$${burnRate().toFixed(2)}k/s`;{const t=`Total IT spend. This is your score: the least negative total wins. Per app: $${ONPREM_RATE.toFixed(3)}k/s on-prem, $${cloudRate().toFixed(3)}k/s in the cloud ($${(cloudRate()*rsMult({rs:RS_MAX})).toFixed(3)}k/s with both FinOps savings approved). Terraform, Observability and Cloud Auto-Patching lower the cloud rate; FinOps flags apps for you to rightsize.`,c=$("h-rate").parentNode;if(c.title!==t)c.title=t;}
   $("h-mig").textContent=`${liveCloud()+S.rival}/${S.totalApps}`;
   healthBars();
   document.querySelector(".stage").classList.toggle("alert",S.alert&&mode==="play");
@@ -2820,7 +2856,7 @@ const NOTES=[
   ["Interruptions","Users stop you for \"quick questions\".","Context switching is expensive. Every interruption costs more than the question itself, and the most senior people interrupt the longest."],
   ["Money as the score","IT spend only goes negative; the least negative total wins.","IT is usually treated as a cost center. Nobody gets fired for spending a bit too much, but people do get fired for outages and breaches."],
   ["Lift-and-shift isn't cheaper","A cloud app costs a little more to run than on-prem until Terraform, Observability, Cloud Auto-Patching and approved FinOps savings bring it down. The final report shows running costs saved, or added, against staying on-prem.","Moving the same oversized servers into the cloud usually costs about the same or more. The savings come from rightsizing, reserved capacity, tearing down idle environments and automating operations, and even then 20–40% is a good result."],
-  ["FinOps recommendations","With FinOps, a red scan flags apps to rightsize with a green $, and nothing is saved until someone approves it. Apps can be flagged again later for more. Holding E sprays approvals on everything you pass, no questions asked.","FinOps tools mostly produce recommendations, and most companies have a backlog nobody acted on. Don't spray and pray in real life, though: blindly downsizing can starve an app of CPU or memory and cause an outage. Check utilization over a few weeks, mind peaks and seasonality, and test before you shrink production."],
+  ["FinOps recommendations","With FinOps, a blue scan flags apps to rightsize with a green $, and nothing is saved until someone approves it. Apps can be flagged again later for more. Holding E sprays approvals on everything you pass, no questions asked.","FinOps tools mostly produce recommendations, and most companies have a backlog nobody acted on. Don't spray and pray in real life, though: blindly downsizing can starve an app of CPU or memory and cause an outage. Check utilization over a few weeks, mind peaks and seasonality, and test before you shrink production."],
   ["Decommissioning","Every server you move is one less on-prem server running, and its hardware is credited back.","Migrations only save money when you actually turn off the old hardware. Running both for too long is the most common way cloud bills surprise people."],
 ];
 function notes(){
@@ -2843,7 +2879,7 @@ function howToPlay(){
     <div><span class="ic">⏳</span><span><b>Compliance timer.</b> Every on-prem server runs a compliance cycle. Hold E to patch it: it costs energy and covers the rest of that cycle (green bar, ✓ COVERED). When the cycle ends, a new uncovered one starts and needs another patch. If an uncovered cycle runs out, the audit fails: $12k and 4 security, and a fresh cycle starts. Migrating stops the clock for good, and a server migrated while covered is half as likely to leak for its first 30 seconds in the cloud.</span></div>
     <div><span class="ic">🔥</span><span><b>Fire.</b> Escalated tickets start fires. Escalations run 75% slower during any outage or active breach. Change freezes pause escalations, fire growth and spread. Hold E to put one out. If it burns all the way, the server goes offline, burning your uptime budget until you hold E to bring it back up. While any server is offline, nothing can be moved.</span></div>
     <div><span class="ic">🥇</span><span><b>Tiers.</b> Gold, silver and bronze servers. Gold takes longest to bring back up (5s) and burns uptime fastest: 3 per second, against 1 for silver and 0.25 for bronze.</span></div>
-    <div><span class="ic">🚨</span><span><b>Red alert.</b> A gold server offline or any cloud breach. You drop everything and can only fix incidents until it's over. Incident fixes never cost energy.</span></div>
+    <div><span class="ic">🚨</span><span><b>Red alert.</b> A gold server offline or any cloud breach. You drop everything and can only fix incidents until it's over. Incident fixes never cost energy. On Easy (and a little on Normal), time slows for everyone but you until it's cleared.</span></div>
     <div><span class="ic">💧</span><span><b>Cloud leak.</b> Hold E to seal it by hand (it costs energy; security upgrades make leaks rarer). Ignore it and it becomes a breach that spreads to the next app every 10 seconds. Unpatched cloud apps drift: the longer since one was last patched (sealed or contained), the more often it leaks, up to twice as often. Cloud Auto-Patching stops the drift.</span></div>
     <div><span class="ic">📧</span><span><b>Email inbox.</b> At the top of the hallway, with a 5-slot bar. ⚖️ legal, 💰 finance and 👔 exec emails fill it; 📣 vendor spam doesn't and disappears by itself. The bar shows every important email waiting: once it is full, new ones bounce. When the bar is full, fines trickle in and a VP comes hunting you, again and again, until you answer some. While you're at the inbox answering, the VP won't interrupt. Answering a finance email, yours or your manager's, also pushes back the closest license renewal.</span></div>
     <div><span class="ic">🎫</span><span><b>Ticket queue.</b> At the bottom of the hallway, with a 5-slot bar. Hold E there to close tickets. The bar shows every ticket waiting: once it is full, new ones are turned away, so there is never a hidden backlog. When the bar fills, it flashes red and tickets escalate 🚨 one at a time until you work it down. Each one sets a server on fire and costs half a story point. They're at least 12 seconds apart, half as fast while a server is burning, and 75% slower during an outage or breach. Focus time and change freezes pause them.</span></div>
@@ -3555,7 +3591,7 @@ function frame(now){
   if(stale())return; // a newer copy of the game took over this page
   const dt=Math.min(0.05,(now-last)/1000);last=now;
   if(mode==="play"){update(dt);backupTick();}else if(mode==="restoring")tickRestore(dt);else if(mode==="celebrate")tickCelebration(dt);else if(S)S.t+=dt*0.3;
-  if(AU.ctx)setHiss(mode==="play"&&!!(S&&S.ext&&S.t-S.ext.t<0.1));
+  if(AU.ctx){setHiss(mode==="play"&&!!(S&&S.ext&&S.t-S.ext.t<0.1));heartTick();}
   draw();
   if(now-hudT>100){hud();hudT=now;}
   requestAnimationFrame(frame);

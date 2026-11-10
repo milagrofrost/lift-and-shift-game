@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -1013,12 +1013,12 @@ test("cloud costs a bit more than on-prem until good practice and approved FinOp
   U.finops = true; check(near(G.cloudRate(), 0.13), "owning FinOps should not cut costs by itself");
   U.terraform = true; U.observe = true; U.autopatch = true;
   check(near(G.cloudRate(), 0.13 * 0.9 ** 3), `three foundations ${G.cloudRate()}`);
-  S.lzW = 10 * 0.85 ** 2; check(near(G.cloudSpend(), 10 * 0.13 * 0.9 ** 3 * 0.85 ** 2), `all approved twice ${G.cloudSpend()}`);
+  S.lzW = 10 * 0.81 * 0.89; check(near(G.cloudSpend(), 10 * 0.13 * 0.9 ** 3 * 0.81 * 0.89), `all approved twice ${G.cloudSpend()}`);
   check(G.cloudSpend() / 10 / 0.12 > 0.5 && G.cloudSpend() / 10 / 0.12 < 0.6, "fully kitted, fully approved cloud should be about 45% cheaper than on-prem");
   // the unscored savings line goes negative on a plain lift-and-shift and positive with good practice
   for (const [kit, sign] of [[false, -1], [true, 1]]) {
     for (const id of ["finops", "terraform", "observe", "autopatch"]) U[id] = kit;
-    S.lz = 10; S.lzW = kit ? 10 * 0.85 ** 2 : 10; S.runSaved = 0; const run = S.cost.run || 0, burn = G.burnRate();
+    S.lz = 10; S.lzW = kit ? 10 * 0.81 * 0.89 : 10; S.runSaved = 0; const run = S.cost.run || 0, burn = G.burnRate();
     G.update(0.05);
     check(near(S.cost.run - run, burn * 0.05, 1e-9), "running costs should be charged at the burn rate");
     check(near(S.runSaved, (10 * 0.12 - G.cloudSpend()) * 0.05, 1e-9) && Math.sign(S.runSaved) === sign, `runSaved ${S.runSaved} with kit=${kit}`);
@@ -1037,7 +1037,7 @@ test("FinOps: the scan flags a third of live apps with a $; tap or spray E to ap
   U.finops = true; S.freezeT = 5; G.tickFinops(0.01); check(!S.sweep, "swept during a freeze"); S.freezeT = 0;
   S.sweepT = 0; G.tickFinops(0.01);
   check(S.sweep && S.sweep.pick.length === 2 && S.sweep.pick.every(i => i < 6), `pick ${S.sweep && S.sweep.pick}`);
-  check(S.sweepT >= 15 && S.sweepT <= 20, `next scan in ${S.sweepT}`);
+  check(S.sweepT >= 20 && S.sweepT <= 25, `next scan in ${S.sweepT}`);
   G.tickFinops(2); check(!S.sweep, "scan never finished");
   const flagged = S.cloud.map((a, i) => a && a.rsTag ? i : -1).filter(i => i >= 0);
   check(flagged.length === 2 && !S.cloud[6].rsTag && !S.cloud[7].rsTag, `flagged ${flagged}`);
@@ -1047,12 +1047,13 @@ test("FinOps: the scan flags a third of live apps with a $; tap or spray E to ap
   try { G.approveNear(); G.approveNear(); } finally { G.keys.fix = false; }
   const a0 = S.cloud[flagged[0]];
   check(a0.rs === 1 && !a0.rsTag && S.ss.acts === 1, `tap approval: rs ${a0.rs}, acts ${S.ss.acts}`);
-  check(near(base - G.cloudSpend(), 0.13 * 0.15), "an approval should cut that app's cost by 15%");
+  check(near(base - G.cloudSpend(), 0.13 * 0.19), "an approval should cut that app's cost by 19%");
   // spray: holding E while walking past several flagged apps approves each of them
   for (let i = 0; i < 6; i++) S.cloud[i].rsTag = true;
   G.keys.fix = true;
   try { for (let i = 0; i < 6; i++) { standAt(S, G.SLOTS[i]); G.approveNear(); } } finally { G.keys.fix = false; }
   check(S.cloud.slice(0, 6).every(a => a.rs >= 1 && !a.rsTag) && S.ss.acts === 7 && a0.rs === 2, `spray: acts ${S.ss.acts}, a0 ${a0.rs}`);
+  check(near(base - G.cloudSpend(), 0.13 * (5 * 0.19 + 1 - 0.81 * 0.89)), "a second approval should cut that app another 11% (about 28% in all)");
   // the same app can be flagged again until it has two savings, then never again
   check(G.cloudSpend() > 0, "spend went to zero");
   for (let k = 0; k < 6; k++) { S.sweepT = 0; G.tickFinops(0.01); if (S.sweep) G.tickFinops(2); S.cloud.forEach(a => { if (a && a.rsTag) { a.rsTag = false; a.rs++; } }); }
@@ -1069,6 +1070,28 @@ test("FinOps: the scan flags a third of live apps with a $; tap or spray E to ap
   check(S.cloud[2].rs === 2 && !S.cloud[2].rsTag && (S.cost.ai || 0) > spent, "level 1 agent did not approve the gold app, or didn't bill tokens");
 });
 
+test("red alert slow-mo: Easy slows the world but not you, Normal a little, Hard not at all, and it eases back out", () => {
+  try {
+    for (const [d, goal] of [["easy", 0.6], ["normal", 0.85], ["hard", 1]]) {
+      check(G.ALERT_SLOW[d] === goal, `${d} goal ${G.ALERT_SLOW[d]}`);
+      G.setDifficulty(d, false); const S = fresh(); check(S.diff === d, `difficulty ${S.diff}`);
+      const gold = S.racks.find(a => a && a.tier === "gold") || S.racks.find(a => a); gold.tier = "gold"; gold.down = true;
+      G.update(0.05); check(S.alert, `${d}: no red alert`);
+      G.update(0.05); check(goal === 1 ? S.slow === 1 : S.slow > goal && S.slow < 1, `${d}: didn't ease in, slow ${S.slow}`);
+      for (let k = 0; k < 60; k++) G.update(0.05);
+      check(near(S.slow, goal, 0.005), `${d}: slow ${S.slow}`);
+      // you still move and fix at full speed while the world clock crawls
+      const t0 = S.time, x0 = S.p.x, users = S.users; S.users = [];
+      G.stick.on = true; G.stick.x = -1; G.stick.y = 0; G.update(0.05); G.stick.on = false; G.stick.x = 0;
+      S.users = users;
+      check(near(S.time - t0, 0.05 * S.slow, 1e-6), `${d}: world clock ${S.time - t0}`);
+      check(near(x0 - S.p.x, 175 * 0.05, 0.01), `${d}: player moved ${x0 - S.p.x}`);
+      gold.down = false;
+      for (let k = 0; k < 60; k++) G.update(0.05);
+      check(!S.alert && S.slow === 1 && G.slowDepth() === 0, `${d}: didn't ease back out, slow ${S.slow}`);
+    }
+  } finally { G.setDifficulty("normal", false); G.newRun(); }
+});
 test("Mouse Jiggler: under 10% of the work over 3+ clients, but never zero; a hold-E job counts once", () => {
   const doc = W.document;
   let S = fresh(); S.tk = [{age: 0}, {age: 0}]; S.p.x = G.DESK.x; S.p.y = G.DESK.y; S.energy = 100; G.keys.fix = true;

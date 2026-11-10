@@ -102,6 +102,9 @@ With Blue-Green Cutovers, you carry (or pipeline) a see-through copy while the o
 ### The AI Agent
 The AI Agent unlocks after the third client and amplifies the practices you already have. It works the email and ticket queues whenever either is at least half full; otherwise it goes looking for fixes on-prem and in the cloud (leaks, Patch Bot automation errors, overdue patches) before clearing whatever is left. Level 2 also investigates unknown racks start to finish, unlike a temp. Level 3 chases an escalation it caused to the server and cleans it up there. Level 4 adds guardrails and answers incidents too: fires, outages, breaches and failed cutovers. At level 4 you can also fire your manager between clients: the automatic change freezes, the faster uptime recovery and the agent's email know-how stay, and the wandering, chatting, guarding and server "inspections" go.
 
+### Red-alert slow-mo
+On Easy, and a little on Normal, time slows for everything but you during a red alert: users, VPs, bots, the manager, the AI Agent, timers, hazards, costs, uptime burn, the music and every animation run at 60% on Easy and 85% on Normal, while you walk, fix the incident and roll back at full speed. A slow heartbeat fades in and the edges of the room darken. When the alert clears, everything eases back up to speed and the heartbeat quickens and fades away. Hard has none.
+
 ### Restore from backup
 The terminal keeps a play-by-play event log for the current client and a restore point (💾) roughly every 30 seconds. Selecting one plays a "Restoring to mm:ss state" progress bar and returns the game to that moment. You get three restores per career on Easy, two on Normal, one on Hard, and none with the Hardcore checkbox (Hard otherwise unchanged). They also work from the screen where you get fired. Restore points don't cross client boundaries, and the future can play out differently after a restore.
 

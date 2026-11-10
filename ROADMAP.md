@@ -29,6 +29,17 @@ Ideas and loose ends. Nothing here is a commitment.
 - [ ] Build a better playtest bot. The current one rarely gets past client 2, so later clients, freezes and managers are unmeasured.
 - [ ] Tune the AI Agent foundation values, uptime recovery rates, and escalation spacing from real play.
 
+### Possible, from the November 2026 balance review
+None of these are decided. They came out of simulated careers, which play worse than a seasoned person.
+- [ ] Hard: winnable past client 3 with seasoned play (confirmed by hand), so it is doing its job. Simulated careers never got that far. Only revisit if Hard should also be reachable for players who are good but not seasoned.
+- [ ] Normal for first-timers: get someone new to play it. Seasoned play clears client 3 most times; simulated play mostly did not, and breaches were the usual cause.
+- [ ] VPs during red alerts: with a full inbox they still grab you mid-breach, and email can't be answered during an alert to stop them. Consider having them wait until the alert is over.
+- [ ] Leak pressure at client 3: a 30% lower leak rate was the strongest single lever in testing. Hold unless new players turn out to need it.
+- [ ] "Best retirement" record: least total spend means a one-client career always wins it. Consider spend per client, or a record per career length.
+- [ ] "Give me a break" replaces the next client, so taking it before client 3 skips the hospital. Decide whether it should delay it instead.
+- [ ] Late game: a fully kitted career clears a 22-server client in about 90 seconds with no incidents. Decide whether that needs a new source of tension.
+- [ ] Remove dead code: `expireEmail`, `TICKET_LIFE`, `aiOn`/`errRate`, `S.rival`.
+
 ## AI Agent rework (ideas from the first Living Legend run)
 
 Late-game AI was a disaster on a 10-client career with no Patch Bot: patching sat around 55–60% and broke things. None of this is settled; balance it by playing.
