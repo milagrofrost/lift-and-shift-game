@@ -555,10 +555,10 @@ function tickFreeze(dt){
 }
 const UPGRADES=[
   {id:"freezecharge",name:"Emergency Freeze Window",icon:"❄",cost:3,desc:"One charge: press F or click Freeze to pause users, arrivals and incident spread for 12 seconds. Repurchase after use. Extends an active freeze, up to 30 seconds."},
-  {id:"terraform",name:"Terraform the cloud",icon:"⚙️",cost:8,desc:"Infrastructure as code. Retrying a failed cutover takes 1–2 seconds instead of 3–8, and consistent builds give every cutover +10% odds."},
+  {id:"terraform",name:"Terraform the cloud",icon:"⚙️",cost:8,desc:"Infrastructure as code. Retrying a failed cutover takes 1–2 seconds instead of 3–8, and consistent builds give every cutover +10% odds. Idle environments get torn down, so cloud apps cost 10% less to run."},
   {id:"moverbot",name:"Mover Bot",icon:"🦾",cost:8,desc:"Moves on-prem apps to the cloud by itself and finds a free cloud slot on its own. Slow but steady. Once you have a CI/CD pipeline it only uses the pipeline and waits for a free lane."},
   {id:"patchbot",name:"Patch Bot",icon:"🤖",cost:4,max:3,desc:"Walks the server room patching the most overdue app. It doesn't fight fires; that's your job. Success rate 50% at level 1, 66% at level 2, 90% at level 3, and each level walks faster. A failed patch leaves an automation error you have to fix by hand, unless an AI Agent trusted with that server tier gets there first."},
-  {id:"finops",name:"FinOps Dashboard",icon:"📊",cost:5,desc:"Cloud running costs and egress fees drop 40%, and license renewals cost 25% less."},
+  {id:"finops",name:"FinOps Dashboard",icon:"📊",cost:5,desc:"A red scan sweeps the cloud every 15–20 seconds and flags about a third of the apps with a green $. Tap E on one (or hold E and walk past several) to approve it: that app costs 15% less to run, and it can be flagged again for a second 15%. Egress fees drop 30% and license renewals cost 25% less. An AI agent at any level approves them too."},
   {id:"runbooks",name:"Runbooks",icon:"📄",cost:3,desc:"Patching and firefighting cost 40% less energy, and fires go out faster."},
   {id:"inventory",name:"Asset Inventory",icon:"🗂️",cost:3,desc:"Investigations take 3 seconds instead of 6. Forgotten servers still need investigation or an outage to reveal them."},
   {id:"coffee",name:"Comfy Sneakers",icon:"👟",cost:1,desc:"Move 15% faster."},
@@ -570,14 +570,14 @@ const UPGRADES=[
   {id:"siem",name:"SIEM Monitoring",icon:"📡",cost:2,max:3,sec:true,desc:"You see it sooner. Contain breaches 20% faster per level."},
   {id:"suppress",name:"Fire Suppression",icon:"🧯",cost:2,max:3,desc:"On-prem fires grow 20% slower per level."},
   {id:"portal",name:"Self-Service Portal",icon:"🙋",cost:2,max:3,desc:"Users reset their own passwords. 15% fewer tickets per level."},
-  {id:"autopatch",name:"Cloud Auto-Patching",icon:"🩹",cost:5,sec:true,desc:"Cloud apps get patched automatically, so they never drift into riskier states, and new leaks are 20% less likely. Covered apps show a green shield."},
+  {id:"autopatch",name:"Cloud Auto-Patching",icon:"🩹",cost:5,sec:true,desc:"Cloud apps get patched automatically, so they never drift into riskier states, and new leaks are 20% less likely, and cloud apps cost 10% less to run. Covered apps show a green shield."},
   {id:"pipeline",name:"CI/CD Pipeline",icon:"🏭",cost:5,max:3,desc:"Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud. No walking: about 6 seconds (3 with Terraform), with +10% odds from automated tests. Each level adds a lane, so more jobs can run at once."},
   {id:"bluegreen",name:"Blue-Green Cutovers",icon:"🔀",cost:6,desc:"Run old and new side by side. You carry a see-through copy while the original stays live in its rack, so moving it costs no downtime. The original still takes fires and escalations, and if it goes offline the copy is canceled. Failed cloud deployments stay gray; hold E there to retry."},
   {id:"spin",name:"Redefine \"Uptime\"",icon:"🎤",cost:3,max:3,desc:"Leadership skills. That outage was a \"planned degradation event.\" Your uptime recovers faster and can recover further: up to 65%, 80%, then 95% of the budget. Migrations also cost 20% less uptime per level."},
   {id:"statuspage",name:"Status Page",icon:"📣",cost:3,desc:"During a red alert, users check the status page instead of grabbing you. (Execs you ignored still come find you.)"},
   {id:"postmortem",name:"Blameless Postmortems",icon:"📝",cost:3,desc:"Learn from every incident. Each red alert you resolve gives back half the story point it cost."},
   {id:"oncall",name:"On-Call Rotation",icon:"📟",cost:3,desc:"You're not the only hero anymore. Energy regenerates 50% faster."},
-  {id:"observe",name:"Observability",icon:"📈",cost:4,desc:"Early warnings: racks about to fail compliance and leaks about to breach get a pulsing ring and an alert."},
+  {id:"observe",name:"Observability",icon:"📈",cost:4,desc:"Early warnings: racks about to fail compliance and leaks about to breach get a pulsing ring and an alert. You can see what's oversized, so cloud apps cost 10% less to run."},
   {id:"snacks",name:"Snack Budget",icon:"🍩",cost:2,max:3,desc:"Finance approved more donuts and coffee. Pickups show up at 35% shorter intervals per level, and one more can be out at a time."},
   {id:"vendor",name:"Vendor Negotiation",icon:"🤝",cost:2,max:3,desc:"License renewals cost 20% less per level."},
   {id:"manager",name:"A Manager Who Fights for You",icon:"👔",cost:5,max:3,desc:"All levels automatically call a change freeze for gold outages or breaches (10/14/18 seconds; cooldown 60/50/40 seconds). They also speed up uptime recovery. Level 1: answers your email, but chats with users and sometimes wanders over to look at a server (half the time, it goes offline; hold E at that server to shoo them away). Each server they break keeps them out of the data center longer. Level 2: focuses on email and rarely touches servers. Level 3: also stands guard at your doorway and shoves users out of your way as you cross the hallway."},
@@ -647,6 +647,7 @@ const SFX={
   quit:()=>tone(330,0.45,{type:"triangle",vol:0.2,slide:-180}),
   celebrate:()=>[523,659,784,1047,784,1047,1319].forEach((f,i)=>tone(f,0.26,{type:"triangle",vol:0.2,delay:i*0.11})),
   click:()=>tone(660,0.04,{type:"triangle",vol:0.1}),
+  scan:()=>{tone(1200,0.9,{type:"sawtooth",vol:0.035,slide:500});tone(1800,0.12,{type:"square",vol:0.03,delay:0.95});},
   buy:()=>[660,990].forEach((f,i)=>tone(f,0.09,{vol:0.15,delay:i*0.06})),
   chaching:()=>{tone(392,0.05,{type:"square",vol:0.09});tone(523,0.05,{type:"square",vol:0.09,delay:0.07});tone(1568,0.1,{type:"square",vol:0.09,delay:0.14});tone(2093,0.32,{type:"square",vol:0.08,delay:0.2});tone(3136,0.2,{vol:0.07,delay:0.28});},
   licenseRenewed:()=>{tone(1568,0.05,{type:"square",vol:0.09});tone(1109,0.05,{type:"square",vol:0.09,delay:0.07});tone(392,0.1,{type:"square",vol:0.1,delay:0.14});tone(196,0.36,{type:"square",vol:0.1,delay:0.2});tone(98,0.26,{type:"triangle",vol:0.2,delay:0.28});},
@@ -834,7 +835,17 @@ const DESK={x:480,y:500},TICKET_LIFE=30,PR=15,PR_CARRY=23;
 const playerR=()=>S.carry?PR_CARRY:PR;
 // Past the client's lease target date, on-prem running costs go up 10% per overdue day. It never ends the game.
 const leaseMult=()=>1+0.1*overdue();
-const burnRate=()=>onPremApps().filter(a=>!a.hidden).length*0.12*leaseMult()+cloudCount()*(S.upgrades.finops?0.03:0.05);
+/* Per-app running costs ($k per second). A plain lift-and-shift costs a little more in the cloud than on-prem:
+   same oversized servers, someone else's building. Terraform, Observability and Cloud Auto-Patching each cut it 10%;
+   each FinOps rightsizing you approve cuts that app another 15%, up to two per app. With everything, about 45% cheaper than on-prem. */
+const ONPREM_RATE=0.12,CLOUD_RATE=0.13,RS_CUT=0.15,RS_MAX=2;
+const rsMult=a=>Math.pow(1-RS_CUT,(a&&a.rs)|0);
+const CLOUD_CUTS=[["terraform",0.1],["observe",0.1],["autopatch",0.1]];
+// per cloud app that hasn't had a FinOps saving approved
+const cloudRate=()=>CLOUD_CUTS.reduce((r,[id,c])=>S.upgrades[id]?r*(1-c):r,CLOUD_RATE);
+// landing-zone apps keep their savings: S.lzW is the sum of their cost multipliers
+function cloudSpend(){let w=S.lzW==null?(S.lz||0):S.lzW;for(const a of S.cloud)if(a)w+=rsMult(a);return cloudRate()*w;}
+const burnRate=()=>onPremApps().filter(a=>!a.hidden).length*ONPREM_RATE*leaseMult()+cloudSpend();
 /* hallway users: bump into one and they hold you. Better dressed = higher rank = longer hold.
    Interns (hold 0) don't have the standing to stop you: they blurt their question as you walk past. */
 const RANKS=[
@@ -1129,6 +1140,8 @@ function agentPick(){
   // level 2 and up investigates unknown racks start to finish, whatever their tier (investigating changes nothing on the server)
   if(L>=2){const h=S.racks.filter(a=>a&&a.hidden).sort((p,q)=>(q.disc||0)-(p.disc||0))[0];if(h)return{kind:"discover",a:h,...atRack(h)};}
   if(due[0])return{kind:"patch",a:due[0],...atRack(due[0])};
+  // FinOps approvals: easy work, any level, any tier
+  const rsi=S.cloud.findIndex(a=>a&&a.rsTag);if(rsi>=0)return{kind:"rightsize",a:S.cloud[rsi],i:rsi,...atSlot(rsi)};
   if(S.tk.length)return{kind:"ticket",x:480,y:470};
   if(imp.length)return{kind:"email",x:480,y:98};
   return null;
@@ -1136,7 +1149,7 @@ function agentPick(){
 const TIER_ORDER={bronze:0,silver:1,gold:2};
 // hands-on jobs with a fixed amount of work and no odds to roll (a failed cutover still rolls the cutover itself)
 const AGENT_WORK={discover:{need:()=>discoverTime(),say:"investigating"},restore:{need:a=>TIER[a.tier].restore*Math.pow(0.8,retro("firedrill")),say:"restoring"},
-  contain:{need:()=>containTime(),say:"containing"},cutover:{need:a=>cloudRebuild(a.tier),say:"redeploying"},fire:{need:()=>1,say:"firefighting"}};
+  contain:{need:()=>containTime(),say:"containing"},rightsize:{need:()=>0.6,say:"approving"},cutover:{need:a=>cloudRebuild(a.tier),say:"redeploying"},fire:{need:()=>1,say:"firefighting"}};
 function agentValid(j){
   if(j.kind==="repair")return agentDamageRemains(j);
   if(j.kind==="discover")return S.racks[j.a.slot]===j.a&&j.a.hidden;
@@ -1144,6 +1157,7 @@ function agentValid(j){
   if(j.kind==="fire")return validRack(j.a)&&!j.a.down&&j.a.fire>0;
   if(j.kind==="contain")return S.cloud[j.i]===j.a&&j.a.breach&&!j.a.down;
   if(j.kind==="cutover")return S.cloud[j.i]===j.a&&retryable(j.a);
+  if(j.kind==="rightsize")return S.cloud[j.i]===j.a&&j.a.rsTag;
   if(j.kind==="leak")return S.cloud[j.i]===j.a&&j.a.leakOn&&!j.a.breach;
   if(j.kind==="patch")return S.racks[j.a.slot]===j.a&&!j.a.covered&&!j.a.down&&j.a.fire===0;
   if(j.kind==="ticket")return S.tk.length>0;
@@ -1181,6 +1195,7 @@ function agentDoWork(j,dt,G){
   const A=S.agent,a=j.a,W=AGENT_WORK[j.kind];
   if(j.kind==="fire"){const r=(S.upgrades.runbooks&&modId()!=="vacation")?75:48;a.fire-=r*dt;A.work=Math.min(0.99,1-a.fire/100);if(a.fire>0)return;a.fire=0;}
   else if(j.kind==="discover"){a.disc=(a.disc||0)+dt;a.discT=S.t;A.work=a.disc/W.need(a);if(a.disc<W.need(a))return;}
+  else if(j.kind==="rightsize"){j.w=(j.w||0)+dt;A.work=j.w/W.need(a);if(j.w<W.need(a))return;}
   else{a.prog+=dt;A.work=a.prog/W.need(a);if(a.prog<W.need(a))return;a.prog=0;}
   spend("ai",G.cost);const st=S.ss.ai;st.n++;st.cost+=G.cost;
   const pos={x:A.x,y:A.y-10};fl(pos,`🪙 ${(G.tok*rand(0.8,1.2)).toFixed(1)}k tokens · −$${G.cost.toFixed(1)}k`,C.ok);
@@ -1188,6 +1203,7 @@ function agentDoWork(j,dt,G){
   if(j.kind==="fire"){sfx("fireOut");fl(RACKS[a.slot],"🧠 Fire out",C.ok);}
   else if(j.kind==="discover"){sfx("discover");revealApp(a,true);}
   else if(j.kind==="restore"){sfx("online");noteRestored(a);a.down=false;a.timer=Math.max(a.timer,a.maxT*0.5);fl(RACKS[a.slot],"🧠 Back online",C.ok);}
+  else if(j.kind==="rightsize")approveSavings(a,j.i,"agent");
   else if(j.kind==="contain"){sfx("sealed");a.age=0;a.breach=false;a.leak=0;a.grace=6;fl(SLOTS[j.i],"🧠 Breach contained",C.ok);}
   else{const p=successChance(a.tier);
     if(Math.random()<p){noteRestored(a);activateCloud(a);cutoverOK(a);sfx("migrateOK");fl(SLOTS[j.i],"🧠 Cutover complete",C.ok);}
@@ -1444,6 +1460,17 @@ function observeTick(){
   S.racks.forEach(a=>{if(!a)return;if(atRisk(a)&&!a.warned){a.warned=true;toast(`📈 Alert: ${a.name} fails compliance in ${Math.ceil(a.timer)}s.`);}else if(!atRisk(a))a.warned=false;});
   S.cloud.forEach(a=>{if(!a)return;if(leakRisk(a)&&!a.warned){a.warned=true;toast(`📈 Alert: ${a.name} is leaking and close to a breach.`);}else if(!leakRisk(a))a.warned=false;});
 }
+// FinOps: a green $ on flagged apps (bottom-left corner) until approved, and the red scan line
+function drawFinops(){
+  S.cloud.forEach((a,i)=>{if(!a||!a.rsTag||a.staged||a.down)return;const p=SLOTS[i],sz=RM?16:15+2*Math.sin(S.t*5);
+    tx("$",p.x-23,p.y+26,sz,"#1f9d55",{font:DISP,weight:800});});
+  if(!S.sweep)return;
+  if(RM){ctx.fillStyle="rgba(255,50,40,.07)";ctx.fillRect(SWEEP_X0,0,W-SWEEP_X0,H);tx("FINOPS SCAN",SWEEP_X0+8,H-14,9,"#c0281d",{align:"left",weight:700});return;}
+  const x=sweepX(),g=ctx.createLinearGradient(x-60,0,x,0);
+  g.addColorStop(0,"rgba(255,40,30,0)");g.addColorStop(1,"rgba(255,40,30,.18)");ctx.fillStyle=g;ctx.fillRect(x-60,0,60,H);
+  ctx.save();ctx.shadowColor="#ff2a1a";ctx.shadowBlur=12;ctx.strokeStyle="#ff3b2e";ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();ctx.restore();
+  tx("FINOPS SCAN",Math.min(x,W-40),H-14,9,"#c0281d",{weight:700});
+}
 function drawWarnings(){
   const pulse=0.5+0.5*Math.sin(S.t*7);
   ctx.strokeStyle=`rgba(255,181,71,${0.45+0.5*pulse})`;ctx.lineWidth=3;
@@ -1675,7 +1702,7 @@ const PHONE_PORTRAIT=matchMedia("(pointer:coarse) and (orientation:portrait) and
 let S;
 function newRun(){
   BK.left=restoresForRun();BK.used=0;BK.fired=false;
-  S={songOffset:Math.floor(Math.random()*3),sprint:0,budget:0,cost:{},retro:{},secLoss:{},secWarned:false,tierTot:{},movedT:{},career:[],gen:{},lz:0,wave:[],run:{mig:0,audits:0,breaches:0,lost:0,unplanned:0,fails:0,rollbacks:0,missed:0,esc:0,held:0,heldT:0,vendor:0},err:ERR_BUDGET,errMax:ERR_BUDGET,security:100,energy:50,points:0,upgrades:{},racks:Array(12).fill(null),cloud:Array(16).fill(null),
+  S={songOffset:Math.floor(Math.random()*3),sprint:0,budget:0,cost:{},retro:{},secLoss:{},secWarned:false,tierTot:{},movedT:{},career:[],jig:{h:0,t:0},gen:{},lz:0,wave:[],run:{mig:0,audits:0,breaches:0,lost:0,unplanned:0,fails:0,rollbacks:0,missed:0,esc:0,held:0,heldT:0,vendor:0},err:ERR_BUDGET,errMax:ERR_BUDGET,security:100,energy:50,points:0,upgrades:{},racks:Array(12).fill(null),cloud:Array(16).fill(null),
      rival:0,bots:[],totalApps:0,lostTotal:0,alert:false,t:0,offers:[],missed:{},mgrBreaks:0,mgrShame:0,
      p:{x:480,y:280,stun:0,inv:0,heldBy:null,userImm:0},users:[],cbots:[],fx:[],carry:null,inv:[],tk:[],st:[],fl:[],fix:null,fixP:0,fixKey:null,fixNeed:1,warnT:-9,prompt:"",diff:DIFF,hardcore:HARDCORE};
   startSprint(1);
@@ -1693,7 +1720,7 @@ function addApp(entry,hidden,counted){
 /* Big clients don't fit in one 12-rack room. The rest arrive in waves "from the client's other building" once
    the room is cleared. Healthy cloud apps are consolidated into the landing zone to free up cloud slots. */
 function deliverWave(){
-  let lz=0;S.cloud.forEach((a,i)=>{if(a&&!a.staged&&!a.down&&!a.breach){S.cloud[i]=null;lz++;}});S.lz+=lz;
+  let lz=0,lzW=0;S.cloud.forEach((a,i)=>{if(a&&!a.staged&&!a.down&&!a.breach){S.cloud[i]=null;lz++;lzW+=rsMult(a);}});S.lzW=(S.lzW==null?S.lz:S.lzW)+lzW;S.lz+=lz;
   const batch=S.wave.splice(0,12);
   for(const w of batch)addApp(w.e,w.hidden,true);
   const T=S.cdays*DAY;S.racks.forEach(a=>{if(a&&!a.hidden&&a.licBase&&!a.lic)a.lic=S.time+rand(0.3,0.6)*T-S.time;});
@@ -1705,7 +1732,7 @@ function startSprint(n){
   S.sprint=n;const c=client();
   const ec=engagementCfg(n);
   S.time=0;S.escT=null;S.freezeT=0;S.freezeIncident=false;S.mod=c.trait;S.errMax=ec.err;S.cdays=ec.days;
-  S.racks=Array(12).fill(null);S.cloud=Array(16).fill(null);S.tierTot={};S.movedT={};S.totalApps=0;S.rival=0;S.lz=0;S.wave=[];
+  S.racks=Array(12).fill(null);S.cloud=Array(16).fill(null);S.tierTot={};S.movedT={};S.totalApps=0;S.rival=0;S.lz=0;S.lzW=0;S.sweep=null;S.sweepT=3;S.wave=[];
   // everything this client has, in order; the first 12 go in the room, the rest wait for later waves
   const tierOrder={bronze:0,silver:1,gold:2}; ec.apps.sort((a,b)=>tierOrder[a[2]]-tierOrder[b[2]]); ec.hidden.sort((a,b)=>tierOrder[a[1]]-tierOrder[b[1]]);
   const all=[...ec.apps.map(e=>({e,hidden:false})),...ec.hidden.map(e=>({e:n<=3||S.breakN===n?e:[e[0],pick(["bronze","silver","gold"])],hidden:true}))]; // handmade clients keep their designed hidden tiers
@@ -1720,7 +1747,7 @@ function startSprint(n){
   S.p.x=480;S.p.y=280;S.p.stun=0;S.p.inv=0;S.p.heldBy=null;S.p.userImm=0;S.p.ghost=0;S.p.boost=0;spawnUsers();spawnChatbots();spawnManager();spawnAgent();S.userT=10;
   S.bots.forEach((b,i)=>{b.x=b.kind==="patch"?180:480;b.y=520-i*10;b.tgt=null;b.carry=null;b.work=0;b.slot=-1;});
   if(retro("lunch"))S.energy=Math.min(100,S.energy+25*retro("lunch")); // team lunch: start each client fresh
-  S.obsolete=false;S.ss={human:0,ai:{n:0,ok:0,nop:0,bad:0,cost:0},mig:0,audits:0,breaches:0,lost:0,unplanned:0,why:{},budget0:S.budget,sec0:S.security,att:0,leadSum:0,leadN:0,mttrSum:0,mttrN:0,missed:0,heldT:0,esc:0};
+  S.obsolete=false;S.ss={human:0,acts:0,bot:0,ai:{n:0,ok:0,nop:0,bad:0,cost:0},mig:0,audits:0,breaches:0,lost:0,unplanned:0,why:{},budget0:S.budget,sec0:S.security,att:0,leadSum:0,leadN:0,mttrSum:0,mttrN:0,missed:0,heldT:0,esc:0};
   backupStart();
 }
 /* Engagement done: the client's room is empty and nothing is stuck offline in the cloud. */
@@ -1734,6 +1761,7 @@ function clientStars(){
 }
 function finishEngagement(){
   const c=client(),st=clientStars();
+  {const ss=S.ss;S.jig=S.jig||{h:0,t:0};S.jig.h+=ss.acts||0;S.jig.t+=(ss.acts||0)+(ss.bot||0)+(ss.ai?ss.ai.n:0);}
   S.career.push({name:c.name,stars:st,days:dayNum(),late:overdue(),spend:Math.round(S.ss.budget0-S.budget),cap:capNext()});
   // not one action from the human for the whole client: the job runs itself, and the AI agent knows it
   S.obsolete=!S.ss.human;
@@ -1862,7 +1890,7 @@ function rollbackTarget(){if(S.carry)return null;let best=null,bd=56;S.cloud.for
 function doRollback(i){
   const c=S.cloud[i],app=c.orig;let slot=S.racks[app.slot]?S.racks.findIndex(x=>!x):app.slot;
   if(slot<0){toast("⛔ No free rack to roll back into.");c.rb=0;return;}
-  humanWork();noteRestored(c);S.run.rollbacks++;S.cloud[i]=null;app.slot=slot;app.down=false;app.fire=0;app.prog=0;app.timer=Math.max(app.timer,app.maxT*0.5);S.racks[slot]=app;
+  humanWork();noteRestored(c);S.run.rollbacks++;S.cloud[i]=null;app.rs=0;app.rsTag=false;app.slot=slot;app.down=false;app.fire=0;app.prog=0;app.timer=Math.max(app.timer,app.maxT*0.5);S.racks[slot]=app;
   fl(RACKS[slot],"Rolled back",C.amber);toast(`↩️ Rolled ${app.name} back on-prem. It's online again. Try again when the odds are better.`);
 }
 function doGrab(){
@@ -1929,13 +1957,51 @@ function fixTarget(){
   return best;
 }
 function fixCost(f){return f.kind==="patch"?Math.round(onpremCost(12)):f.kind==="leak"?Math.round(cloudCost(10)):f.kind==="email"?0:Math.round(cloudCost(3));}
-// anything you do with your own hands this client; one action is enough to stay employed
-function humanWork(){if(S.ss)S.ss.human++;}
+// anything you do with your own hands this client; one action is enough to stay employed.
+// acts counts discrete actions (a whole hold-E job is one) for your share of the work.
+/* FinOps rightsizing: a red scan sweeps the cloud room a few seconds after the first app lands, then every 15–20s,
+   and flags about a third of the live apps with a green $. Approving one (E for you, any AI agent level, any tier)
+   clears the $ and cuts that app's running cost 15%; an app can be flagged and approved again, up to twice.
+   Flags don't expire; unapproved savings just sit there. Paused during an explicit freeze. */
+const SWEEP_DUR=1.8,SWEEP_X0=604,SWEEP_X1=956,RS_REACH=56;
+const rsEligible=a=>!!a&&!a.staged&&!a.down&&!a.breach&&!a.rsTag&&(a.rs|0)<RS_MAX;
+const sweepX=()=>SWEEP_X0+(SWEEP_X1-SWEEP_X0)*Math.min(1,S.sweep.t/SWEEP_DUR);
+function tickFinops(dt){
+  if(!S.upgrades.finops){S.sweep=null;return;}
+  if(S.sweep){
+    S.sweep.t+=dt;const x=sweepX();
+    for(const i of S.sweep.pick){const a=S.cloud[i];if(SLOTS[i].x<=x&&rsEligible(a)){a.rsTag=true;S.sweep.n++;}}
+    if(S.sweep.t>=SWEEP_DUR){if(S.sweep.n&&!S.ss.rsToast){S.ss.rsToast=true;toast(`📊 FinOps flagged ${S.sweep.n} app${S.sweep.n>1?"s":""} for rightsizing. Tap E on a 💲 to approve, or hold E and walk past them.`);}S.sweep=null;}
+    return;
+  }
+  if(freezeActive())return;
+  S.sweepT=(S.sweepT==null?3:S.sweepT)-dt;if(S.sweepT>0)return;
+  const el=[];S.cloud.forEach((a,i)=>{if(rsEligible(a))el.push(i);});
+  if(!el.length){S.sweepT=3;return;} // nothing to scan yet: look again shortly
+  S.sweepT=rand(15,20);
+  S.sweep={t:0,n:0,pick:shuffle(el).slice(0,Math.max(1,Math.round(el.length/3)))};sfx("scan");
+}
+function approveSavings(a,i,who){
+  a.rsTag=false;a.rs=(a.rs|0)+1;sfx("chaching");
+  fl({x:SLOTS[i].x,y:SLOTS[i].y-40},`${who==="agent"?"🧠 ":""}💲 Rightsized · −15%`,C.ok);
+}
+// tap E on a flagged app to approve it; holding E approves every flagged app you walk past
+function approveNear(){
+  if(!keys.fix||S.carry||S.p.stun>0)return;
+  S.cloud.forEach((a,i)=>{if(a&&a.rsTag&&dist(S.p,SLOTS[i])<RS_REACH){humanWork();approveSavings(a,i,"you");}});
+}
+function humanWork(act=true){if(S.ss){S.ss.human++;if(act)S.ss.acts++;}}
+// a Patch Bot patch (or automation error) or a server the Mover Bot picks up
+function botWork(){if(S.ss)S.ss.bot++;}
+/* Mouse Jiggler: over at least 3 finished clients you did under 10% of the work (your actions vs. yours plus
+   AI agent attempts plus bot jobs), but never zero, so you kept the job. Returns your share, or null. */
+function jiggler(){const j=S.jig;if(!j||S.career.length<3||!j.h||!j.t)return null;const r=j.h/j.t;return r<0.1?r:null;}
 function doFix(dt){
-  if(!keys.fix)S.fixLock=false;
+  if(!keys.fix){S.fixLock=false;S.fixHeld=null;}
+  approveNear();
   const f=S.fix=fixTarget();
   if(!keys.fix||!f||S.p.stun>0||S.fixLock){S.fixP=0;S.fixKey=null;return;}
-  humanWork();
+  humanWork(S.fixHeld!==f.key);S.fixHeld=f.key;
   if(S.fixKey!==f.key){S.fixKey=f.key;S.fixP=0;}
   if(f.kind==="discover"){
     // investigating an unknown rack: slow but free, keeps progress, and finding it early means it isn't overdue yet
@@ -2159,11 +2225,11 @@ function patchBot(b,dt,ai,sp){
   b.work+=dt;
   if(b.fail&&b.work>=b.failAt){
     // the automation broke partway through: flag the rack for a human
-    a.botErr=true;b.work=0;b.tgt=null;b.flash=1.5;sfx("audit");fl(p,"⚠ AUTOMATION ERROR",C.danger);
+    a.botErr=true;b.work=0;b.tgt=null;b.flash=1.5;botWork();sfx("audit");fl(p,"⚠ AUTOMATION ERROR",C.danger);
     toast(`🤖 Patch Bot couldn't patch ${a.name} (automation error). ${S.agent&&agentCanTouch(a)?"The AI agent is going to take a look. Good luck.":"It needs a human: patch it yourself."}`);return;
   }
   if(b.work<b.need)return;
-  b.work=0;b.tgt=null;
+  b.work=0;b.tgt=null;botWork();
   if(ai&&Math.random()<errRate()){a.botIgnore=S.t+14;b.flash=1.5;fl(p,"✅ Patched!",C.ok);toast(`🤖 Patch Bot says ${a.name} is patched. It isn't. Check the timer.`);}
   else{applyPatch(a);fl(p,"🤖 patched",C.ok);}
 }
@@ -2180,7 +2246,7 @@ function moverBot(b,dt,ai,sp){
     b.work=0;b.carry=null;
     if(ai&&Math.random()<errRate()){
       b.flash=1.5;
-      if(Math.random()<0.5){S.rival++;S.ss.mig++;const fee=Math.round(10*(S.upgrades.finops?0.6:1));spend("other",fee);toast(`🦾 Mover Bot migrated ${a.name} to the wrong cloud. Egress fee: −$${fee}k.`);}
+      if(Math.random()<0.5){S.rival++;S.ss.mig++;const fee=Math.round(10*(S.upgrades.finops?0.7:1));spend("other",fee);toast(`🦾 Mover Bot migrated ${a.name} to the wrong cloud. Egress fee: −$${fee}k.`);}
       else{S.racks[a.slot]=a;a.timer=Math.max(3,a.timer-8);toast(`🦾 Mover Bot says ${a.name} is migrated. It's back in its rack, with 8 seconds less on the clock.`);}
     }else migrate(a,b.slot,true);
     b.slot=-1;return;
@@ -2197,7 +2263,7 @@ function moverBot(b,dt,ai,sp){
   // once there is a pipeline the bot only uses it: it waits at its next server for a free lane; carrying by hand is the player's faster option
   if(pipeLanes()>0&&freePipelineLane()<0){b.work=0;return;}
   b.work+=dt;if(b.work<(ai?0.4:1.0))return;
-  b.work=0;const a=b.tgt;if(a.touchT==null)a.touchT=S.time;if(!S.upgrades.bluegreen)S.racks[a.slot]=null;b.tgt=null;
+  b.work=0;const a=b.tgt;if(a.touchT==null)a.touchT=S.time;if(!S.upgrades.bluegreen)S.racks[a.slot]=null;b.tgt=null;botWork();
   // with a pipeline, the bot always sends servers down a lane; without one, it carries them
   const lane=freePipelineLane();
   if(lane>=0){S.pipe.push({a,t:0,dur:pipeDur(),lane,byBot:true});sfx("grab");fl(p,"🦾 Into the pipeline",C.leak);return;}
@@ -2213,6 +2279,7 @@ function buildPrompt(){
     const g=grabTarget();if(g&&g.fire===0&&!g.down&&!S.alert)parts.push(S.frozen?"⛔ Can't move: a server is offline":pipeLanes()>0?`Space: ${freePipelineLane()>=0?"pipeline":"carry (pipeline busy)"} · ${pipeDur()}s pipeline (${Math.round(Math.min(1,successChance(g.tier)+0.1)*100)}%)`:`Space: grab (${Math.round(successChance(g.tier)*100)}% cutover)`);
     const rb=rollbackTarget();if(rb)parts.push(`Hold Space: roll back (${ROLLBACK_TIME}s)`);
     const f=S.fix;
+    if(S.cloud.some((a,i)=>a&&a.rsTag&&dist(P,SLOTS[i])<RS_REACH))parts.push("E: approve FinOps saving (hold E to approve as you walk)");
     if(!f&&S.alert)parts.push("RED ALERT: go to a flashing incident");
     if(f){if(f.kind==="discover")parts.push(`Hold E: investigate unknown server (${Math.max(0,discoverTime()-(f.a.disc||0)).toFixed(1)}s, free)`);
       else if(f.kind==="cloudrestore")parts.push(`Hold E: retry cutover (${Math.max(0,cloudRebuild(f.a.tier)-f.a.prog).toFixed(1)}s, ${Math.round(successChance(f.a.tier)*100)}%)`);
@@ -2267,7 +2334,7 @@ function update(dt){
   {const moving=shutDownMoving(),m=migrateMult();
    for(const a of moving){S.err-=TIER[a.tier].sla*m*dt;spend("downtime",TIER[a.tier].drain*m*dt);}
    if(migrateBurn()>=MIGRATE_WARN&&S.time>=(S.burnT||0)){S.burnT=S.time+30;toast(`⚠️ ${moving.length} servers are shut down for migration and uptime is draining.${S.upgrades.bluegreen?" Slow down, or move fewer at once.":" Move fewer at once, or get Blue-Green Cutovers."}`);}}
-  tickOnPrem(dt);cancelDeadCopies();tickCloud(dt);observeTick();spawns(dt);tickHazards(dt);
+  tickOnPrem(dt);cancelDeadCopies();tickCloud(dt);tickFinops(dt);observeTick();spawns(dt);tickHazards(dt);
   const ai=aiOn();for(const b of S.bots){b.flash=Math.max(0,b.flash-dt);(b.kind==="patch"?patchBot:moverBot)(b,dt,ai,b.kind==="patch"?patchBotSpeed():85);}
   S.fl=S.fl.filter(f=>(f.t+=dt)<f.life);
   S.fx=S.fx.filter(f=>(f.t+=dt)<f.life);if(S.shake>0)S.shake-=dt;
@@ -2277,8 +2344,10 @@ function update(dt){
   if(S.secCalm>20&&!S.cloud.some(a=>a&&a.breach)&&S.security<100){S.security=Math.min(100,S.security+0.3*dt);if(S.security>=30)S.secWarned=false;}
   S.energy=clamp(S.energy+(S.upgrades.oncall?0.9:0.6)*dt,0,100);
   buildPrompt();
-  // running costs: on-prem servers cost more per second than cloud apps, so migrating lowers the burn rate
+  // running costs. The report also tracks what the cloud apps would have cost had they stayed on-prem;
+  // it's shown but never scored, and it goes negative while the cloud costs more than on-prem.
   spend("run",burnRate()*dt);
+  S.runSaved=(S.runSaved||0)+(cloudCount()*ONPREM_RATE*leaseMult()-cloudSpend())*dt;
   S.err=Math.max(S.err,Math.min(uptimeCap(),S.err+uptimeRegen()*dt));
   if(S.err<=0)return showEnd("uptime");
   if(S.security<=0)return showEnd("security");
@@ -2579,6 +2648,7 @@ function draw(){
   S.racks.forEach((a,i)=>drawRack(i,a));
   S.cloud.forEach((a,i)=>drawSlot(i,a));
   drawFx();
+  drawFinops();
   if(S.upgrades.observe)drawWarnings();
   if(S.rival>0)tx(`+${S.rival} in Other Cloud™ (oops)`,944,40,10,"#6b4fb3",{align:"right",weight:600});
   drawInbox();
@@ -2607,6 +2677,7 @@ function draw(){
 }
 
 /* ---------- HUD ---------- */
+const DISCLAIMER="These are game numbers, compressed and tilted optimistic. Please don't use them to plan a real migration, don't put them in a slide deck for your executives, and don't quote us. And don't spray and pray FinOps downsizing on real servers: do your research first.";
 const money=v=>{const r=Math.round(v);return r<0?`−$${Math.abs(r)}k`:`$${r}k`;};
 const fmtT=s=>{s=Math.max(0,Math.ceil(s));return`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;};
 /* Health bars: everything that can get you fired or cost you score. Green > amber > red, flashing when critical. */
@@ -2648,7 +2719,7 @@ function hud(){
   $("h-sprint").textContent=`#${S.sprint}`;
   // (lease, uptime, security and points now live in the health bars below)
   $("h-enbar").style.width=`${S.energy}%`;$("h-en").textContent=Math.floor(S.energy);$("c-en").classList.toggle("bad",S.energy<12);
-  $("h-budget").textContent=money(S.budget);$("h-rate").textContent=`−$${burnRate().toFixed(2)}k/s`;
+  $("h-budget").textContent=money(S.budget);$("h-rate").textContent=`−$${burnRate().toFixed(2)}k/s`;{const t=`Total IT spend. This is your score: the least negative total wins. Per app: $${ONPREM_RATE.toFixed(3)}k/s on-prem, $${cloudRate().toFixed(3)}k/s in the cloud ($${(cloudRate()*(1-RS_CUT)**RS_MAX).toFixed(3)}k/s with both FinOps savings approved). Terraform, Observability and Cloud Auto-Patching lower the cloud rate; FinOps flags apps for you to rightsize.`,c=$("h-rate").parentNode;if(c.title!==t)c.title=t;}
   $("h-mig").textContent=`${liveCloud()+S.rival}/${S.totalApps}`;
   healthBars();
   document.querySelector(".stage").classList.toggle("alert",S.alert&&mode==="play");
@@ -2746,12 +2817,15 @@ const NOTES=[
   ["AI costs tokens","Every agent action costs money, even the failures. The review shows cost per useful task.","AI usage is billed per token whether the answer is right or not. Measure agents by cost per useful outcome, not by how busy they look."],
   ["Interruptions","Users stop you for \"quick questions\".","Context switching is expensive. Every interruption costs more than the question itself, and the most senior people interrupt the longest."],
   ["Money as the score","IT spend only goes negative; the least negative total wins.","IT is usually treated as a cost center. Nobody gets fired for spending a bit too much, but people do get fired for outages and breaches."],
-  ["Decommissioning","Cloud apps cost less to run only once the on-prem server is gone.","Migrations only save money when you actually turn off the old hardware. Running both for too long is the most common way cloud bills surprise people."],
+  ["Lift-and-shift isn't cheaper","A cloud app costs a little more to run than on-prem until Terraform, Observability, Cloud Auto-Patching and approved FinOps savings bring it down. The final report shows running costs saved, or added, against staying on-prem.","Moving the same oversized servers into the cloud usually costs about the same or more. The savings come from rightsizing, reserved capacity, tearing down idle environments and automating operations, and even then 20–40% is a good result."],
+  ["FinOps recommendations","With FinOps, a red scan flags apps to rightsize with a green $, and nothing is saved until someone approves it. Apps can be flagged again later for more. Holding E sprays approvals on everything you pass, no questions asked.","FinOps tools mostly produce recommendations, and most companies have a backlog nobody acted on. Don't spray and pray in real life, though: blindly downsizing can starve an app of CPU or memory and cause an outage. Check utilization over a few weeks, mind peaks and seasonality, and test before you shrink production."],
+  ["Decommissioning","Every server you move is one less on-prem server running, and its hardware is credited back.","Migrations only save money when you actually turn off the old hardware. Running both for too long is the most common way cloud bills surprise people."],
 ];
 function notes(){
   mode="title";
   show(`<div class="eyebrow">Design notes</div><h2>Why it works this way</h2>
   <p>Every mechanic in the game is based on something that really happens in IT. Here's what each one is teaching.</p>
+  <p style="font-size:13px;color:var(--muted)">${DISCLAIMER}</p>
   <div class="notes">${NOTES.map(([t,g,r])=>`<div class="note"><b>${t}</b><p><span>In the game:</span> ${g}</p><p><span>In real IT:</span> ${r}</p></div>`).join("")}</div>
   <button class="btn" data-act="menu">Back to menu</button>`);
 }
@@ -3075,6 +3149,7 @@ function showEnd(reason){
   try{const s=localStorage.getItem("liftshift-best");best=s===null?null:+s;if(!reason&&!S.dev&&(best===null||S.budget>best)){newBest=true;best=S.budget;localStorage.setItem("liftshift-best",String(best));}}catch(e){}
   const grade=reason?"✗":`${avg.toFixed(1)}★`;
   const ai=obs?`<p style="font-size:13.5px;color:var(--muted)">Achievement: <b style="color:var(--ai)">Automated Yourself Out of a Job</b>. A whole client, zero human input. You won.</p>`:lvl("agent")?`<p style="font-size:13.5px;color:var(--muted)">Achievement: <b style="color:var(--ai)">Vibe Ops</b>. You finished with an AI agent on the team.</p>`:(S.bots.length===0&&!reason?`<p style="font-size:13.5px;color:var(--muted)">Achievement: <b style="color:var(--ok)">Artisanal Migration</b>. No bots, all by hand.</p>`:"");
+  const jr=obs?null:jiggler(),jig=jr===null?"":`<p style="font-size:13.5px;color:var(--muted)">Achievement: <b style="color:var(--amber)">Mouse Jiggler</b>. You did ${Math.max(1,Math.round(jr*100))}% of the work and kept 100% of the title.</p>`;
   const rows=S.career.map(c=>`<span>${c.name}<small>Day ${c.days}${c.late?`, ${c.late} days late`:", on time"}</small></span><span class="stars sm">${stars(c.stars)}</span>`).join("");
   const nmp=notMyProblem();
   let bestClients=0;try{bestClients=+(localStorage.getItem("liftshift-clients")||0);}catch(e){}
@@ -3094,10 +3169,13 @@ function showEnd(reason){
   <div class="bill">${Object.keys(COST_LABELS).filter(k=>Math.round(S.cost[k]||0)).map(k=>{const v=-S.cost[k];return`<span>${COST_LABELS[k]}</span><span class="${v<0?"neg":"pos"}">${money(v)}</span>`;}).join("")}
     <span class="total">Total IT spend (your score)</span><span class="total ${S.budget<0?"neg":"pos"}">${money(S.budget)}</span>
     ${S.avoided?`<span>License renewals you dodged by migrating</span><span class="pos">${money(S.avoided)} saved</span>`:""}
+    ${Math.round(S.runSaved||0)?`<span>Running costs ${S.runSaved>0?"saved":"added"} vs. staying on-prem</span><span class="${S.runSaved>0?"pos":"neg"}">${money(Math.abs(S.runSaved))} ${S.runSaved>0?"saved":"extra"}</span>`:""}
     ${best!==null?`<span>${newBest?"New best run!":"Your best run"}</span><span>${money(best)}</span>`:""}
   </div>
   <p style="font-size:13px;color:var(--muted)">IT always costs money. The goal is the least negative number.</p>
+  <p style="font-size:12.5px;color:var(--muted)">${DISCLAIMER}</p>
   ${ai}
+  ${jig}
   ${BK.used?`<p style="font-size:13.5px;color:var(--muted)">Rewrote history ${BK.used} time${BK.used===1?"":"s"}. The change record says it was planned.</p>`:""}
   ${brag}
   <div class="row">${reason&&BK.left>0&&bkPoints().length?`<button class="btn" data-act="restorelog">⏪ Restore from backup (${BK.left} left)</button>`:""}${obs?`<button class="btn" data-act="credits">Fade to black</button>`:`<button class="btn${reason&&BK.left>0&&bkPoints().length?" ghost":""}" data-act="again">Play again (${diffLabel()})</button><button class="btn ghost" data-act="menu">Main menu</button>`}</div>`);

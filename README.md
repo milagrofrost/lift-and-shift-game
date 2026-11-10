@@ -16,7 +16,7 @@ Lift & Shift is a playful teaching simulation of **cloud migrations and business
 
 The lesson is not to become a faster superhero. It is to build a better operating environment. Early in a career, you do most work yourself. Over time, investment in automation, policies, security controls, and people should free you to manage migrations and exceptions instead of continually fighting fires.
 
-The game uses satire and compressed time. Its probabilities, costs, DORA-style ratings, and incident behavior are teaching devices, not production forecasts or real-world benchmarks.
+The game uses satire and compressed time. Its probabilities, costs, DORA-style ratings, and incident behavior are teaching devices, not production forecasts or real-world benchmarks. Cloud costs in particular are tilted optimistic. The game lets you approve FinOps downsizing by holding E and walking past servers; in real life, check utilization and test before you shrink anything. Please don't use them to plan a real migration, don't put them in a slide deck for your executives, and don't quote us.
 
 ## How it plays
 
@@ -42,6 +42,7 @@ There is one more way to win: automate yourself out of a job. A level 4 AI Agent
 | Email, tickets, and interruptions | BAU competes with project delivery for real capacity. |
 | Uptime and security | Shipping is not the only measure of success. |
 | Licenses, running costs, and lease targets | Migration timing has financial consequences. |
+| Cloud running costs | A plain lift-and-shift costs a little more than on-prem; Terraform, Observability, auto-patching, and approving FinOps rightsizing recommendations are what make the cloud cheaper. |
 | Automation and upgrades | Tools need investment and iteration; mature automation should reduce toil. |
 | Improvement points and retrospectives | Incidents consume capacity that could have prevented future incidents. |
 | Delivery and recovery statistics | Review outcomes and improve the process, not just the speed of individual actions. |
