@@ -837,9 +837,9 @@ test("Not my problem counts racks about to fail an audit and leaks about to brea
   const S = fresh(), racks = S.racks.filter(Boolean);
   check(G.notMyProblem().n === 0, "a healthy room already had problems");
   const [late, covered, early] = racks;
-  late.timer = late.maxT * 0.3;                          // uncovered, warning circle: counts
+  late.timer = late.maxT * 0.2;                          // uncovered, red circle: counts
   covered.timer = covered.maxT * 0.1; covered.covered = true; // covered: not a problem
-  early.timer = early.maxT * 0.9;                        // plenty of time left: not a problem
+  early.timer = early.maxT * 0.4;                        // only the yellow circle: not flashing red yet
   S.cloud[0] = {name: "L", tier: "bronze", leakOn: true, leak: 80, breach: false, down: false};
   S.cloud[1] = {name: "M", tier: "bronze", leakOn: true, leak: 20, breach: false, down: false};
   S.cloud[2] = {name: "B", tier: "bronze", leakOn: false, leak: 0, breach: true, down: false};
@@ -847,7 +847,7 @@ test("Not my problem counts racks about to fail an audit and leaks about to brea
   const p = G.notMyProblem();
   check(p.audits === 1 && p.breaches === 1 && p.n === 2, JSON.stringify(p));
   G.resign();
-  check(/Not my problem/.test(W.document.body.textContent), "exit interview has no Not my problem row");
+  check(/Not my problem/.test(W.document.body.textContent) && /carnage report/.test(W.document.body.textContent) && !/suck/i.test(W.document.querySelector(".bill.carnage").parentElement.innerText), "exit interview has no carnage report with a Not my problem row");
   G.showEnd("uptime");
   check(/Not my problem/.test(W.document.body.textContent) && /1 about to be breached/.test(W.document.body.textContent), "fired screen has no Not my problem stat");
   check(before === JSON.stringify([S.budget, S.security, S.err, racks.map(a => [a.timer, a.covered])]), "counting changed the run");

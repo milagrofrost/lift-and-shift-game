@@ -76,11 +76,11 @@ body{font-family:var(--f-body)}
 .bill span:nth-child(even){font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
 .bill .neg{color:var(--danger)} .bill .pos{color:var(--ok)}
 .bill .total{font-weight:600;border-top:1px solid var(--line);padding-top:6px}
-.bill.suck{grid-template-columns:1fr auto auto;max-width:560px}
-.bill.suck span:nth-child(3n+1){font-family:var(--f-body);text-align:left}
-.bill.suck span:nth-child(3n+2),.bill.suck span:nth-child(3n){font-family:var(--f-mono);text-align:right}
-.bill.suck small{display:block;color:var(--muted);font-size:11.5px}
-.bill.suck .hd{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.bill.carnage{grid-template-columns:1fr auto auto;max-width:560px}
+.bill.carnage span:nth-child(3n+1){font-family:var(--f-body);text-align:left}
+.bill.carnage span:nth-child(3n+2),.bill.carnage span:nth-child(3n){font-family:var(--f-mono);text-align:right}
+.bill.carnage small{display:block;color:var(--muted);font-size:11.5px}
+.bill.carnage .hd{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .letter{background:#f3eee2;color:#1d1b17;border-radius:4px;padding:18px 20px;font-family:Georgia,"Times New Roman",serif;font-size:14.5px;line-height:1.55;box-shadow:0 6px 18px rgba(0,0,0,.35);transform:rotate(-0.4deg);display:flex;flex-direction:column;gap:10px}
 .letter p{margin:0}
 .rumor{border:1px dashed var(--ai);border-radius:8px;padding:10px 12px;background:rgba(184,150,255,.06);font-size:13.5px;display:flex;flex-direction:column;gap:4px}
@@ -2988,16 +2988,16 @@ function showEnd(reason){
   <div class="row">${reason&&BK.left>0&&bkPoints().length?`<button class="btn" data-act="restorelog">⏪ Restore from backup (${BK.left} left)</button>`:""}<button class="btn${reason&&BK.left>0&&bkPoints().length?" ghost":""}" data-act="again">Play again (${diffLabel()})</button><button class="btn ghost" data-act="menu">Main menu</button></div>`);
   shareMount();
 }
-/* "Not my problem": what's about to go wrong as you walk out the door. Uncovered racks in the last half of
-   their cycle (the yellow/red warning circle) are about to fail an audit; cloud leaks past the Observability
-   alert line are about to become breaches. Hidden servers stay hidden. Reads S, never changes it. */
+/* "Not my problem": everything flashing red as you walk out the door, left for whoever they hire next.
+   Uncovered racks showing the red circle (last quarter of their cycle) are about to fail an audit; cloud
+   leaks with a red border are about to become breaches. Hidden servers stay hidden. Reads S, never changes it. */
 function notMyProblem(){
-  const audits=S.racks.filter(a=>a&&!a.hidden&&!a.down&&!a.covered&&a.timer/a.maxT<=0.5).length;
+  const audits=S.racks.filter(a=>a&&!a.hidden&&!a.down&&!a.covered&&a.timer/a.maxT<=0.25).length;
   const breaches=S.cloud.filter(a=>leakRisk(a)&&!a.breach&&!a.down).length;
   return{audits,breaches,n:audits+breaches};
 }
 const nmpLine=p=>[p.audits?`${p.audits} about to fail an audit`:"",p.breaches?`${p.breaches} about to be breached`:""].filter(Boolean).join(", ");
-/* ---------- giving up: a randomly generated resignation letter + how much you sucked ---------- */
+/* ---------- giving up: a randomly generated resignation letter + the carnage report ---------- */
 function runStats(){
   const t={...S.run};for(const k of["mig","audits","breaches","lost","unplanned"])t[k]+=S.ss[k];
   t.left=S.racks.filter(Boolean).length+(S.carry&&!liveCopy(S.carry)?1:0)+S.cloud.filter(a=>a&&a.down).length;
@@ -3005,7 +3005,7 @@ function runStats(){
   t.nmp=notMyProblem();
   return t;
 }
-function suckRows(t){
+function carnageRows(t){
   return[
     ["Apps you left on-prem",t.left,4,"They'll outlive us all."],
     ["Breaches",t.breaches,12,"Our data is on a forum now."],
@@ -3015,7 +3015,7 @@ function suckRows(t){
     ["Rollbacks",t.rollbacks,3,"Two steps forward, one step back."],
     ["Missed legal/finance/exec emails",t.missed,3,"Inbox zero, but backwards."],
     ["Tickets left to escalate",t.esc,2,"They set the building on fire."],
-    ["Not my problem",t.nmp.n,1,t.nmp.n?`${nmpLine(t.nmp)}. Your replacement's first week will be memorable.`:"You left it tidier than you found it. Suspicious."],
+    ["Not my problem",t.nmp.n,1,t.nmp.n?"Left flashing red as you left. Just keep walking.":"Nothing left flashing red as you left. Suspiciously thoughtful."],
     ["Seconds held in the hallway",Math.round(t.heldT),0.5,"Quick questions are never quick."],
     ["Vendor emails you answered",t.vendor,2,"Why. Just why."],
     ["Security lost",Math.round(t.secLost),0.25,""],
@@ -3053,7 +3053,7 @@ function letter(t){
 }
 function resign(){
   mode="end";BK.fired=false;
-  const t=runStats(),rows=suckRows(t);let score=0;
+  const t=runStats(),rows=carnageRows(t);let score=0;
   const body=rows.map(([label,v,w,quip])=>{const p=v*w;score+=p;return`<span>${label}<small>${quip}</small></span><span>${v}</span><span class="${p>0?"neg":""}">${p?"+"+(Math.round(p*10)/10):"0"}</span>`;}).join("");
   score=Math.round(score);const[title,line]=verdict(score);
   const brag=sharePanel(shareFacts("resigned",{o:"q",x:[15,40,75,120].filter(v=>score>=v).length,head:"Pursuing other opportunities",sub:`Exit interview: ${title}.`}));
@@ -3061,9 +3061,9 @@ function resign(){
   <h2>Notice submitted</h2>
   ${letter(t)}
   <button class="btn ghost sm" data-act="reletter">Write a different letter</button>
-  <h3>Exit interview: how much you sucked</h3>
-  <div class="bill suck"><span class="hd">Stat</span><span class="hd">Count</span><span class="hd">Suck pts</span>${body}
-    <span class="total">Suck score</span><span class="total"></span><span class="total neg">${score}</span></div>
+  <h3>Exit interview: carnage report</h3>
+  <div class="bill carnage"><span class="hd">Stat</span><span class="hd">Count</span><span class="hd">Carnage pts</span>${body}
+    <span class="total">Carnage score</span><span class="total"></span><span class="total neg">${score}</span></div>
   <div class="modcard"><b>${title}.</b> ${line}</div>
   ${brag}
   <div class="row"><button class="btn" data-act="again">Get a new job (play again)</button><button class="btn ghost" data-act="menu">Main menu</button></div>`);
