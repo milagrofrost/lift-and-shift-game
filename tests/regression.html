@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -851,6 +851,20 @@ test("Not my problem counts racks about to fail an audit and leaks about to brea
   G.showEnd("uptime");
   check(/Not my problem/.test(W.document.body.textContent) && /1 about to be breached/.test(W.document.body.textContent), "fired screen has no Not my problem stat");
   check(before === JSON.stringify([S.budget, S.security, S.err, racks.map(a => [a.timer, a.covered])]), "counting changed the run");
+});
+
+test("Carnage report rows quip about a clean record at 0 and about the mess otherwise", () => {
+  const S = fresh();
+  const rows = G.carnageRows({...S.run, nmp: {n: 0}, left: 0, secLost: 0, spend: 0}), row = l => rows.find(r => r[0] === l);
+  check(rows.every(r => r.length === 5 && r[3].length && r[4].length), "a row is missing its clean or messy quips");
+  const [clean, messy] = row("Breaches").slice(3);
+  const shown = () => W.document.querySelector(".bill.carnage").innerText, has = list => list.some(q => shown().includes(q));
+  for (let k = 0; k < 4; k++) {
+    S.run.breaches = 0; S.ss.breaches = 0; G.resign();
+    check(has(clean) && !has(messy), "no breaches should get a clean quip");
+    S.run.breaches = 2; G.resign();
+    check(has(messy) && !has(clean), "breaches should get a messy quip");
+  }
 });
 
 /* ---------- runner ---------- */

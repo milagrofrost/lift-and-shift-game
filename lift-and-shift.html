@@ -3005,21 +3005,23 @@ function runStats(){
   t.nmp=notMyProblem();
   return t;
 }
+/* each row: [label, count, points per unit, quips when the count is 0, quips when it isn't]; one of each
+   list is picked at random, so repeat quitters hear new jokes */
 function carnageRows(t){
   return[
-    ["Apps you left on-prem",t.left,4,"They'll outlive us all."],
-    ["Breaches",t.breaches,12,"Our data is on a forum now."],
-    ["Failed audits",t.audits,6,"The auditors know your name."],
-    ["Servers you let go offline",t.lost,5,"Smoke detectors filed a ticket."],
-    ["Failed cutovers",t.fails,4,"Gold first, huh?"],
-    ["Rollbacks",t.rollbacks,3,"Two steps forward, one step back."],
-    ["Missed legal/finance/exec emails",t.missed,3,"Inbox zero, but backwards."],
-    ["Tickets left to escalate",t.esc,2,"They set the building on fire."],
-    ["Not my problem",t.nmp.n,1,t.nmp.n?"Left flashing red as you left. Just keep walking.":"Nothing left flashing red as you left. Suspiciously thoughtful."],
-    ["Seconds held in the hallway",Math.round(t.heldT),0.5,"Quick questions are never quick."],
-    ["Vendor emails you answered",t.vendor,2,"Why. Just why."],
-    ["Security lost",Math.round(t.secLost),0.25,""],
-    ["IT spend ($k)",Math.round(t.spend),0.05,""],
+    ["Apps you left on-prem",t.left,4,["They're in a better place now.","Every last one made it out."],["Cloud is overrated anyway.","Some legacy apps are just too stubborn to leave."]],
+    ["Breaches",t.breaches,12,["You're not on the news for once.","The dark web is disappointed."],["Famous for all the wrong reasons.","Your data's doing a world tour."]],
+    ["Failed audits",t.audits,6,["No patch left behind.","The auditors sent a thank-you card."],["The auditors know your name.","Compliance is more of a vibe."]],
+    ["Servers you let go offline",t.lost,5,["Downtime? Never heard of 'em.","Five nines. Okay, four."],["The ceilings are caked in soot.","Smoke detectors filed a ticket."]],
+    ["Failed cutovers",t.fails,4,["You plan things out so well.","Measure twice, cut over once."],["YOLO.","Gold first, huh?"]],
+    ["Rollbacks",t.rollbacks,3,["You're either stubborn or lucky.","No take-backs needed."],["Keep rollin', rollin', rollin'.","Two steps forward, one step back."]],
+    ["Missed legal/finance/exec emails",t.missed,3,["No missed emails? I don't think you're really an engineer.","Legal has no notes."],["Inbox zero, but backwards.","Legal has questions.","Finance is still waiting on that sign-off.","The CEO's \"quick favor\" is now a board agenda item."]],
+    ["Tickets left to escalate",t.esc,2,["Ticket master.","The queue never saw it coming."],["Some just like to watch the world catch fire.","They set the building on fire."]],
+    ["Not my problem",t.nmp.n,1,["Nothing left flashing red as you left. Suspiciously thoughtful."],["Left flashing red as you left. Just keep walking."]],
+    ["Seconds held in the hallway",Math.round(t.heldT),0.5,["You're like a ghost. No one ever sees you.","Always got a mouthful of donuts every time you're in the hallway."],["Chatty Cathy over here. Get to work!","Quick questions are never quick."]],
+    ["Vendor emails you answered",t.vendor,2,["You missed the invite to P.F. Chang's."],["Have a quick moment to connect about our product?","Free dinner invitations galore. Was it worth it?"]],
+    ["Security lost",Math.round(t.secLost),0.25,["Look at Mr. Perfect over here.","A perfect record... did you even work here?"],["Nobody's perfect.","Close enough for government work."]],
+    ["IT spend ($k)",Math.round(t.spend),0.05,[""],[""]],
   ];
 }
 function verdict(s){
@@ -3054,7 +3056,7 @@ function letter(t){
 function resign(){
   mode="end";BK.fired=false;
   const t=runStats(),rows=carnageRows(t);let score=0;
-  const body=rows.map(([label,v,w,quip])=>{const p=v*w;score+=p;return`<span>${label}<small>${quip}</small></span><span>${v}</span><span class="${p>0?"neg":""}">${p?"+"+(Math.round(p*10)/10):"0"}</span>`;}).join("");
+  const body=rows.map(([label,v,w,clean,messy])=>{const p=v*w,quip=pick(v?messy:clean);score+=p;return`<span>${label}<small>${quip}</small></span><span>${v}</span><span class="${p>0?"neg":""}">${p?"+"+(Math.round(p*10)/10):"0"}</span>`;}).join("");
   score=Math.round(score);const[title,line]=verdict(score);
   const brag=sharePanel(shareFacts("resigned",{o:"q",x:[15,40,75,120].filter(v=>score>=v).length,head:"Pursuing other opportunities",sub:`Exit interview: ${title}.`}));
   show(`<div class="eyebrow">You gave up · ${client().name}</div>
