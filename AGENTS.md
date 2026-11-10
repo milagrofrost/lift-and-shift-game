@@ -51,7 +51,8 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 - Prevent repeated automatic retriggering within one continuous incident. Respect cooldowns.
 - Emergency freeze is a single carried charge, repurchasable after use. Extend existing protection with a cap rather than wasting the charge or stacking indefinitely.
 - No adrenaline system has been requested.
-- Red-alert slow-mo: during a red alert the world clock runs at 0.6× on Easy and 0.85× on Normal (none on Hard or Hardcore), easing in and out. Everything except the player slows: NPCs (users, VPs, bots, manager, AI agent, temp), timers, hazards, costs, uptime burn, music and animations. The player's movement, own fix bars (including the incident fix), rollback, energy regen and personal timers run in real time. A heartbeat fades in slow and quickens/fades out as it ends; the room's edges darken with it.
+- Red-alert slow-mo: during a red alert, hunting VPs approach at 0.6× on Easy and 0.85× on Normal (none on Hard or Hardcore), easing in and out. Only VPs slow: other users, NPCs, timers, hazards and the player's repairs run at normal speed. A heartbeat fades in slow and quickens/fades out as it ends; the song drops its bass and kick under it, and the room's edges darken.
+- Badge readers: each server-room door has one on the hallway side. Entering plays a faint ting and turns it green for 1 second; leaving turns it green silently; the player, the manager and VPs badge in normally. Bots, temps and the AI agent don't use it. Badge Access Audit (upgrade) only delays hunting VPs: they stand beside the door, are denied 3 times 3 seconds apart, pause, call Bob (about 4.5 s), then have access and follow you as normal until they catch you or give up. A VP can piggyback through while the door is green, including when someone walks out past them. The manager keeps access.
 
 ### AI Agent foundations
 

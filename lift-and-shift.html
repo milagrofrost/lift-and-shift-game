@@ -452,7 +452,7 @@ const overdue=()=>Math.max(0,dayNum()-S.cdays);
 /* Difficulty: how many of each client's servers you get (known + hidden), how busy the hazards are,
    and how big the uptime budget is. Normal eases in with 4 + 1 hidden at the first client. */
 const DIFFS={
-  easy:{label:"Easy",counts:[[3,1],[6,1],[8,2]],haz:0.7,err:1.3,days:3,users:0,restores:3,desc:"Smaller rooms, calmer hallways, a bigger uptime budget, and time slows for everyone but you in a red alert. Good for learning."},
+  easy:{label:"Easy",counts:[[3,1],[6,1],[8,2]],haz:0.7,err:1.3,days:3,users:0,restores:3,desc:"Smaller rooms, calmer hallways, a bigger uptime budget, and VPs hunting you slow down during a red alert. Good for learning."},
   normal:{label:"Normal",counts:[[4,1],[7,2],[10,2]],haz:1,err:1,days:0,users:0,restores:2,desc:"Starts gentle with 4 servers, and the last client is fully stocked."},
   hard:{label:"Hard",counts:[[6,2],[9,2],[10,2]],haz:1.3,err:0.8,days:-2,users:1,restores:1,desc:"Bigger rooms from day one, busier hallways, a tighter uptime budget."},
 };
@@ -507,6 +507,14 @@ const EMAIL={
   vendor:{icon:"📣",label:"Vendor",life:30,w:30},
 };
 const HUNTER_LINES=["I emailed you.","Did you see my email?","Per my email...","Just following up.","You never replied."];
+/* Badge readers sit on the hallway side of each server-room door. Walking in tings you in and the light goes green
+   for a second; walking out turns it green too, silently. With the Badge Access Audit upgrade, VPs hunting you get denied three times, call Bob,
+   and then they're in. A VP right behind someone who just badged in can piggyback through. */
+const READERS={0:{x:371,y:DY0-14,vx:392,vy:DY0-14},2:{x:589,y:DY0-14,vx:568,vy:DY0-14}};
+const BADGE_TRIES=3,BADGE_GAP=3,BADGE_PAUSE=1.5,BADGE_CALL=4.5,DOOR_OPEN=1;
+const DOOR_LINES=["I know you're in there.","I can see you through the little window.","*knock knock* It's about my email.","Why is this light red? It was green yesterday.","My badge worked at the Christmas party.","That's fine. I'll wait. I have all day.","Is there a doorbell?","I'm a VP. Does the door know that?"];
+const CALL_LINES=["📱 Bob! How's the boat?",["📱 Quick favor. Need into the data center.","📱 It's a P1. Probably. Does it matter?","📱 Can you just add me to a group? Any group.","📱 Tell Linda I said hi. Anyway, the door."],"📱 You're a legend. Golf Thursday?"];
+const IN_LINES=["Thanks, Bob.","Nice server room. Cold. Anyway, my email.","Found you. Per my last email..."];
 function pickEmailType(){let r=rand(0,100);for(const k in EMAIL){r-=EMAIL[k].w;if(r<=0)return k;}return "vendor";}
 // security loss, tracked by cause so getting fired names the real culprit; one warning when it gets critical
 function secHit(cause,amt){
@@ -575,6 +583,7 @@ const UPGRADES=[
   {id:"bluegreen",name:"Blue-Green Cutovers",icon:"🔀",cost:6,desc:"Run old and new side by side. You carry a see-through copy while the original stays live in its rack, so moving it costs no downtime. The original still takes fires and escalations, and if it goes offline the copy is canceled. Failed cloud deployments stay gray; hold E there to retry."},
   {id:"spin",name:"Redefine \"Uptime\"",icon:"🎤",cost:3,max:3,desc:"Leadership skills. That outage was a \"planned degradation event.\" Your uptime recovers faster and can recover further: up to 65%, 80%, then 95% of the budget. Migrations also cost 20% less uptime per level."},
   {id:"statuspage",name:"Status Page",icon:"📣",cost:3,desc:"During a red alert, users check the status page instead of grabbing you. (Execs you ignored still come find you.)"},
+  {id:"badge",name:"Badge Access Audit",icon:"🪪",cost:3,desc:"Somebody finally audited who can badge into the data center. A VP hunting you gets denied at the server-room door three times, then calls Bob in Facilities and gets in anyway. Buys you about 12 seconds. Don't let them piggyback in behind you. (Your manager keeps their badge.)"},
   {id:"postmortem",name:"Blameless Postmortems",icon:"📝",cost:3,desc:"Learn from every incident. Each red alert you resolve gives back half the story point it cost."},
   {id:"oncall",name:"On-Call Rotation",icon:"📟",cost:3,desc:"You're not the only hero anymore. Energy regenerates 50% faster."},
   {id:"observe",name:"Observability",icon:"📈",cost:4,desc:"Early warnings: racks about to fail compliance and leaks about to breach get a pulsing ring and an alert. You can see what's oversized, so cloud apps cost 10% less to run."},
@@ -654,6 +663,9 @@ const SFX={
   fired:()=>[392,330,262,196].forEach((f,i)=>tone(f,0.32,{type:"triangle",vol:0.2,delay:i*0.22})),
   // a warm, slightly strummed major chord that rings out: the computer starting up
   boot:()=>{[[175,0],[349,0.01],[440,0.02],[523,0.03],[698,0.04]].forEach(([f,d])=>{tone(f,2.4,{type:"sine",vol:0.16,delay:d,attack:0.02});tone(f*2,1.2,{type:"triangle",vol:0.03,delay:d,attack:0.02});});},
+  // a faint, bell-like "ting": a pure high note with a soft overtone that rings out briefly
+  badgeOK:()=>{tone(2637,0.45,{vol:0.022,attack:0.003});tone(5274,0.2,{vol:0.006,attack:0.003});},
+  badgeNo:()=>{tone(210,0.12,{type:"square",vol:0.045});tone(210,0.14,{type:"square",vol:0.045,delay:0.17});},
   siren:()=>{tone(620,0.35,{type:"sawtooth",vol:0.06,slide:260});tone(880,0.35,{type:"sawtooth",vol:0.06,slide:-260,delay:0.36});},
 };
 function sfx(n){
@@ -667,7 +679,7 @@ function setHiss(on){
   if(!AU.hiss){const s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();s.buffer=AU.noise;s.loop=true;f.type="highpass";f.frequency.value=1800;g.gain.value=0;s.connect(f);f.connect(g);g.connect(AU.master);s.start();AU.hiss=s;AU.hissGain=g;}
   AU.hissGain.gain.setTargetAtTime(on&&AU.on?0.09:0,c.currentTime,0.05);
 }
-/* red-alert slow-mo heartbeat: fades in slow and heavy as time slows, speeds back up and fades out as it returns */
+/* red-alert slow-mo heartbeat: fades in slow and heavy as the alert starts, speeds back up and fades out as it clears */
 const HB={next:0,beat:-9};
 function heartTick(){
   const c=AU.ctx,k=mode==="play"?slowDepth():0;
@@ -751,8 +763,7 @@ function musicHeat(){
 }
 const moodLevel=m=>m.startsWith("alert")?2:m.startsWith("tense")?1:0;
 const moodHot=()=>MUS.heat>=2&&MUS.mood.startsWith("tense");
-// red-alert slow-mo drags the music down with the rest of the world
-const moodBpm=()=>(MOODS[MUS.mood].bpm+(moodHot()?8:0))*(mode==="play"&&S&&S.slow<1?S.slow:1);
+const moodBpm=()=>MOODS[MUS.mood].bpm+(moodHot()?8:0);
 function wantMood(){
   if(mode==="celebrate")return"victory";
   if(mode!=="play"||!S)return"calm";
@@ -1384,6 +1395,34 @@ function drawManager(){
   if(M.state==="email"||M.state==="patch"){ctx.strokeStyle=C.amber;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(x,y,20,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,M.work/(M.state==="patch"?MGR_LOOK_TIME:1.2)));ctx.stroke();}
   tx(`MANAGER${M.state==="guard"?" · ON GUARD":M.state==="chat"?" · CHATTING":M.state==="patch"?" · JUST LOOKING":""}`,x,y+26,8,C.amber,{font:DISP,weight:700});
 }
+const doorOpen=z=>((S.doorG||{})[z]||0)>S.t;
+function badgeIn(z,quiet){(S.doorG||(S.doorG={}))[z]=S.t+DOOR_OPEN;if(!quiet)sfx("badgeOK");}
+// someone walks from the hallway into a server room: the reader tings them in. Walking out unlocks the door
+// too (green, no ting, like a request-to-exit sensor), so a VP waiting outside can slip in as you leave.
+function doorCross(e,vp){
+  const z=zoneOf(e.x),pz=e.lz??z;e.lz=z;
+  if(pz!==1&&z===1){badgeIn(pz,true);return;}
+  if(pz!==1||z===1)return;
+  if(vp&&S.upgrades.badge&&!e.access){fl(e,"🚪 piggybacked",C.amber);return;}
+  badgeIn(z);
+}
+// a VP at the reader: denied three times, 3 seconds apart, then a pause and a call to Bob
+function badgeTry(u,z,dt){
+  if(u.call>0||u.access)return;
+  u.badgeT=(u.badgeT||0)-dt;if(u.badgeT>0)return;
+  if((u.badgeN||0)<BADGE_TRIES){
+    u.badgeN=(u.badgeN||0)+1;u.badgeT=u.badgeN<BADGE_TRIES?BADGE_GAP:BADGE_PAUSE;
+    (S.doorNo||(S.doorNo={}))[z]=S.t+0.6;sfx("badgeNo");
+    u.shout=pick(DOOR_LINES.filter(l=>l!==u.shout));u.shoutT=2.6;
+  }else{u.call=BADGE_CALL;u.callStep=0;}
+}
+function badgeCall(u,dt){
+  u.call-=dt;const k=BADGE_CALL-u.call,step=k<1.5?0:k<3?1:2;
+  if(u.callStep!==step+1){u.callStep=step+1;const l=CALL_LINES[step];u.shout=Array.isArray(l)?pick(l):l;u.shoutT=1.6;}
+  if(u.call>0)return;
+  u.call=0;u.access=true;u.shout=IN_LINES[0];u.shoutT=1.8;
+  toast("🪪 The VP called Bob in Facilities. They have badge access now."); // the reader goes green as they walk in
+}
 function tickUsers(dt){
   const P=S.p;if(P.userImm>0)P.userImm-=dt;if(P.ghost>0)P.ghost-=dt; // your own timers keep running during a freeze
   if(freezeActive())return;
@@ -1402,9 +1441,16 @@ function tickUsers(dt){
     if(S.pizza&&!u.hunter){const k=S.users.indexOf(u),ang=k*1.9;goTo(u,S.pizza.x+Math.cos(ang)*34,S.pizza.y+Math.sin(ang)*26,80,dt);continue;}
     if(P.heldBy===u){if(P.stun<=0){P.heldBy=null;u.cd=3;P.userImm=1.2;if(u.hunter)u.gone=true;}continue;}
     if(u.hunter){
-      // an ignored exec walks (slower than you) to wherever you are, holds you once, then leaves
+      // an ignored exec walks (slower than you) to wherever you are, holds you once, then leaves.
+      // Red-alert slow-mo slows their approach. With a badge audit they have to get through the door first.
       u.life-=dt;if(u.life<=0){u.gone=true;fl(u,"gave up",C.muted);continue;}
-      goTo(u,P.x,P.y,70,dt);
+      if(u.call>0)badgeCall(u,dt);
+      const sp=70*(S.slow??1),room=zoneOf(P.x),uz=zoneOf(u.x),badge=S.upgrades.badge&&!u.access;
+      if(badge&&uz===1&&room!==1&&!doorOpen(room)){const R=READERS[room];if(goTo(u,R.vx,R.vy,sp,dt))badgeTry(u,room,dt);}
+      else goTo(u,P.x,P.y,sp,dt);
+      // no access yet: a red door stops them at the hallway edge
+      if(badge&&uz===1){if(!doorOpen(0))u.x=Math.max(u.x,382);if(!doorOpen(2))u.x=Math.min(u.x,578);}
+      doorCross(u,true);
     }else{
       u.turn-=dt;
       const fr=S.alert||frantic(u); // red alert, or a user who just rejected the chatbot
@@ -2318,36 +2364,36 @@ function buildPrompt(){
   }
   S.prompt=(S.ext&&S.t-S.ext.t<0.08)?"":parts.join("  ·  ");
 }
-/* Red-alert slow-mo (Easy, and a little on Normal): the world runs slower while you don't. Everything else,
-   NPCs, timers, hazards, costs, uptime burn and animations, gets the slowed clock; you move, fix incidents, roll
-   back and regain energy in real time. It eases in when a red alert starts and back out when it clears. */
+/* Red-alert slow-mo (Easy, and a little on Normal): VPs coming to find you slow down, so you get more time to fix
+   the incident before they reach you. Everyone and everything else, your repairs included, runs at normal speed.
+   A heartbeat fades in and the room's edges darken; it all eases back out when the alert clears. */
 const ALERT_SLOW={easy:0.6,normal:0.85,hard:1};
 const alertSlowGoal=()=>S.alert?(ALERT_SLOW[S.diff||"normal"]??1):1;
-function tickSlow(rdt){
+function tickSlow(dt){
   const goal=alertSlowGoal(),cur=S.slow??1;
-  S.slow=Math.abs(goal-cur)<0.002?goal:cur+(goal-cur)*Math.min(1,rdt*(goal<cur?1.6:2.2));
+  S.slow=Math.abs(goal-cur)<0.002?goal:cur+(goal-cur)*Math.min(1,dt*(goal<cur?1.6:2.2));
 }
-// 0..1: how deep into slow-mo we are right now (1 = as slow as Easy gets)
+// 0..1: how deep into slow-mo we are right now (1 = as slow as Easy gets); drives the VPs, heartbeat and vignette
 const slowDepth=()=>S?clamp((1-(S.slow??1))/(1-ALERT_SLOW.easy),0,1):0;
-function update(rdt){
-  tickSlow(rdt);const dt=rdt*S.slow; // dt: world time; rdt: yours
+function update(dt){
+  tickSlow(dt);
   S.t+=dt;S.time+=dt;
   const e0=S.energy;
-  const P=S.p;if(P.stun>0)P.stun-=rdt;if(P.inv>0)P.inv-=rdt;
+  const P=S.p;if(P.stun>0)P.stun-=dt;if(P.inv>0)P.inv-=dt;
   const stk=stick.on&&(stick.x||stick.y),mx=stk?stick.x:(keys.r?1:0)-(keys.l?1:0),my=stk?stick.y:(keys.d?1:0)-(keys.u?1:0),m=stk?1:Math.hypot(mx,my)||1;
-  if(P.boost>0)P.boost-=rdt;
+  if(P.boost>0)P.boost-=dt;
   let sp=175*(S.upgrades.coffee?1.15:1)*(P.boost>0?1.3:1);
   if(S.carry)sp*=S.carry.heavy===2?0.5:S.carry.heavy?0.62:0.78;
   if(P.stun>0)sp=0;
-  moveEnt(P,mx/m*sp*rdt,my/m*sp*rdt,playerR());
-  tickFreeze(dt);tickUsers(dt);tickShouts(dt);if(!freezeActive())tickChatbots(dt);tickSpecials(dt);tickTemp(dt);tickManager(dt);tickAgent(dt);
+  moveEnt(P,mx/m*sp*dt,my/m*sp*dt,playerR());doorCross(P,false);
+  tickFreeze(dt);tickUsers(dt);tickShouts(dt);if(!freezeActive())tickChatbots(dt);tickSpecials(dt);tickTemp(dt);tickManager(dt);if(S.mgr)doorCross(S.mgr,false);tickAgent(dt);
   // red alert: any gold server offline or any cloud breach
   const crit=critList(),was=S.alert;S.alert=crit.length>0;
   if(S.alert&&!was){
     if(S.carry){const copy=liveCopy(S.carry);returnToRack(S.carry);S.carry=null;fl(P,copy?"Copy discarded":"Dropped everything",C.danger);}
     toast(`🚨 RED ALERT: ${crit.map(c=>c.a.name).join(", ")}. Nothing else works until it's fixed. Incident fixes cost no energy.`);unplanned(1,"alert");
   }
-  if(S.alert){S.sirenT=(S.sirenT||0)-rdt;if(S.sirenT<=0){S.sirenT=1.6;sfx("siren");}}else S.sirenT=0;
+  if(S.alert){S.sirenT=(S.sirenT||0)-dt;if(S.sirenT<=0){S.sirenT=1.6;sfx("siren");}}else S.sirenT=0;
   if(!S.alert&&was){
     toast("✅ All clear. Back to work.");
     // blameless postmortem: the incident becomes a lesson and gives back 1 story point
@@ -2362,10 +2408,10 @@ function update(rdt){
   S.frozen=frozen;
   // rollback: hold Space at an offline cloud app (works during red alerts and move freezes; it's the escape hatch)
   const rbt=rollbackTarget();
-  if(rbt&&keys.grab&&P.stun<=0){grabPressed=false;rbt.a.rb+=rdt;S.rbT=rbt;if(rbt.a.rb>=ROLLBACK_TIME)doRollback(rbt.i);}
+  if(rbt&&keys.grab&&P.stun<=0){grabPressed=false;rbt.a.rb+=dt;S.rbT=rbt;if(rbt.a.rb>=ROLLBACK_TIME)doRollback(rbt.i);}
   else{S.rbT=null;S.cloud.forEach(a=>{if(a&&a.rb&&!keys.grab)a.rb=0;});}
   if(grabPressed){grabPressed=false;grabOrPipeline();}
-  doFix(rdt); // your own hands, including the red-alert fix bar, run in real time
+  doFix(dt);
   tickPipeline(dt);
   // a server being moved is in its cutover window: it counts as down at a quarter of the outage rate (MIGRATE_BURN)
   {const moving=shutDownMoving(),m=migrateMult();
@@ -2375,11 +2421,11 @@ function update(rdt){
   const ai=aiOn();for(const b of S.bots){b.flash=Math.max(0,b.flash-dt);(b.kind==="patch"?patchBot:moverBot)(b,dt,ai,b.kind==="patch"?patchBotSpeed():85);}
   S.fl=S.fl.filter(f=>(f.t+=dt)<f.life);
   S.fx=S.fx.filter(f=>(f.t+=dt)<f.life);if(S.shake>0)S.shake-=dt;
-  trackEnergy(S.energy-e0,rdt); // everything except passive regen
+  trackEnergy(S.energy-e0,dt); // everything except passive regen
   // clean streak: after 20s with no breach or failed audit (and no breach open), security slowly recovers
   S.secCalm=(S.secCalm||0)+dt;
   if(S.secCalm>20&&!S.cloud.some(a=>a&&a.breach)&&S.security<100){S.security=Math.min(100,S.security+0.3*dt);if(S.security>=30)S.secWarned=false;}
-  S.energy=clamp(S.energy+(S.upgrades.oncall?0.9:0.6)*rdt,0,100);
+  S.energy=clamp(S.energy+(S.upgrades.oncall?0.9:0.6)*dt,0,100);
   buildPrompt();
   // running costs. The report also tracks what the cloud apps would have cost had they stayed on-prem;
   // it's shown but never scored, and it goes negative while the cloud costs more than on-prem.
@@ -2422,6 +2468,16 @@ function drawFloor(){
   tx("CLOUD · us-east-1",944,22,13,C["sky-ink"],{font:DISP,align:"right",weight:700});
   if(S.lz)tx(`☁ landing zone: ${S.lz} apps`,944,54,10,C["sky-ink"],{align:"right",weight:600});
   if(S.wave&&S.wave.length)tx(`🚚 ${S.wave.length} more servers still at the other building`,16,40,10,C.amber,{align:"left",weight:600});
+}
+// the badge readers by each server-room door: red until someone badges in, then green for a second
+function drawReaders(){
+  for(const z of [0,2]){
+    const R=READERS[z],open=doorOpen(z),no=!open&&((S.doorNo||{})[z]||0)>S.t,blink=no&&Math.floor(S.t*10)%2===0,col=open?"#3dff8a":"#ff3b2e";
+    ctx.fillStyle="#1b2229";rr(R.x-4,R.y-8,8,15,2);ctx.fill();ctx.strokeStyle="#3a4652";ctx.lineWidth=1;rr(R.x-4,R.y-8,8,15,2);ctx.stroke();
+    ctx.save();ctx.shadowColor=col;ctx.shadowBlur=open||blink?14:5;ctx.fillStyle=col;ctx.globalAlpha=open||blink?1:0.7;
+    ctx.beginPath();ctx.arc(R.x,R.y-3,2.3,0,7);ctx.fill();ctx.restore();
+    ctx.fillStyle="#56636f";ctx.fillRect(R.x-2.5,R.y+2,5,3);
+  }
 }
 /* conveyor lanes through the hallway doorway, with server boxes riding them */
 function drawPipeline(){
@@ -2676,7 +2732,7 @@ function draw(){
   ctx.clearRect(0,0,W,H);if(!S)return;
   ctx.save();
   if(S.shake>0&&!RM){const m=S.shake*14;ctx.translate((Math.random()-.5)*m,(Math.random()-.5)*m);}
-  drawFloor();
+  drawFloor();drawReaders();
   if(freezeActive()){
     ctx.fillStyle="rgba(150,220,255,.09)";ctx.fillRect(0,0,W,H);
     ctx.strokeStyle="#a6e5ff";ctx.lineWidth=6;ctx.strokeRect(3,3,W-6,H-6);
@@ -2827,6 +2883,7 @@ const NOTES=[
   ["Uptime error budget","You get fired for too much downtime, not for spending money.","Site reliability engineering sets a reliability target and treats the allowed downtime as a budget. Spend it on progress, and stop taking risks when it runs low. Real error budgets are measured over a rolling window, so they recover as old incidents age out, and yes, sometimes as someone redefines the metric."],
   ["Blue-green cutovers","With the upgrade, you carry a copy while on-prem stays live, and a failed cloud deployment stays gray for retry.","Running the old and new environments side by side means rollback is just flipping traffic back. It turns a scary cutover into a reversible one."],
   ["Status page","With the upgrade, users stop grabbing you during red alerts.","During an incident, proactive communication cuts the flood of \"is it down?\" questions, so the people fixing it can keep fixing it."],
+  ["Badge access audit","With the upgrade, VPs hunting you get denied at the server-room door three times before they call in a favor and get in. They can still piggyback in behind you. Your manager keeps access.","Access reviews keep data center badges limited to the people who need them. In real life, tailgating and a friend in Facilities are how that control usually fails."],
   ["Blameless postmortems","With the upgrade, each resolved red alert gives back half the story point it cost.","Teams that write blameless postmortems turn incidents into lessons and fixes, instead of repeating the same outage next month."],
   ["On-call rotation","With the upgrade, your energy comes back 50% faster.","One person carrying every page burns out. A sustainable rotation keeps the team rested enough to respond well."],
   ["Observability","With the upgrade, you get warned before compliance fails or a leak breaches.","Good monitoring and alerting tell you something is going wrong before customers or auditors do."],
@@ -2879,7 +2936,7 @@ function howToPlay(){
     <div><span class="ic">⏳</span><span><b>Compliance timer.</b> Every on-prem server runs a compliance cycle. Hold E to patch it: it costs energy and covers the rest of that cycle (green bar, ✓ COVERED). When the cycle ends, a new uncovered one starts and needs another patch. If an uncovered cycle runs out, the audit fails: $12k and 4 security, and a fresh cycle starts. Migrating stops the clock for good, and a server migrated while covered is half as likely to leak for its first 30 seconds in the cloud.</span></div>
     <div><span class="ic">🔥</span><span><b>Fire.</b> Escalated tickets start fires. Escalations run 75% slower during any outage or active breach. Change freezes pause escalations, fire growth and spread. Hold E to put one out. If it burns all the way, the server goes offline, burning your uptime budget until you hold E to bring it back up. While any server is offline, nothing can be moved.</span></div>
     <div><span class="ic">🥇</span><span><b>Tiers.</b> Gold, silver and bronze servers. Gold takes longest to bring back up (5s) and burns uptime fastest: 3 per second, against 1 for silver and 0.25 for bronze.</span></div>
-    <div><span class="ic">🚨</span><span><b>Red alert.</b> A gold server offline or any cloud breach. You drop everything and can only fix incidents until it's over. Incident fixes never cost energy. On Easy (and a little on Normal), time slows for everyone but you until it's cleared.</span></div>
+    <div><span class="ic">🚨</span><span><b>Red alert.</b> A gold server offline or any cloud breach. You drop everything and can only fix incidents until it's over. Incident fixes never cost energy. On Easy (and a little on Normal), VPs coming to find you slow down until it's cleared, so you get more time to fix it.</span></div>
     <div><span class="ic">💧</span><span><b>Cloud leak.</b> Hold E to seal it by hand (it costs energy; security upgrades make leaks rarer). Ignore it and it becomes a breach that spreads to the next app every 10 seconds. Unpatched cloud apps drift: the longer since one was last patched (sealed or contained), the more often it leaks, up to twice as often. Cloud Auto-Patching stops the drift.</span></div>
     <div><span class="ic">📧</span><span><b>Email inbox.</b> At the top of the hallway, with a 5-slot bar. ⚖️ legal, 💰 finance and 👔 exec emails fill it; 📣 vendor spam doesn't and disappears by itself. The bar shows every important email waiting: once it is full, new ones bounce. When the bar is full, fines trickle in and a VP comes hunting you, again and again, until you answer some. While you're at the inbox answering, the VP won't interrupt. Answering a finance email, yours or your manager's, also pushes back the closest license renewal.</span></div>
     <div><span class="ic">🎫</span><span><b>Ticket queue.</b> At the bottom of the hallway, with a 5-slot bar. Hold E there to close tickets. The bar shows every ticket waiting: once it is full, new ones are turned away, so there is never a hidden backlog. When the bar fills, it flashes red and tickets escalate 🚨 one at a time until you work it down. Each one sets a server on fire and costs half a story point. They're at least 12 seconds apart, half as fast while a server is burning, and 75% slower during an outage or breach. Focus time and change freezes pause them.</span></div>
