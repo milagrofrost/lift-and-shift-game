@@ -42,6 +42,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 
 - Ticket escalations **do cause server fires**. Do not replace this with random infrastructure fires or penalties alone.
 - During any outage or active breach, slow escalation pressure considerably; the feature branch uses one-quarter normal escalation speed. Escalations still happen outside explicit freezes.
+- The ticket queue and the inbox hold only what their bars show (5 slots, plus retrospective slots). A full queue takes nothing new, so there is never a hidden backlog; a full ticket queue still escalates and a full inbox still sends VPs until it is worked down. Vendor spam is not capped, and an AI agent mistake can push the inbox past the cap by its two angry replies.
 - Each escalation needs 12 seconds of full queue, and a dip below full does not reset that wait. While any server is burning, escalation runs at half speed; an outage or active breach takes precedence at one-quarter speed.
 - Escalations retain server identity through pickup, relocation, pipeline transit, failed cutover, and rollback. Wait at the last rack while the target is absent; reacquire its actual rack when it returns. Do not silently retarget a different server or discard the escalation on pickup.
 - Successful migration may retire that server's escalation.

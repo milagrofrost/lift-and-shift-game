@@ -29,7 +29,7 @@
    Results: the page title becomes "PASS n/n" or "FAIL k/n", and window.__RESULTS holds the details. */
 const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
-const NAMES = ("cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
+const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
   "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
@@ -533,6 +533,21 @@ test("the agent calls off its own escalation, even after it lands", () => {
   check(a.fire === 0, "landed escalation still burning");
 });
 const agentAt = (S, job) => { S.agent = {x: job.x, y: job.y, job, work: 0, say: "", sayT: 0, wx: 480, wy: 260, wT: 0}; };
+test("a full ticket queue or inbox takes nothing new, so there is never a hidden backlog", () => {
+  const S = fresh(); S.focus = 0; S.freezeT = 0;
+  for (let t = 0; t < 600; t += 0.05) G.spawns(0.05);
+  check(S.tk.length === G.ticketLimit(), `tickets piled up to ${S.tk.length}`);
+  check(G.importantMail().length === G.inboxLimit(), `important mail piled up to ${G.importantMail().length}`);
+  check(S.em.some(m => m.type === "vendor"), "vendor spam stopped arriving at a full inbox");
+  S.tk.pop(); S.em = S.em.filter(m => m.type === "vendor");
+  for (let t = 0; t < 60; t += 0.05) G.spawns(0.05);
+  check(S.tk.length === G.ticketLimit() && G.importantMail().length > 0, "the queues did not refill after being worked down");
+});
+test("a retrospective slot raises the cap with the bar", () => {
+  const S = fresh(); S.retro = {triage: 1, inbox: 1};
+  for (let t = 0; t < 600; t += 0.05) G.spawns(0.05);
+  check(S.tk.length === 6 && G.importantMail().length === 6, `caps were ${S.tk.length} and ${G.importantMail().length}`);
+});
 const runAgent = (secs, step = 0.1) => { for (let t = 0; t < secs; t += step) G.tickAgent(step); };
 test("the AI agent works the queues once either is half full, otherwise it goes looking for fixes", () => {
   const S = fresh(); S.upgrades = {agent: 1}; S.agent = {};
