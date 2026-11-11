@@ -303,10 +303,11 @@ kbd{font-family:var(--f-mono);font-size:11.5px;background:var(--panel-2);border:
 .stick-base{position:absolute;left:max(24px,env(safe-area-inset-left,0px));bottom:20px;width:132px;height:132px;margin:0;border-radius:50%;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.26);opacity:.6}
 .stick-zone.on .stick-base{opacity:1;background:rgba(255,255,255,.12)}
 .stick-knob{position:absolute;left:50%;top:50%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;background:rgba(255,255,255,.26);border:2px solid rgba(255,255,255,.5)}
-.tbtn{position:absolute;pointer-events:auto;touch-action:none;border-radius:50%;background:rgba(255,255,255,.13);border:2px solid rgba(255,255,255,.42);color:rgba(255,255,255,.95);font-family:var(--f-display);font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.8);padding:0;-webkit-tap-highlight-color:transparent}
-.tbtn.ready{background:rgba(255,181,71,.24);border-color:rgba(255,181,71,.9)}
-.tbtn.off{background:rgba(40,46,52,.32);border-color:rgba(150,156,160,.42);color:rgba(185,191,196,.72);text-shadow:0 1px 2px rgba(0,0,0,.7)}
-.tbtn.on{background:rgba(255,181,71,.5);border-color:#ffb547;color:rgba(255,255,255,.95)}
+.tbtn{position:absolute;pointer-events:auto;touch-action:none;border-radius:50%;background:rgba(10,20,28,.45);border:2px solid rgba(255,255,255,.5);color:#fff;font-family:var(--f-display);font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.8);padding:0;-webkit-tap-highlight-color:transparent}
+/* dark see-through fills so the words read over the light cloud floor too (measured: lit ≥5:1, gray ≥3:1 on every floor) */
+.tbtn.ready{background:rgba(60,38,6,.62);border-color:#ffb547}
+.tbtn.off{background:rgba(10,20,28,.6);border-color:rgba(190,196,200,.55);color:rgba(205,211,215,.85);text-shadow:0 1px 2px rgba(0,0,0,.7)}
+.tbtn.on{background:rgba(140,88,16,.82);border-color:#ffb547;color:#fff}
 #t-fix,#t-grab{white-space:nowrap;overflow:hidden;line-height:1}
 #t-fix{right:max(14px,env(safe-area-inset-right,0px));bottom:14px;width:124px;height:124px;font-size:26px}
 #t-grab{right:calc(max(14px,env(safe-area-inset-right,0px)) + 132px);bottom:14px;width:100px;height:100px;font-size:20px}
@@ -2699,7 +2700,7 @@ function drawFloor(){
   ctx.save();ctx.beginPath();ctx.rect(600,0,360,H);ctx.clip();
   ctx.fillStyle=C.sky;ctx.fillRect(600,0,360,H);
   ctx.fillStyle=C["sky-2"];
-  for(let k=0;k<6;k++){const cx=600+((k*131+S.t*(6+k))%460)-50,cy=40+k*92;ctx.globalAlpha=.7;for(const[ox,oy,r]of[[0,0,26],[24,-8,20],[46,2,22],[22,10,20]]){ctx.beginPath();ctx.arc(cx+ox,cy+oy,r,0,7);ctx.fill();}}
+  for(let k=0;k<6;k++){const cx=600+((k*131+decoT()*(6+k))%460)-50,cy=40+k*92;ctx.globalAlpha=.7;for(const[ox,oy,r]of[[0,0,26],[24,-8,20],[46,2,22],[22,10,20]]){ctx.beginPath();ctx.arc(cx+ox,cy+oy,r,0,7);ctx.fill();}}
   ctx.globalAlpha=1;ctx.restore();
   ctx.fillStyle=C.wall;for(const w of WALLS){ctx.fillRect(w.x,w.y,w.w,w.h);}
   ctx.fillStyle=C.amber;ctx.globalAlpha=.35;for(const x of[354,594])for(let y=DY0+6;y<DY1;y+=16)ctx.fillRect(x+3,y,6,8);ctx.globalAlpha=1;
@@ -2726,7 +2727,7 @@ function drawPipeline(){
     const y=236+k*44,x0=322,x1=640;
     ctx.fillStyle="rgba(20,30,40,.85)";ctx.fillRect(x0,y-9,x1-x0,18);
     ctx.strokeStyle="rgba(69,174,252,.55)";ctx.lineWidth=1.5;ctx.strokeRect(x0,y-9,x1-x0,18);
-    ctx.fillStyle="rgba(69,174,252,.35)";for(let cx=x0+((S.t*40)%22);cx<x1-6;cx+=22){ctx.beginPath();ctx.moveTo(cx,y-5);ctx.lineTo(cx+6,y);ctx.lineTo(cx,y+5);ctx.closePath();ctx.fill();}
+    ctx.fillStyle="rgba(69,174,252,.35)";for(let cx=x0+((decoT()*40)%22);cx<x1-6;cx+=22){ctx.beginPath();ctx.moveTo(cx,y-5);ctx.lineTo(cx+6,y);ctx.lineTo(cx,y+5);ctx.closePath();ctx.fill();}
     if(k===0)tx("CI/CD",x0+18,y-15,8,C.leak,{font:DISP,weight:700});
   }
   for(const j of S.pipe){
@@ -2737,6 +2738,9 @@ function drawPipeline(){
     bar(x-16,y+13,32,3,f,C.leak,"rgba(0,0,0,.4)");
   }
 }
+/* Decorative loops (smoke, glow, pulses, glitch bars, drips) read this clock: under reduced motion it stands still,
+   so each effect holds one steady frame while the label, symbol and progress stay. */
+const decoT=()=>RM?0:S.t;
 function drawRack(i,a){
   const p=RACKS[i],x=p.x-34,y=p.y-33,w=68,h=66;
   if(!a){ctx.setLineDash([4,4]);ctx.strokeStyle="rgba(255,255,255,.09)";ctx.lineWidth=1;rr(x,y,w,h,6);ctx.stroke();ctx.setLineDash([]);
@@ -2746,7 +2750,7 @@ function drawRack(i,a){
   if(a.hidden){ctx.fillStyle="#1d1817";rr(x,y,w,h,6);ctx.fill();ctx.setLineDash([3,3]);ctx.strokeStyle=C.muted;ctx.stroke();ctx.setLineDash([]);
     if(a.fire>0)em("🔥",p.x+20,p.y-22,18);
     const busy=a.disc>0&&S.t-(a.discT||0)<0.15;
-    tx("?",p.x,p.y-8+(busy?Math.sin(S.t*10)*2:0),26,busy?C.amber:C.muted,{font:DISP,weight:700});
+    tx("?",p.x,p.y-8+(busy?Math.sin(decoT()*10)*2:0),26,busy?C.amber:C.muted,{font:DISP,weight:700});
     if(a.disc>0){
       tx(busy?"INVESTIGATING":"PARTLY CHECKED",p.x,p.y+14,8.5,C.amber,{font:DISP,weight:700,max:w-6});
       if(busy){ctx.font=`600 10px ${MONO}`;const s=DISCOVER_LINES[Math.floor(S.t/1.1)%DISCOVER_LINES.length],tw=ctx.measureText(s).width+10;
@@ -2762,7 +2766,7 @@ function drawRack(i,a){
     ctx.strokeStyle=T.dark;ctx.lineWidth=2;ctx.setLineDash([5,3]);rr(x,y,w,h,6);ctx.stroke();ctx.setLineDash([]);
     ctx.fillStyle=T.dark;ctx.fillRect(x+1,y+1,w-2,5);
     ctx.globalAlpha=.25;em("🖥️",p.x,p.y-8,24);ctx.globalAlpha=1;
-    for(let k=0;k<3;k++){const f=(S.t*0.6+k/3)%1;ctx.fillStyle=`rgba(150,150,150,${0.45*(1-f)})`;ctx.beginPath();ctx.arc(p.x-8+k*8+Math.sin(S.t*2+k)*3,y-4-f*26,4+f*6,0,7);ctx.fill();}
+    for(let k=0;k<3;k++){const f=(decoT()*0.6+k/3)%1;ctx.fillStyle=`rgba(150,150,150,${0.45*(1-f)})`;ctx.beginPath();ctx.arc(p.x-8+k*8+Math.sin(decoT()*2+k)*3,y-4-f*26,4+f*6,0,7);ctx.fill();}
     tx("OFFLINE",p.x,p.y-8,11,C.danger,{font:DISP,weight:700});
     tx(a.name,p.x,p.y+15,10.5,C.muted,{max:w-8,weight:600});
     tx(T.label,x+w-5,y+12,7.5,T.c,{align:"right",weight:600});
@@ -2772,7 +2776,7 @@ function drawRack(i,a){
     return;
   }
   ctx.save();
-  if(a.fire>0){ctx.shadowColor=C.danger;ctx.shadowBlur=18+8*Math.sin(S.t*14+i);}
+  if(a.fire>0){ctx.shadowColor=C.danger;ctx.shadowBlur=18+8*Math.sin(decoT()*14+i);}
   ctx.fillStyle=C.rack;rr(x,y,w,h,6);ctx.fill();ctx.restore();
   ctx.strokeStyle=a.fire>0?C.danger:T.c;ctx.lineWidth=2;rr(x,y,w,h,6);ctx.stroke();
   ctx.fillStyle=T.c;ctx.fillRect(x+1,y+1,w-2,5);
@@ -2786,7 +2790,7 @@ function drawRack(i,a){
   tx(a.covered?"✓ COVERED":`${Math.ceil(a.timer)}s`,p.x,y+h+9,10,a.covered?C.ok:ratioColor(r),{weight:600});
   if(a.botErr){
     // the Patch Bot gave up on this one: a human has to patch it
-    const pulse=0.6+0.4*Math.sin(S.t*8);ctx.strokeStyle=`rgba(255,93,77,${pulse})`;ctx.lineWidth=2;ctx.setLineDash([4,3]);rr(x-3,y-3,w+6,h+6,7);ctx.stroke();ctx.setLineDash([]);
+    const pulse=0.6+0.4*Math.sin(decoT()*8);ctx.strokeStyle=`rgba(255,93,77,${pulse})`;ctx.lineWidth=2;ctx.setLineDash([4,3]);rr(x-3,y-3,w+6,h+6,7);ctx.stroke();ctx.setLineDash([]);
     ctx.fillStyle="rgba(150,20,15,.92)";rr(x+2,y-12,w-4,13,3);ctx.fill();tx("⚠ AUTOMATION ERROR",p.x,y-5.5,7.5,"#fff",{font:DISP,weight:700,max:w-8});
   }
   if(migrationBusy(a)){
@@ -2794,7 +2798,7 @@ function drawRack(i,a){
     ctx.strokeStyle="#7fd4ff";ctx.lineWidth=1.5;ctx.setLineDash([3,3]);rr(x-2,y-2,w+4,h+4,7);ctx.stroke();ctx.setLineDash([]);
     if(!(a.fire>0)){const staged=S.cloud.some(c=>c&&c.staged&&c.orig===a);ctx.fillStyle="rgba(12,40,56,.92)";rr(x+2,y-12,w-4,13,3);ctx.fill();tx(staged?"⧉ STAGED IN CLOUD":"⧉ COPYING",p.x,y-5.5,7.5,"#bfeaff",{font:DISP,weight:700,max:w-8});}
   }
-  if(a.fire>0){em("🔥",p.x+(Math.sin(S.t*20)*1.5),p.y-12,18+a.fire*0.18);bar(x,y-9,w,5,a.fire/100,C.danger,"#3a1d1a");}
+  if(a.fire>0){em("🔥",p.x+(Math.sin(decoT()*20)*1.5),p.y-12,18+a.fire*0.18);bar(x,y-9,w,5,a.fire/100,C.danger,"#3a1d1a");}
   drawLicense(a,p,y+h);drawGlitter(a,x,y,w,h);
 }
 // a quick golden sparkle around a rack whose license just got extended
@@ -2823,7 +2827,7 @@ function drawLicense(a,p,bottom){
   if(!(a.lic>0))return;
   const urgent=a.lic<12,label=`📜 renews ${Math.ceil(a.lic)}s · $${licCost(a)}k`;
   ctx.font=`600 9.5px ${MONO}`;const w=ctx.measureText(label).width+10;
-  ctx.fillStyle=urgent?`rgba(255,93,77,${0.75+0.25*Math.sin(S.t*10)})`:"rgba(255,181,71,.18)";rr(p.x-w/2,bottom+16,w,14,3);ctx.fill();
+  ctx.fillStyle=urgent?`rgba(255,93,77,${0.75+0.25*Math.sin(decoT()*10)})`:"rgba(255,181,71,.18)";rr(p.x-w/2,bottom+16,w,14,3);ctx.fill();
   tx(label,p.x,bottom+23,9.5,urgent?"#fff":C.amber,{weight:600});
 }
 function drawSlot(i,a){
@@ -2845,7 +2849,7 @@ function drawSlot(i,a){
   if(a.down){
     // failed cutover: offline in the cloud. Hold E to retry, hold Space to roll back.
     ctx.fillStyle="#2b2626";rr(x,y,w,h,14);ctx.fill();
-    ctx.strokeStyle=a.tier==="gold"?`rgba(255,93,77,${0.6+0.4*Math.sin(S.t*8)})`:T.c;ctx.lineWidth=2.5;ctx.setLineDash([5,3]);rr(x,y,w,h,14);ctx.stroke();ctx.setLineDash([]);
+    ctx.strokeStyle=a.tier==="gold"?`rgba(255,93,77,${0.6+0.4*Math.sin(decoT()*8)})`:T.c;ctx.lineWidth=2.5;ctx.setLineDash([5,3]);rr(x,y,w,h,14);ctx.stroke();ctx.setLineDash([]);
     ctx.globalAlpha=.35;em("📦",p.x,p.y-12,20);ctx.globalAlpha=1;
     tx("OFFLINE",p.x,p.y-10,10,C.danger,{font:DISP,weight:700});
     tx(a.name,p.x,p.y+6,9.5,"#d9d2cf",{max:w-8,weight:600});
@@ -2855,15 +2859,15 @@ function drawSlot(i,a){
     return;
   }
   if(a.breach){
-    const pulse=0.5+0.5*Math.sin(S.t*10),jx=RM?0:Math.sin(S.t*47+i)*1.6,jy=RM?0:Math.cos(S.t*39+i)*1.2;
+    const pulse=0.5+0.5*Math.sin(decoT()*10),jx=RM?0:Math.sin(S.t*47+i)*1.6,jy=RM?0:Math.cos(S.t*39+i)*1.2;
     ctx.save();ctx.translate(jx,jy);
     // red glow halo
     ctx.save();ctx.shadowColor="#ff2a1a";ctx.shadowBlur=22+14*pulse;
     ctx.fillStyle=`rgba(${190+40*pulse|0},30,25,0.95)`;rr(x,y,w,h,14);ctx.fill();ctx.restore();
     // glitch bars
     ctx.save();ctx.beginPath();rr(x,y,w,h,14);ctx.clip();
-    for(let k=0;k<4;k++){const gy=y+((S.t*90+k*23+i*11)%h),gw=12+((k*37+Math.floor(S.t*12))%40);
-      ctx.fillStyle=k%2?"rgba(0,0,0,.35)":"rgba(255,255,255,.22)";ctx.fillRect(x+((k*29+Math.floor(S.t*20)*7)%(w-gw)),gy,gw,2+(k%2));}
+    for(let k=0;k<4;k++){const gy=y+((decoT()*90+k*23+i*11)%h),gw=12+((k*37+Math.floor(decoT()*12))%40);
+      ctx.fillStyle=k%2?"rgba(0,0,0,.35)":"rgba(255,255,255,.22)";ctx.fillRect(x+((k*29+Math.floor(decoT()*20)*7)%(w-gw)),gy,gw,2+(k%2));}
     ctx.restore();
     ctx.strokeStyle=pulse>0.5?"#ffffff":"#ffb3a8";ctx.lineWidth=2.5;rr(x,y,w,h,14);ctx.stroke();
     em("💀",p.x,p.y-11,20);
@@ -2872,8 +2876,8 @@ function drawSlot(i,a){
     ctx.restore();
     // stolen data streaming out and up
     for(let k=0;k<9;k++){
-      const f=(S.t*0.9+k/9)%1,dir=(k%2?1:-1)*(0.4+((k*7)%5)/6);
-      const dx=p.x+dir*f*40+Math.sin(S.t*3+k)*4,dy=y-4-f*70;
+      const f=(decoT()*0.9+k/9)%1,dir=(k%2?1:-1)*(0.4+((k*7)%5)/6);
+      const dx=p.x+dir*f*40+Math.sin(decoT()*3+k)*4,dy=y-4-f*70;
       ctx.globalAlpha=Math.max(0,1-f*1.1);
       if(k%3===0)em("📄",dx,dy,12);else tx(k%2?"1":"0",dx,dy,12,"#ff4a3a",{weight:700});
     }
@@ -2885,7 +2889,7 @@ function drawSlot(i,a){
   ctx.fillStyle="rgba(255,255,255,.88)";rr(x,y,w,h,14);ctx.fill();
   if(a.leakOn){
     // the closer to a breach, the faster and redder it flashes
-    const f=clamp(a.leak/100,0,1),freq=2.5+f*16,beat=0.5+0.5*Math.sin(S.t*freq);
+    const f=clamp(a.leak/100,0,1),freq=2.5+f*16,beat=0.5+0.5*Math.sin(decoT()*freq);
     ctx.fillStyle=`rgba(255,${Math.round(90-60*f)},${Math.round(60-40*f)},${(0.12+0.68*f)*beat})`;rr(x,y,w,h,14);ctx.fill();
     if(f>0.6){ctx.save();ctx.shadowColor="#ff2a1a";ctx.shadowBlur=(f-0.6)*50*beat;ctx.strokeStyle="rgba(255,40,30,.9)";ctx.lineWidth=2;rr(x,y,w,h,14);ctx.stroke();ctx.restore();}
   }
@@ -2897,7 +2901,7 @@ function drawSlot(i,a){
   if(a.leakOn){
     em("💧",x+w-8,y+8,13);
     bar(x+4,y+h+3,w-8,5,a.leak/100,a.leak>70?C.danger:C.leak,"rgba(29,64,88,.18)");
-    ctx.fillStyle=C.leak;for(let k=0;k<3;k++){const dy=((S.t*50+k*12)%34);ctx.globalAlpha=1-dy/34;ctx.beginPath();ctx.arc(p.x-10+k*10,y+h+10+dy,2.2,0,7);ctx.fill();}ctx.globalAlpha=1;
+    ctx.fillStyle=C.leak;for(let k=0;k<3;k++){const dy=((decoT()*50+k*12)%34);ctx.globalAlpha=1-dy/34;ctx.beginPath();ctx.arc(p.x-10+k*10,y+h+10+dy,2.2,0,7);ctx.fill();}ctx.globalAlpha=1;
   }
 }
 function drawBot(b){
@@ -3033,8 +3037,8 @@ function drawPlayer(){
   const P=S.p;
   // ☕ coffee: amber rings radiate outward with orbiting sparks; flickers in the last second
   if(P.boost>0&&!(P.boost<1&&Math.floor(S.t*12)%2)){
-    for(let k=0;k<3;k++){const f=(S.t*1.8+k/3)%1;ctx.strokeStyle=`rgba(255,181,71,${(1-f)*0.75})`;ctx.lineWidth=3*(1-f)+1;ctx.beginPath();ctx.arc(P.x,P.y,18+f*26,0,7);ctx.stroke();}
-    for(let k=0;k<6;k++){const a=S.t*5+k*1.047;ctx.fillStyle="rgba(255,214,120,.9)";ctx.beginPath();ctx.arc(P.x+Math.cos(a)*24,P.y+Math.sin(a)*24,2,0,7);ctx.fill();}
+    for(let k=0;k<3;k++){const f=(decoT()*1.8+k/3)%1;ctx.strokeStyle=`rgba(255,181,71,${(1-f)*0.75})`;ctx.lineWidth=3*(1-f)+1;ctx.beginPath();ctx.arc(P.x,P.y,18+f*26,0,7);ctx.stroke();}
+    for(let k=0;k<6;k++){const a=decoT()*5+k*1.047;ctx.fillStyle="rgba(255,214,120,.9)";ctx.beginPath();ctx.arc(P.x+Math.cos(a)*24,P.y+Math.sin(a)*24,2,0,7);ctx.fill();}
   }
   // 🍩 donut ("mouth full"): you're see-through and users can't stop you. You flicker in and out near the end.
   const ghost=P.ghost>0,fading=ghost&&P.ghost<2.5,ghostOn=ghost&&!(fading&&Math.floor(S.t*(P.ghost<1?16:9))%2);
@@ -3095,7 +3099,7 @@ function draw(){
   drawInbox();
   for(const s of S.st)drawPickup(s);
   drawDesk();
-  for(const e of S.atk){ctx.fillStyle="rgba(255,93,77,.3)";ctx.beginPath();ctx.arc(e.x,e.y,18+3*Math.sin(S.t*14),0,7);ctx.fill();em("🚨",e.x,e.y,22);tx(e.waiting?"WAITING":"ESCALATION",e.x,e.y+20,8.5,C.danger,{weight:600});}
+  for(const e of S.atk){ctx.fillStyle="rgba(255,93,77,.3)";ctx.beginPath();ctx.arc(e.x,e.y,18+3*Math.sin(decoT()*14),0,7);ctx.fill();em("🚨",e.x,e.y,22);tx(e.waiting?"WAITING":"ESCALATION",e.x,e.y+20,8.5,C.danger,{weight:600});}
   for(const u of S.users){drawUser(u);if(freezeActive()){ctx.fillStyle="rgba(180,230,255,.3)";rr(u.x-17,u.y-24,34,47,8);ctx.fill();}}
   for(const c of S.cbots)drawChatbot(c);
   drawSpecials();

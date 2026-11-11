@@ -106,6 +106,8 @@ Run it before every push to `main`, and add a check whenever you change a rule i
 
 ## Contributing, including AI assistants
 
+Use [DESIGN.md](DESIGN.md) for the shared visual and interaction standard. The [design audit](docs/design-audit.md) tracks consistency findings, evidence, and checks still needed.
+
 Read [AGENTS.md](AGENTS.md) before making changes. It records the teaching goals, agreed gameplay direction, branch expectations, and validation guidelines. Preserve the relationship between mechanics and the operational lesson they are intended to teach. Explain balance changes and test their interactions instead of treating isolated functions as the whole game.
 
 ### Blue-green staging

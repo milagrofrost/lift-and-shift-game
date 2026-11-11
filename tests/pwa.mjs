@@ -20,7 +20,7 @@ for (const file of ['pwa.js','sw.js']) new vm.Script(await read(file));
 const handlers = {}, store = new Map(), removed = [];
 let network = async () => new Response('network'), skipped = false;
 const cache = {put: async (k,v) => store.set(k,v), match: async k => { const v = store.get(k); if (!v) return; const c = v.clone(); if (v.redirected) Object.defineProperty(c, 'redirected', {value: true}); return c; }};
-const context = {URL, Set, Promise, Response, Error, caches:{open:async()=>cache, keys:async()=>['other-app','lift-shift-shell-old','lift-shift-shell-v3'],delete:async k=>removed.push(k)}, self:{location:{origin:'https://game.test'},addEventListener:(n,fn)=>handlers[n]=fn,skipWaiting:()=>{skipped=true;}}, fetch:r=>network(r)};
+const context = {URL, Set, Promise, Response, Error, caches:{open:async()=>cache, keys:async()=>['other-app','lift-shift-shell-old','lift-shift-shell-v4'],delete:async k=>removed.push(k)}, self:{location:{origin:'https://game.test'},addEventListener:(n,fn)=>handlers[n]=fn,skipWaiting:()=>{skipped=true;}}, fetch:r=>network(r)};
 vm.runInNewContext(await read('sw.js'), context);
 let pending;
 handlers.install({waitUntil:p=>pending=p}); await pending;
