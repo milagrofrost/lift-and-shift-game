@@ -152,6 +152,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 
 ## Implementation and validation
 
+- For presentation and interaction changes, follow `DESIGN.md` and review the affected entries in `docs/design-audit.md`. Record source evidence separately from browser observations; keep untested checks explicit.
 - Make focused changes. Avoid framework migrations, broad rewrites, and dependencies unrelated to the request.
 - Trace every path affecting shared state: player, bots, manager, temporary worker, AI agent, pipeline, rollback, and client transitions.
 - Update tutorial text, controls, descriptions, and README whenever behavior changes. Do not leave contradictory instructions.
