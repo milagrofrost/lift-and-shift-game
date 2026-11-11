@@ -1955,7 +1955,7 @@ function startSprint(n){
   S.bots.forEach((b,i)=>{b.x=b.kind==="patch"?180:480;b.y=520-i*10;b.tgt=null;b.carry=null;b.work=0;b.slot=-1;});
   if(retro("lunch"))S.energy=Math.min(100,S.energy+25*retro("lunch")); // team lunch: start each client fresh
   S.obsolete=false;S.outsourced=false;S.ss={human:0,acts:0,routine:0,bot:0,ai:{n:0,ok:0,nop:0,bad:0,cost:0},mig:0,audits:0,breaches:0,lost:0,unplanned:0,why:{},budget0:S.budget,sec0:S.security,att:0,leadSum:0,leadN:0,mttrSum:0,mttrN:0,missed:0,heldT:0,esc:0};
-  clipReset();clipEv("start");
+  clipReset();if(!(clipTwin()&&clipEv("twin")&&(S.clipTwinDone=true)))clipEv("start");
   backupStart();
 }
 /* Engagement done: the client's room is empty and nothing is stuck offline in the cloud. */
@@ -3480,6 +3480,8 @@ const CLIP_LINES={
   queue:["Let's take this offline. And then never bring it back online."],
   working:["Is it done yet? How about now?","Quick sync on that? Just a quick one.","Can you give me an ETA on the ETA?","Just circling back on the thing you're doing right now.","Hold E a bit more firmly. Like you mean it.","You're doing it wrong, but keep going. It's fascinating.","Interesting technique. Unorthodox. Wrong. But interesting.","I'd help, but then you wouldn't learn.","I'm not saying anything. I'm just watching. Intensely."],
   chatter:["Well, actually, in my last company we did this with a spreadsheet.","Actually, the industry best practice is… hmm. Something else.","Technically, that's not how I would have done it.","Fun fact: I read a blog post about this once.","Actually, that's more of a platform-team problem.","Have you considered Kubernetes?","Have you tried putting it on the blockchain?","What if we just rewrote everything in Rust?","Have you thought about going serverless? For the servers?","My advice: just don't have incidents.","Have you considered hiring someone who knows what they're doing? Besides me.","Honestly, this whole room should be microservices.","I'd re-architect it. Then re-architect it again. That's agile.","Who designed this network? Don't answer. I know. It was you.","Too many servers. Have you tried fewer servers?","I'd have migrated all of them on day one. With confidence.","The last person I shadowed did this in half the time. They're in prison now, but still.","My previous mentee migrated a whole hospital before lunch. Allegedly.","Even the intern patches faster. The intern doesn't have access.","All wit in this game was ethically sourced from a language model.","You know, this is basically like Overcooked.","Are you made with AI? Because you're not putting any passion into this.","I could really go for some onion soup right now."],
+  // your avatar is a paperclip too: said once, at the first client he's with you
+  twin:["Imitation is the most sincere form of flattery. So I thank you.","Oh, we're matching? This is awkward. I'm the original.","Two paperclips, one data center. They'll never tell us apart. Until you start working.","Nice avatar. Bold choice. Is it legally distinct?"],
   done:["We did it! By 'we' I mean I watched.","Five stars! Not from me.","Client complete. I'll accept my bonus in office supplies.","I'll mention you in my promotion packet. In a footnote."],
 };
 const CLIP_PRIO=new Set(["offline","alert","breach","vp","cutfail","escalate"]);
@@ -3487,6 +3489,7 @@ const CLIP_SAY_T=3.2;
 // his own generator for picks and gaps, so a cosmetic line never shifts the game's random rolls
 let clipSeed=(Date.now()>>>0)||7;
 const clipRand=()=>{clipSeed=(Math.imul(clipSeed,1664525)+1013904223)>>>0;return clipSeed/4294967296;};
+const clipTwin=()=>/📎|🖇/u.test(AVATAR)&&!S.clipTwinDone;
 const clipOn=()=>!!(S&&S.upgrades.clip&&!S.tut&&S.clipC);
 function clipReset(){S.clipC={x:S.p.x-34,y:S.p.y-34,say:"",sayT:0,at:-9,pr:false,next:0,still:0,bags:(S.clipC&&S.clipC.bags)||{},late:false,lowsec:false};}
 function clipEv(k){
