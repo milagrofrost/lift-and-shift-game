@@ -715,6 +715,9 @@ const RM=(()=>{try{return matchMedia("(prefers-reduced-motion: reduce)").matches
 /* ==== Sound and music ==== */
 /* ---------- sound: everything is synthesized with Web Audio, so there are no files to load ---------- */
 const AU={ctx:null,master:null,noise:null,on:true,last:{},hiss:null,hissGain:null};
+// sound has its own generator for noise and hi-hat offsets, so whether (and how often) sounds play never shifts the game's random rolls
+let sndSeed=0x5eed;
+const sndRand=()=>{sndSeed=(Math.imul(sndSeed,1664525)+1013904223)>>>0;return sndSeed/4294967296;};
 try{AU.on=localStorage.getItem("liftshift-sound")!=="off";}catch(e){}
 function audio(){
   if(!AU.ctx){
@@ -722,7 +725,7 @@ function audio(){
       if(stale())return null;
       AU.ctx=new(window.AudioContext||window.webkitAudioContext)();window.__liftShiftAudio=AU.ctx;
       AU.master=AU.ctx.createGain();AU.master.gain.value=AU.on?0.55:0;AU.master.connect(AU.ctx.destination);
-      const b=AU.ctx.createBuffer(1,AU.ctx.sampleRate,AU.ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;AU.noise=b;
+      const b=AU.ctx.createBuffer(1,AU.ctx.sampleRate,AU.ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=sndRand()*2-1;AU.noise=b;
     }catch(e){AU.ctx=null;return null;}
   }
   if(AU.ctx.state==="suspended")AU.ctx.resume().catch(()=>{});
@@ -739,7 +742,7 @@ function noiseBurst(dur,{vol=0.2,freq=1200,q=1,type="bandpass",delay=0}={}){
   const c=audio();if(!c)return;const t=c.currentTime+delay,s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();
   s.buffer=AU.noise;f.type=type;f.frequency.value=freq;f.Q.value=q;
   g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-  s.connect(f);f.connect(g);g.connect(AU.master);s.start(t,Math.random()*0.5);s.stop(t+dur+0.05);
+  s.connect(f);f.connect(g);g.connect(AU.master);s.start(t,sndRand()*0.5);s.stop(t+dur+0.05);
 }
 const SFX={
   grab:()=>{tone(200,0.09,{type:"triangle",vol:0.28});tone(300,0.07,{type:"triangle",vol:0.16,delay:0.05});},
@@ -849,7 +852,7 @@ function mDrum(kind,t){
   const s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();s.buffer=AU.noise;
   if(kind==="hat"){f.type="highpass";f.frequency.value=7000;g.gain.setValueAtTime(0.05,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.04);}
   else{f.type="bandpass";f.frequency.value=1800;f.Q.value=0.8;g.gain.setValueAtTime(0.13,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.13);}
-  s.connect(f);f.connect(g);g.connect(MUS.filt);s.start(t,Math.random()*0.5);s.stop(t+0.15);
+  s.connect(f);f.connect(g);g.connect(MUS.filt);s.start(t,sndRand()*0.5);s.stop(t+0.15);
 }
 function scheduleStep(step,t){
   const M=MOODS[MUS.mood],s=step%16,bar=Math.floor(step/16)%4,ch=M.chords[bar],hot=moodHot(),sx=60/moodBpm()/4;
@@ -1131,7 +1134,7 @@ function tickTemp(dt){
   }
   if(T.snack){
     let s=null,bd=1e9;for(const x of S.st){const d=dist(x,T);if(d<bd){bd=d;s=x;}}
-    if(s){if(goTo(T,s.x,s.y,sp,dt)){S.st=S.st.filter(x=>x!==s);fl(s,`${T.name}: nom`,C.amber);if(Math.random()<0.5)tempSay(pick(TEMP_SNACK));}}
+    if(s){if(goTo(T,s.x,s.y,sp,dt)){S.st=S.st.filter(x=>x!==s);fl(s,`${T.name}: nom`,C.amber,2);if(Math.random()<0.5)tempSay(pick(TEMP_SNACK));}}
     else{T.wT-=dt;if(T.wT<=0){T.wT=rand(2,4);T.wx=rand(395,565);T.wy=rand(140,440);}goTo(T,T.wx,T.wy,60,dt);}
     return;
   }
@@ -1152,7 +1155,7 @@ function tickTemp(dt){
   T.work+=dt;
   if(g.kind==="desk"){if(T.work>=1.4){T.work=0;S.tk.shift();fl(DESK,`${T.name} closed a ticket`,C.ok);}return;}
   // a temp can get an unknown rack partway investigated (10-75%), but it takes someone who knows the place to finish
-  if(g.kind==="discover"){if(T.work>=2.2){T.work=0;const a=g.a;a.tempChecked=true;a.disc=Math.max(a.disc||0,discoverTime()*rand(0.1,0.75));a.discT=S.t;T.tgt=null;fl(RACKS[a.slot],`${T.name}: "Found some cables"`,C.amber);}return;}
+  if(g.kind==="discover"){if(T.work>=2.2){T.work=0;const a=g.a;a.tempChecked=true;a.disc=Math.max(a.disc||0,discoverTime()*rand(0.1,0.75));a.discT=S.t;T.tgt=null;fl(RACKS[a.slot],`${T.name}: "Found some cables"`,C.amber,2);}return;}
   if(T.work>=2.2){
     T.work=0;const a=g.a;T.tgt=null;
     if(Math.random()<0.15){sfx("offline");a.down=true;a.downT=S.time;a.fire=0;a.prog=0;S.ss.lost++;tempSay("Was it supposed to beep like that?");toast(`🧑‍💼 ${T.name} patched ${a.name}... and took it offline.`);fl(RACKS[a.slot],"OFFLINE",C.danger);}
@@ -1204,10 +1207,10 @@ function tickShouts(dt){
 function drawShouts(){
   for(const u of S.users){
     if(u.panic&&!u.hunter){ctx.fillStyle=C.danger;tx("!",u.x+10,u.y-24+Math.sin(S.t*20+u.x)*2,14,C.danger,{font:DISP,weight:700});}
-    if(u.shoutT>0&&S.p.heldBy!==u)smallBubble(u.shout,u.x,u.y-30,"#ffe8e4","#7a1f17");
+    if(u.shoutT>0&&S.p.heldBy!==u&&logLv()>=1)smallBubble(u.shout,u.x,u.y-30,"#ffe8e4","#7a1f17");
   }
 }
-function drawTempBubble(){const T=S.temp;if(T&&T.sayT>0)smallBubble(T.say,T.x,T.y-24,"#f6f8fa","#14212b");const AG=S.agent;if(AG&&AG.sayT>0)smallBubble(AG.say,AG.x,AG.y-26,"#efe6ff","#3b1d6e");const M=S.mgr;if(M&&M.sayT>0)smallBubble(M.say,M.x,M.y-26,"#fff4dc","#5a3a00");}
+function drawTempBubble(){if(logLv()<1)return;const T=S.temp;if(T&&T.sayT>0)smallBubble(T.say,T.x,T.y-24,"#f6f8fa","#14212b");const AG=S.agent;if(AG&&AG.sayT>0)smallBubble(AG.say,AG.x,AG.y-26,"#efe6ff","#3b1d6e");const M=S.mgr;if(M&&M.sayT>0)smallBubble(M.say,M.x,M.y-26,"#fff4dc","#5a3a00");}
 /* ==== Manager and AI Agent ==== */
 /* ---------- your manager (stackable upgrade) ----------
    L1 answers email but is chatty and sometimes "helps" patch a server (it always goes offline).
@@ -1334,7 +1337,7 @@ function agentFollowEsc(j){
 // one attempt to undo the damage; a failed repair stays the player's problem and never breaks anything further
 function agentFinishRepair(j,L,G){
   spend("ai",G.cost);S.ss.ai.cost+=G.cost;
-  fl({x:S.agent.x,y:S.agent.y-10},`🪙 Apology tokens · −$${G.cost.toFixed(1)}k`,C.muted);
+  fl({x:S.agent.x,y:S.agent.y-10},`🪙 Apology tokens · −$${G.cost.toFixed(1)}k`,C.muted,2);
   if(Math.random()>=agentFixOdds(j.of,L)){sfx("migrateFail");agentSay(pick(AGENT_UNFIXED));toast("🧠 The AI agent couldn't undo its mistake. That one's yours now.");return;}
   sfx("online");agentSay(pick(AGENT_FIXED));
   if(j.of==="patch"){noteRestored(j.a);j.a.down=false;j.a.timer=Math.max(j.a.timer,j.a.maxT*0.5);j.a.agentMark={k:"ok",t:S.t};toast(`🧠 The AI agent apologized and brought ${j.a.name} back online.`);}
@@ -1389,7 +1392,7 @@ function tickAgent(dt){
   const odds=agentOdds(j.kind,L),r=Math.random(),out=r<odds.ok?"ok":r<odds.ok+odds.nop?"nop":(L>=4?"blocked":"bad");
   spend("ai",G.cost);const st=S.ss.ai;st.n++;st.cost+=G.cost;
   const tok=(G.tok*rand(0.8,1.2)).toFixed(1),pos={x:A.x,y:A.y-10};
-  fl(pos,`🪙 ${tok}k tokens · −$${G.cost.toFixed(1)}k`,out==="ok"?C.ok:out==="bad"?C.danger:C.muted);
+  fl(pos,`🪙 ${tok}k tokens · −$${G.cost.toFixed(1)}k`,out==="ok"?C.ok:out==="bad"?C.danger:C.muted,2);
   if(out==="ok"){st.ok++;
     if(j.kind==="email"){const m=importantMail().reduce((a,b)=>b.age>a.age?b:a);S.em=S.em.filter(x=>x!==m);}
     else if(j.kind==="ticket")S.tk.shift();
@@ -1397,7 +1400,7 @@ function tickAgent(dt){
     else{j.a.leakOn=false;j.a.leak=0;j.a.grace=4;j.a.age=0;}
     if(j.a)j.a.agentMark={k:"ok",t:S.t};if(Math.random()<0.3)agentSay("Done!");
   }else if(out==="nop"){st.nop++;if(j.a)j.a.agentMark={k:"nop",t:S.t};agentSay(pick(["Done! Confidence: 98%.","Task complete! ✨","I've handled it.","All set!"]));}
-  else if(out==="blocked"){st.nop++;fl(pos,"🛡 Guardrail blocked a risky action",C.leak);agentSay("Escalating to a human for review.");}
+  else if(out==="blocked"){st.nop++;fl(pos,"🛡 Guardrail blocked a risky action",C.leak,2);agentSay("Escalating to a human for review.");}
   else{st.bad++;sfx("migrateFail");agentSay(AGENT_BAD[j.kind],1.4);clipEv("agentbad");if(j.a)j.a.agentMark={k:"bad",t:S.t};
     // it stays to clean up its own mess
     repair={kind:"repair",of:j.kind,a:j.a,i:j.i,x:A.x,y:A.y};
@@ -1787,11 +1790,12 @@ function drawExtinguish(){
 }
 function drawHoldBubble(){
   const P=S.p,u=P.heldBy;if(!u)return;
-  const r=RANKS[u.rank];ctx.font=`600 11.5px ${BODY}`;
-  const w=Math.max(ctx.measureText(u.line).width,60)+18,bx=clamp(u.x,w/2+4,W-w/2-4),by=Math.max(u.y-58,8);
+  // ERROR level keeps the hold timer but not the small talk
+  const r=RANKS[u.rank],line=logLv()<1?"…":u.line;ctx.font=`600 11.5px ${BODY}`;
+  const w=Math.max(ctx.measureText(line).width,60)+18,bx=clamp(u.x,w/2+4,W-w/2-4),by=Math.max(u.y-58,8);
   ctx.fillStyle="#f6f8fa";rr(bx-w/2,by,w,30,7);ctx.fill();
   ctx.beginPath();ctx.moveTo(u.x-5,by+30);ctx.lineTo(u.x+5,by+30);ctx.lineTo(u.x,by+37);ctx.closePath();ctx.fill();
-  tx(u.line,bx,by+11,11.5,"#14212b",{font:BODY,weight:600});
+  tx(line,bx,by+11,11.5,"#14212b",{font:BODY,weight:600});
   bar(bx-w/2+8,by+21,w-16,4,P.stun/r.hold,C.amber,"#d5dde3");
 }
 /* ==== Inbox, VPs, escalation launch, sprint capacity, desk ==== */
@@ -1824,7 +1828,7 @@ function launchEscalation(){logEv("🚨 A ticket escalated.");clipEv("escalate")
 /* Sprint capacity: 13 points per sprint. Incidents create unplanned work that eats next sprint's capacity.
    A clean sprint (no unplanned work) earns +2. Never below 5, never above 15. Unspent points don't carry over. */
 const BASE_CAP=13;
-function unplanned(n,why){S.ss.unplanned+=n;S.ss.why[why]=(S.ss.why[why]||0)+n;fl({x:S.p.x,y:S.p.y-14},`−${n} pt next sprint`,C.ai);}
+function unplanned(n,why){S.ss.unplanned+=n;S.ss.why[why]=(S.ss.why[why]||0)+n;fl({x:S.p.x,y:S.p.y-14},`−${n} pt next sprint`,C.ai,1);}
 // costs: red alert 1, failed audit 1, escalated ticket 0.5, exec who catches you 0.5 (rounded at the end)
 const capNext=()=>{const u=S.ss.unplanned;return clamp(BASE_CAP-Math.round(u)+(u===0?2:0),5,15);};
 function drawDesk(){
@@ -1991,8 +1995,27 @@ function posOf(a){if(S.carry===a)return S.p;for(const b of S.bots)if(b.carry===a
 
 /* ==== Feedback, movement, player actions, migration, pipeline, FinOps ==== */
 /* ---------- feedback ---------- */
-function toast(msg){if(!/^(🔊|🔇|⚡ Out of energy)/.test(msg))logEv(msg);const t=document.createElement("div");t.className="toast";t.textContent=msg;const box=$("toasts");box.appendChild(t);while(box.children.length>3)box.firstChild.remove();setTimeout(()=>t.remove(),4300);}
-function fl(p,text,color){S.fl.push({x:p.x,y:p.y-20,text,color,t:0,life:1.3});}
+function toast(msg){if(!/^(🔊|🔇|⚡ Out of energy)/.test(msg))logEv(msg);dbgLog(2,msg);const t=document.createElement("div");t.className="toast";t.textContent=msg;const box=$("toasts");box.appendChild(t);while(box.children.length>3)box.firstChild.remove();setTimeout(()=>t.remove(),4300);}
+/* Logging level (pause menu): how much text the floor shows. ERROR only incidents, WARN (default) short prompts and problems,
+   INFO every hint and result, DEBUG all of that plus labels on everything and a log tail nobody asked for. Saved per browser. */
+const LOG_LEVELS=["ERROR","WARN","INFO","DEBUG"];
+let LOGLV=1;try{const v=LOG_LEVELS.indexOf(localStorage.getItem("liftshift-loglevel"));if(v>=0)LOGLV=v;}catch(e){}
+function setLogLevel(v){LOGLV=((v%4)+4)%4;try{localStorage.setItem("liftshift-loglevel",LOG_LEVELS[LOGLV]);}catch(e){}return LOGLV;}
+// the hands-on tutorial teaches from the full prompts, so it never shows less than INFO
+function logLv(){return S&&S.tut?Math.max(2,LOGLV):LOGLV;}
+// floating text. lvl: 0 error, 1 warn, 2 info; by default red is an error, amber or blue a warning, anything else info.
+// short: what a quieter level shows instead (a refused action still gets a ✖), otherwise it's left out
+// DEBUG's log tail is the real event stream: every floating text (at its own level, shown or not) and every toast.
+// Kept outside S, so restores and saves never carry it; entries from another run or a rewound clock are skipped.
+const DBG_LOG=[];
+function dbgLog(lvl,text){if(!S)return;DBG_LOG.push({s:S,t:S.t,lvl,text});if(DBG_LOG.length>40)DBG_LOG.shift();}
+function fl(p,text,color,lvl,short){
+  if(lvl==null)lvl=color===C.danger?0:color===C.amber||color===C.leak?1:2;
+  dbgLog(lvl,text);
+  const L=logLv();if(lvl>L){if(short==null)return;text=short;}
+  if(L>=3)text=`[${LOG_LEVELS[lvl]}] ${text}`;
+  S.fl.push({x:p.x,y:p.y-20,text,color,t:0,life:L>=3?2:1.3});
+}
 function warn(){if(S.t-S.warnT>2.5){S.warnT=S.t;clipEv("tired");toast("⚡ Out of energy. Migrate an app to recharge. You can still fight fires, just slowly.");}}
 
 /* ---------- movement ---------- */
@@ -2069,7 +2092,7 @@ const rackUnder=()=>{let bi=-1,bd=DROP_REACH+6;S.racks.forEach((r,i)=>{if(r)retu
 function returnToRack(a){if(S.racks[a.slot]===a)return;if(S.racks[a.slot]){const k=S.racks.findIndex(x=>!x);if(k>=0)a.slot=k;}S.racks[a.slot]=a;}
 // an on-prem original that goes offline cancels any copy of it in flight (carried, pipelined, or staged in the cloud)
 function cancelDeadCopies(){
-  const cancel=(a,pos)=>{fl(pos,"Copy canceled",C.danger);toast(`🔀 ${a.name} went offline on-prem, so its cloud copy was canceled. Bring it back up and migrate again.`);};
+  const cancel=(a,pos)=>{fl(pos,"Copy canceled",C.danger,1);toast(`🔀 ${a.name} went offline on-prem, so its cloud copy was canceled. Bring it back up and migrate again.`);};
   S.cloud.forEach((c,i)=>{if(c&&c.staged&&c.orig.down){S.cloud[i]=null;cancel(c.orig,SLOTS[i]);}});
   S.pipe=S.pipe.filter(j=>{if(liveCopy(j.a)&&j.a.down){cancel(j.a,RACKS[j.a.slot]);return false;}return true;});
   for(const b of S.bots)if(b.carry&&liveCopy(b.carry)&&b.carry.down){cancel(b.carry,b);b.carry=null;b.slot=-1;}
@@ -2094,33 +2117,33 @@ function migrate(a,i,byBot,bonus=0){
   }
   activateCloud(S.cloud[i]);cutoverOK(a);sfx("migrateOK");
   const e=byBot?8:18;S.energy=Math.min(100,S.energy+e);
-  fl(SLOTS[i],`+${e}⚡ +$4k saved`,C.amber);clipEv("migrate");
+  fl(SLOTS[i],`+${e}⚡ +$4k saved`,C.amber,2);clipEv("migrate");
 }
 function rollbackTarget(){if(S.carry)return null;let best=null,bd=56;S.cloud.forEach((a,i)=>{if(!a||!a.down)return;const d=dist(S.p,SLOTS[i]);if(d<bd){bd=d;best={a,i};}});return best;}
 function doRollback(i){
   const c=S.cloud[i],app=c.orig;let slot=S.racks[app.slot]?S.racks.findIndex(x=>!x):app.slot;
   if(slot<0){toast("⛔ No free rack to roll back into.");c.rb=0;return;}
   humanWork();noteRestored(c);S.run.rollbacks++;S.cloud[i]=null;app.rs=0;app.rsTag=false;app.slot=slot;app.down=false;app.fire=0;app.prog=0;app.timer=Math.max(app.timer,app.maxT*0.5);S.racks[slot]=app;
-  fl(RACKS[slot],"Rolled back",C.amber);clipEv("rollback");toast(`↩️ Rolled ${app.name} back on-prem. It's online again. Try again when the odds are better.`);
+  fl(RACKS[slot],"Rolled back",C.amber,2);clipEv("rollback");toast(`↩️ Rolled ${app.name} back on-prem. It's online again. Try again when the odds are better.`);
 }
 function doGrab(){
   const P=S.p;if(P.stun>0)return;
-  if(S.alert){fl(P,"RED ALERT: fix the incident first",C.danger);return;}
+  if(S.alert){fl(P,"RED ALERT: fix the incident first",C.danger,1,"✖");return;}
   if(S.carry){
     const z=zoneOf(P.x),a=S.carry;
-    if(z===2){const i=slotUnder();if(i<0){fl(P,S.cloud.some(c=>!c)?"Stand on an empty cloud slot":"☁️ The cloud is full",C.amber);return;}humanWork();S.carry=null;migrate(a,i,false);}
+    if(z===2){const i=slotUnder();if(i<0){fl(P,S.cloud.some(c=>!c)?"Stand on an empty cloud slot":"☁️ The cloud is full",C.amber,1,"✖");return;}humanWork();S.carry=null;migrate(a,i,false);}
     else if(z===0){
       if(liveCopy(a)){humanWork();S.carry=null;fl(RACKS[a.slot],"Copy discarded",C.muted);sfx("putback");}
-      else{const i=rackUnder();if(i<0){fl(P,"Stand on an empty rack to put it down",C.amber);return;}humanWork();a.slot=i;S.racks[i]=a;S.carry=null;fl(RACKS[i],"Put back",C.muted);sfx("putback");}
+      else{const i=rackUnder();if(i<0){fl(P,"Stand on an empty rack to put it down",C.amber,1,"✖");return;}humanWork();a.slot=i;S.racks[i]=a;S.carry=null;fl(RACKS[i],"Put back",C.muted);sfx("putback");}
     }
-    else fl(P,"Not in the hallway!",C.amber);
+    else fl(P,"Not in the hallway!",C.amber,1,"✖");
     return;
   }
   const g=grabTarget();if(!g)return;
   if(!tutGrabOK())return tutNag();
-  if(downCount()>0){fl(P,"Can't move servers while any are offline",C.danger);return;}
-  if(g.fire>0){fl(P,"Put the fire out first",C.amber);return;}
-  if(g.down){fl(P,"It's offline. Hold E to bring it back up first",C.amber);return;}
+  if(downCount()>0){fl(P,"Can't move servers while any are offline",C.danger,1,"✖");return;}
+  if(g.fire>0){fl(P,"Put the fire out first",C.amber,1,"✖");return;}
+  if(g.down){fl(P,"It's offline. Hold E to bring it back up first",C.amber,1,"✖");return;}
   humanWork();if(!S.upgrades.bluegreen)S.racks[g.slot]=null;S.carry=g;sfx("grab");clipEv("grab");if(g.touchT==null)g.touchT=S.time;
 }
 /* CI/CD pipeline: press Space at a rack to use a free lane, or carry if all lanes are busy. The conveyor sends it to the cloud. No walking, ~6s (3s with Terraform),
@@ -2131,15 +2154,15 @@ function grabOrPipeline(){if(!S.carry&&grabTarget()&&freePipelineLane()>=0)sendT
 const pipeDur=()=>S.upgrades.terraform?3:6;
 function sendToPipeline(){
   const P=S.p;if(P.stun>0)return;
-  if(S.alert){fl(P,"RED ALERT: fix the incident first",C.danger);return;}
+  if(S.alert){fl(P,"RED ALERT: fix the incident first",C.danger,1,"✖");return;}
   const g=grabTarget();if(!g)return;
-  if(downCount()>0){fl(P,"Can't move servers while any are offline",C.danger);return;}
-  if(g.fire>0){fl(P,"Put the fire out first",C.amber);return;}
-  if(g.down){fl(P,"It's offline. Hold E to bring it back up first",C.amber);return;}
+  if(downCount()>0){fl(P,"Can't move servers while any are offline",C.danger,1,"✖");return;}
+  if(g.fire>0){fl(P,"Put the fire out first",C.amber,1,"✖");return;}
+  if(g.down){fl(P,"It's offline. Hold E to bring it back up first",C.amber,1,"✖");return;}
   const lane=freePipelineLane();
-  if(lane<0){fl(P,"All pipeline lanes are busy",C.amber);return;}
+  if(lane<0){fl(P,"All pipeline lanes are busy",C.amber,1,"✖");return;}
   humanWork();if(!S.upgrades.bluegreen)S.racks[g.slot]=null;if(g.touchT==null)g.touchT=S.time;
-  S.pipe.push({a:g,t:0,dur:pipeDur(),lane});sfx("grab");fl(RACKS[g.slot],"🏭 Into the pipeline",C.leak);
+  S.pipe.push({a:g,t:0,dur:pipeDur(),lane});sfx("grab");fl(RACKS[g.slot],"🏭 Into the pipeline",C.leak,2);
 }
 function tickPipeline(dt){
   for(const j of S.pipe){
@@ -2291,7 +2314,7 @@ function tickOnPrem(dt){
     if(a.hidden||a.down)continue;
     a.timer-=dt*rate;
     // a license only runs down while the server is running on its rack: in transit it is paused, but a blue-green original stays live and keeps counting
-    if(a.lic>0&&S.racks[a.slot]===a){a.lic-=S.tut?0:dt;if(a.lic<=0){a.lic=0;const c=licCost(a);spend("license",c);sfx("licenseRenewed");fl(posOf(a),`📜 −$${c}k`,C.danger);toast(`📜 ${a.name}'s license auto-renewed before you moved it. −$${c}k.`);clipEv("licrenew");}}
+    if(a.lic>0&&S.racks[a.slot]===a){a.lic-=S.tut?0:dt;if(a.lic<=0){a.lic=0;const c=licCost(a);spend("license",c);sfx("licenseRenewed");fl(posOf(a),`📜 −$${c}k`,C.danger,1);toast(`📜 ${a.name}'s license auto-renewed before you moved it. −$${c}k.`);clipEv("licrenew");}}
     if(a.timer<=0&&a.covered){a.covered=false;a.timer=a.maxT;}
     else if(a.timer<=0){if(a.botErr){a.botErr=false;fl(posOf(a),"🤖 automation error reset",C.muted);} // after a failed audit the bot gets another try
       a.timer=a.maxT;spend("audits",12);sfx("audit");secHit("audit",4);S.ss.audits++;unplanned(1,"audit");
@@ -2402,8 +2425,8 @@ function tickHazards(dt){
   // pickups: coffee = energy + a short speed boost; donut = users leave you alone for a bit
   for(const s of S.st){s.life-=dt;if(dist(s,P)<26){s.dead=true;
     S.snacks=S.snacks||{coffee:0,donut:0};S.snacks[s.kind]++;
-    clipEv(s.kind);if(s.kind==="coffee"){sfx("coffee");S.energy=Math.min(100,S.energy+15);P.boost=4;fl(s,"☕ +15⚡ and a speed boost",C.amber);}
-    else{sfx("donut");P.ghost=DONUT_TIME;fl(s,"🍩 Mouth full: users can't stop you",C.amber);}}}
+    clipEv(s.kind);if(s.kind==="coffee"){sfx("coffee");S.energy=Math.min(100,S.energy+15);P.boost=4;fl(s,"☕ +15⚡ and a speed boost",C.amber,2);}
+    else{sfx("donut");P.ghost=DONUT_TIME;fl(s,"🍩 Mouth full: users can't stop you",C.amber,2);}}}
   S.st=S.st.filter(s=>!s.dead&&s.life>0);
 }
 function tickEscalation(e,dt){
@@ -2411,7 +2434,7 @@ function tickEscalation(e,dt){
   if(!e.a){
     const opts=onPremApps();
     // nothing left on-prem to set on fire: the escalation fizzles into an angry fee
-    if(!opts.length){e.dead=true;spend("other",4);fl(e,"😡 −$4k",C.danger);return;}
+    if(!opts.length){e.dead=true;spend("other",4);fl(e,"😡 −$4k",C.danger,1);return;}
     e.a=pick(opts.filter(a=>!a.down&&a.fire===0).length?opts.filter(a=>!a.down&&a.fire===0):opts);
     e.waitAt={...RACKS[e.a.slot]};
   }
@@ -2486,30 +2509,38 @@ function moverBot(b,dt,sp){
   b.work=0;const a=b.tgt;if(a.touchT==null)a.touchT=S.time;if(!S.upgrades.bluegreen)S.racks[a.slot]=null;b.tgt=null;botWork();
   // with a pipeline, the bot always sends servers down a lane; without one, it carries them
   const lane=freePipelineLane();
-  if(lane>=0){S.pipe.push({a,t:0,dur:pipeDur(),lane,byBot:true});sfx("grab");fl(p,"🦾 Into the pipeline",C.leak);return;}
+  if(lane>=0){S.pipe.push({a,t:0,dur:pipeDur(),lane,byBot:true});sfx("grab");fl(p,"🦾 Into the pipeline",C.leak,2);return;}
   b.carry=a;b.slot=nearestEmptySlot(606,280);
 }
+// the hint over your head. Each part has an INFO wording, a shorter WARN one, and an ERROR one only for incidents (null hides it)
 function buildPrompt(){
-  const P=S.p,parts=[];
+  const P=S.p,parts=[],L=logLv(),say=(info,warn=info,err=null)=>{const t=L>=2?info:L===1?warn:err;if(t)parts.push(t);};
   if(S.carry){const z=zoneOf(P.x),a=S.carry,copy=liveCopy(a),pct=Math.round(successChance(a.tier)*100);
-    if(z===2)parts.push(slotUnder()>=0?`Space: ${copy?"deploy the copy of":"migrate"} ${a.name} (${pct}%)`:S.cloud.some(c=>!c)?"Walk onto an empty cloud slot":"☁️ The cloud is full");
-    else if(z===0)parts.push(copy?"Space: discard the copy":rackUnder()>=0?"Space: put it down here":"Walk onto an empty rack to put it down");
-    else parts.push(copy?"Carry the copy to the cloud → (on-prem stays live)":"Carry it to the cloud →");}
+    if(z===2){if(slotUnder()>=0)say(`Space: ${copy?"deploy the copy of":"migrate"} ${a.name} (${pct}%)`,`Space: ${copy?"deploy":"migrate"} ${pct}%`);
+      else if(S.cloud.some(c=>!c))say("Walk onto an empty cloud slot",null);else say("☁️ The cloud is full","☁️ Cloud full");}
+    else if(z===0)say(copy?"Space: discard the copy":rackUnder()>=0?"Space: put it down here":"Walk onto an empty rack to put it down",copy?"Space: discard":rackUnder()>=0?"Space: put down":null);
+    else say(copy?"Carry the copy to the cloud → (on-prem stays live)":"Carry it to the cloud →",null);}
   else{
-    const g=grabTarget();if(g&&g.fire===0&&!g.down&&!S.alert&&tutGrabOK())parts.push(S.frozen?"⛔ Can't move: a server is offline":pipeLanes()>0?`Space: ${freePipelineLane()>=0?"pipeline":"carry (pipeline busy)"} · ${pipeDur()}s pipeline (${Math.round(Math.min(1,successChance(g.tier)+0.1)*100)}%)`:`Space: grab (${Math.round(successChance(g.tier)*100)}% cutover)`);
-    const rb=rollbackTarget();if(rb)parts.push(`Hold Space: roll back (${ROLLBACK_TIME}s)`);
+    const g=grabTarget();
+    if(g&&g.fire===0&&!g.down&&!S.alert&&tutGrabOK()){
+      if(S.frozen)say("⛔ Can't move: a server is offline","⛔ Offline");
+      else if(pipeLanes()>0){const pp=Math.round(Math.min(1,successChance(g.tier)+0.1)*100),free=freePipelineLane()>=0;
+        say(`Space: ${free?"pipeline":"carry (pipeline busy)"} · ${pipeDur()}s pipeline (${pp}%)`,free?"Space: pipeline":"Space: carry");}
+      else{const pc=Math.round(successChance(g.tier)*100);say(`Space: grab (${pc}% cutover)`,"Space: grab");}
+    }
+    if(rollbackTarget())say(`Hold Space: roll back (${ROLLBACK_TIME}s)`,"Hold Space: roll back","Hold Space");
     const f=S.fix;
-    if(S.cloud.some((a,i)=>a&&a.rsTag&&dist(P,SLOTS[i])<RS_REACH))parts.push("E: approve FinOps saving (hold E to approve as you walk)");
-    if(!f&&S.alert)parts.push("RED ALERT: go to a flashing incident");
-    if(f){if(f.kind==="discover")parts.push(`Hold E: investigate unknown server (${Math.max(0,discoverTime()-(f.a.disc||0)).toFixed(1)}s, free)`);
-      else if(f.kind==="cloudrestore")parts.push(`Hold E: retry cutover (${Math.max(0,cloudRebuild(f.a.tier)-f.a.prog).toFixed(1)}s, ${Math.round(successChance(f.a.tier)*100)}%)`);
-      else if(f.kind==="restore")parts.push(`Hold E: bring back up (${Math.max(0,TIER[f.a.tier].restore*Math.pow(0.8,retro("firedrill"))-f.a.prog).toFixed(1)}s, free)`);
-      else if(f.kind==="breach")parts.push(`Hold E: contain breach (${Math.max(0,containTime()-f.a.prog).toFixed(1)}s, free)`);
-      else if(f.kind==="fire")parts.push(S.energy>0.5?"Hold E: extinguish":"Hold E: extinguish (no energy, slow)");
-      else if(f.kind==="patch")parts.push(`E: patch (${fixCost(f)}⚡)`);
-      else if(f.kind==="leak")parts.push(`E: seal leak by hand (${fixCost(f)}⚡)`);
-      else if(f.kind==="email")parts.push(`Hold E: answer ${EMAIL[f.m.type].label.toLowerCase()} email (most urgent first)`);
-      else parts.push(`Hold E: close tickets (${fixCost(f)}⚡ each)`);}
+    if(S.cloud.some((a,i)=>a&&a.rsTag&&dist(P,SLOTS[i])<RS_REACH))say("E: approve FinOps saving (hold E to approve as you walk)","E: approve $");
+    if(!f&&S.alert)say("RED ALERT: go to a flashing incident","🚨 Find the incident");
+    if(f){if(f.kind==="discover")say(`Hold E: investigate unknown server (${Math.max(0,discoverTime()-(f.a.disc||0)).toFixed(1)}s, free)`,"Hold E: investigate");
+      else if(f.kind==="cloudrestore")say(`Hold E: retry cutover (${Math.max(0,cloudRebuild(f.a.tier)-f.a.prog).toFixed(1)}s, ${Math.round(successChance(f.a.tier)*100)}%)`,`Hold E: retry ${Math.round(successChance(f.a.tier)*100)}%`,"Hold E");
+      else if(f.kind==="restore")say(`Hold E: bring back up (${Math.max(0,TIER[f.a.tier].restore*Math.pow(0.8,retro("firedrill"))-f.a.prog).toFixed(1)}s, free)`,"Hold E: restore","Hold E");
+      else if(f.kind==="breach")say(`Hold E: contain breach (${Math.max(0,containTime()-f.a.prog).toFixed(1)}s, free)`,"Hold E: contain","Hold E");
+      else if(f.kind==="fire")say(S.energy>0.5?"Hold E: extinguish":"Hold E: extinguish (no energy, slow)","Hold E: extinguish","Hold E");
+      else if(f.kind==="patch")say(`E: patch (${fixCost(f)}⚡)`,`E: patch ${fixCost(f)}⚡`);
+      else if(f.kind==="leak")say(`E: seal leak by hand (${fixCost(f)}⚡)`,`E: seal ${fixCost(f)}⚡`);
+      else if(f.kind==="email")say(`Hold E: answer ${EMAIL[f.m.type].label.toLowerCase()} email (most urgent first)`,"Hold E: email");
+      else say(`Hold E: close tickets (${fixCost(f)}⚡ each)`,"Hold E: tickets");}
   }
   S.prompt=(S.ext&&S.t-S.ext.t<0.08)?"":parts.join("  ·  ");
 }
@@ -2845,6 +2876,69 @@ function avatarColor(){
     if(w>4)col=[r/w,g/w,b/w].map(Math.round);}catch(e){}
   return AVATAR_COLOR[AVATAR]=col;
 }
+/* DEBUG logging: labels on everything and a scrolling log tail. Draw-only and deterministic: it never uses randomness,
+   never changes S, and never reveals hidden servers, escalation targets or outcomes rolled in advance. */
+const DEBUG_LINES=["TRACE entering doTheNeedful()","DEBUG coffee.level=LOW (expected)","TRACE checked if anyone read the runbook: no",
+  "DEBUG printer.status=JAMMED (unrelated, always)","TRACE retrying DNS. It's always DNS.","DEBUG browser.tabs_open=37 (all Stack Overflow)",
+  "TRACE gc: collected 4 sticky notes","DEBUG mutex acquired on the good stapler","TRACE keepalive -> manager: no response",
+  "DEBUG TODO: remove this log line (2014)","TRACE region=probably-us-east-1","DEBUG works_on_my_machine=true",
+  "TRACE ticket.vibe=bad","DEBUG disk 98% full of logs like this one","TRACE heartbeat ok (yours, roughly)",
+  "DEBUG change_request.status=we'll ask forgiveness","TRACE sudo make me a sandwich","DEBUG uptime=yes"];
+function debugTag(text,x,y,col="#9fe870"){ctx.font=`500 8px ${MONO}`;const w=ctx.measureText(text).width+6,bx=clamp(x,w/2+2,W-w/2-2);
+  ctx.fillStyle="rgba(4,10,6,.78)";ctx.fillRect(bx-w/2,y-5.5,w,11);tx(text,bx,y,8,col,{weight:500});}
+function drawDebug(){
+  const P=S.p,f1=n=>n.toFixed(1);
+  S.racks.forEach((a,i)=>{if(!a)return;const p=RACKS[i];
+    debugTag(a.hidden?"0x????":`t=${f1(a.timer)}/${f1(a.maxT)}`,p.x,p.y-45);debugTag(a.hidden?"[REDACTED]":`cov=${a.covered?1:0} fire=${f1(a.fire||0)}`,p.x,p.y-34);});
+  for(const u of S.users)debugTag(`${RANKS[u.rank].name.toLowerCase()}{x:${u.x|0},y:${u.y|0}${u.hunter?",hunting:true":""}}`,u.x,u.y+26,"#ffd28a");
+  for(const b of S.bots)debugTag(`${b.kind}bot.work=${b.work.toFixed(2)}`,b.x,b.y+24,"#8fd3ff");
+  for(const e of S.atk)debugTag("target=<redacted, ask in Slack>",e.x,e.y+32,"#ff9a8f");
+  if(S.temp)debugTag("temp.contract=expiring",S.temp.x,S.temp.y+26,"#8fe8de");
+  if(S.agent)debugTag("agent.confidence=1.0 (always)",S.agent.x,S.agent.y+28,"#d2b8ff");
+  if(S.mgr)debugTag("manager.calendar=FULL",S.mgr.x,S.mgr.y+28,"#ffe2a8");
+  debugTag(`player{x:${f1(P.x)},y:${f1(P.y)},⚡:${S.energy.toFixed(2)},zone:${zoneOf(P.x)},carry:${S.carry?`"${S.carry.name}"`:"null"}}`,P.x,P.y+50);
+  // cloud apps: what each one costs right now, FinOps savings approved, and a leak or breach once it's visible anyway
+  // (no drift risk: predicting leaks is Observability's job)
+  S.cloud.forEach((a,i)=>{if(!a)return;const p=SLOTS[i];
+    debugTag(`$${(cloudRate()*rsMult(a)).toFixed(3)}k/s finops=${a.rs|0}/${RS_MAX}`,p.x,p.y-38,"#8fd3ff");
+    if(a.breach||a.down||a.leakOn)debugTag(a.breach?"breach=1 (pls contain)":a.down?"status=503":`leak=${Math.round(a.leak)}%`,p.x,p.y-27,"#ff9a8f");});
+  drawDebugMetrics();drawDebugTail();
+}
+// a Prometheus-style scrape of the floor: everything here is already on screen or in the HUD somewhere, just less politely
+function drawDebugMetrics(){
+  const vis=S.racks.filter(a=>a&&!a.hidden),inFlight=(S.carry?1:0)+S.pipe.length+S.bots.filter(b=>b.carry).length;
+  const full=S.tk.length>=ticketLimit();
+  const rows=["# HELP las_* scraped from the floor every frame",
+    `las_uptime_budget_ratio ${(Math.max(0,S.err)/S.errMax).toFixed(3)}`,
+    `las_security_score ${Math.round(Math.max(0,S.security))}`,
+    `las_it_spend_kusd ${S.budget.toFixed(1)}`,
+    `las_burn_rate_kusd_per_s ${burnRate().toFixed(3)}`,
+    `las_queue_depth{q="tickets"} ${S.tk.length} # max ${ticketLimit()}`,
+    `las_queue_depth{q="email"} ${S.em.length} # max ${inboxLimit()}`,
+    `las_escalation_wait_seconds ${full?Math.max(0,S.escT??2).toFixed(1):"+Inf"}`,
+    `las_incidents{kind="fire"} ${vis.filter(a=>a.fire>0).length}`,
+    `las_incidents{kind="outage"} ${vis.filter(a=>a.down).length+S.cloud.filter(a=>a&&a.down).length}`,
+    `las_incidents{kind="breach"} ${S.cloud.filter(a=>a&&a.breach).length}`,
+    `las_apps{where="onprem"} ${vis.length}`,
+    `las_apps{where="in_flight"} ${inFlight}`,
+    `las_apps{where="cloud"} ${liveCloud()}`,
+    `las_humans_in_hallway ${S.users.length}`,
+    `las_engineer_energy_ratio ${(S.energy/100).toFixed(2)}`];
+  ctx.font=`500 8.5px ${MONO}`;const bw=Math.max(...rows.map(r=>ctx.measureText(r).width))+12,bh=rows.length*11+8,bx=W-bw-6,by=34;
+  ctx.fillStyle="rgba(4,10,6,.8)";ctx.fillRect(bx,by,bw,bh);
+  rows.forEach((r,k)=>tx(r,bx+6,by+9+k*11,8.5,k?"#9fe870":"#6b8f5a",{align:"left",weight:500}));
+}
+// the log tail: the real events of this run at their own level, with a joke TRACE line every 2.5 s for texture
+function drawDebugTail(){
+  const COL=["#ff8f84","#ffc46b","#9fe870"],rows=[];
+  for(const e of DBG_LOG)if(e.s===S&&e.t<=S.t)rows.push({t:e.t,lvl:LOG_LEVELS[e.lvl],text:e.text,col:COL[e.lvl]});
+  for(let k=Math.floor(S.t/2.5);k>=Math.max(0,Math.floor(S.t/2.5)-7);k--)rows.push({t:k*2.5,lvl:"TRACE",text:DEBUG_LINES[(k*7)%DEBUG_LINES.length].replace(/^(TRACE|DEBUG) /,""),col:"#6b8f5a"});
+  rows.sort((p,q)=>p.t-q.t);const show=rows.slice(-8).map(r=>{const t=r.text.replace(/\s+/g," ");
+    return {...r,line:`${r.t.toFixed(2).padStart(7)} ${r.lvl.padEnd(5)} ${t.length>66?t.slice(0,65)+"…":t}`};});
+  ctx.font=`500 8.5px ${MONO}`;const bw=Math.max(...show.map(r=>ctx.measureText(r.line).width),10)+12,bh=show.length*11+8,by=H-bh-6;
+  ctx.fillStyle="rgba(4,10,6,.82)";ctx.fillRect(6,by,bw,bh);
+  show.forEach((r,k)=>tx(r.line,12,by+9+k*11,8.5,r.col,{align:"left",weight:500}));
+}
 function drawPlayer(){
   const P=S.p;
   // ☕ coffee: amber rings radiate outward with orbiting sparks; flickers in the last second
@@ -2929,6 +3023,7 @@ function draw(){
   drawShouts();
   if(S.alert)drawAlert();
   drawSlowmo();
+  if(logLv()>=3)drawDebug();
   if(freezeActive()){ctx.fillStyle="#163947";rr(W/2-170,30,340,28,6);ctx.fill();tx(`❄ CHANGE FREEZE · ${Math.ceil(S.freezeT)}s${S.freezeT<=3?" · THAWING":""}`,W/2,44,14,"#bcecff",{weight:700});}
   for(const f of S.fl){ctx.globalAlpha=1-f.t/f.life;tx(f.text,f.x,f.y-f.t*26,11,f.color,{weight:600});ctx.globalAlpha=1;}
   if(S.tut&&(mode==="play"||mode==="paused"))drawTutor();
@@ -3505,7 +3600,7 @@ function clipEv(k){
   let bag=c.bags[k];
   if(!bag||!bag.length){bag=c.bags[k]=CLIP_LINES[k].map((_,i)=>i);for(let i=bag.length-1;i>0;i--){const j=Math.floor(clipRand()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}}
   c.lastK=c.lastK||{};c.lastK[k]=S.t;c.say=CLIP_LINES[k][bag.pop()];c.sayT=CLIP_SAY_T;c.at=S.t;c.pr=pr;c.next=S.t+8+4*clipRand();
-  S.energy=Math.min(100,S.energy+1);fl({x:c.x,y:c.y+34},"📎 +1⚡",C.amber); // the one useful thing about him
+  S.energy=Math.min(100,S.energy+1);fl({x:c.x,y:c.y+34},"📎 +1⚡",C.amber,2); // the one useful thing about him
   return true;
 }
 function tickClip(dt){
@@ -4270,11 +4365,14 @@ $("devterm").addEventListener("click",e=>{
   if(b.dataset.bk)return bkClick(b);
   if(b.dataset.up)devSet(b.dataset.up,+b.dataset.to);else if(b.dataset.do)DEV_ACTIONS[b.dataset.do]();else return;
   devMenu();});
+// cycles ERROR → WARN → INFO → DEBUG; the tutorial still shows at least INFO
+const LOG_TIPS=["Only incidents get text on the floor","Short hints and problems only","Every hint, result and odds","Everything. Labels on everything. Sorry."];
+function logLevelBtn(){return `<button class="btn ghost" data-act="loglevel" title="${LOG_TIPS[LOGLV]} (click to change)">Logging level: ${LOG_LEVELS[LOGLV]}</button>`;}
 function togglePause(){
   if(mode==="play"&&S.tut){mode="paused";show(`<h2>Paused</h2><p>The paperclip will wait. It's very patient. It's a paperclip.</p>
-    <div class="row"><button class="btn" data-act="resume">Resume</button><button class="btn ghost" data-act="menu">Leave tutorial</button></div>`);}
+    <div class="row"><button class="btn" data-act="resume">Resume</button>${logLevelBtn()}<button class="btn ghost" data-act="menu">Leave tutorial</button></div>`);}
   else if(mode==="play"){mode="paused";show(`<h2>Paused</h2><p>The fires are paused too. This is the only time that happens.</p>
-    <div class="row"><button class="btn" data-act="resume">Resume</button><button class="btn ghost" data-act="restart">Restart run</button><button class="btn ghost" data-act="quit">Give up</button></div>
+    <div class="row"><button class="btn" data-act="resume">Resume</button>${logLevelBtn()}<button class="btn ghost" data-act="restart">Restart run</button><button class="btn ghost" data-act="quit">Give up</button></div>
     <p style="font-size:12.5px;color:var(--muted)">Restart throws this run away and starts a new one. Giving up means handing in your notice.</p>${toolkitHtml()}`);}
   else if(mode==="paused")play();
 }
@@ -4300,6 +4398,7 @@ ov.addEventListener("click",e=>{
   else if(a==="start"){newRun();toast(`${diffLabel()} career. First client: ${client().name}. Grab an app and carry it right.`);play();}
   else if(a==="next"){startSprint(S.sprint+1);toast(`New client: ${client().name}. Your tools came with you.`);play();}
   else if(a==="resume")play();
+  else if(a==="loglevel"){setLogLevel(LOGLV+1);b.outerHTML=logLevelBtn();ov.querySelector('[data-act=loglevel]').focus();}
   else if(a==="retire")showEnd(null);
   else if(a==="obsolete")showEnd("obsolete");
   else if(a==="outsourced")showEnd("outsourced");

@@ -81,7 +81,7 @@ Google Fonts supplies optional fonts; system font fallbacks are included. Sound 
 | Space / J | Grab, or drop while standing on an empty cloud slot or rack; hold near a failed cloud cutover to roll back |
 | Hold E / K | Contextual work: patch, firefight, restore, contain, investigate, answer, or close |
 | F | Use your Emergency Freeze charge (bought between clients) |
-| P / Escape | Pause or resume |
+| P / Escape | Pause or resume. The pause menu's **Logging level** button sets how much text the floor shows: ERROR (incidents only), WARN (the default: short hints and problems), INFO (every hint, result and odds) or DEBUG (all of that, plus labels on everything, a metrics scrape of the floor, and a tail of the real event log). The hands-on tutorial always shows at least INFO. |
 | M | Toggle sound effects |
 | ` (backtick) or the >_ button | Open the terminal: `journalctl` shows the event log, `restore mm:ss` goes back to a restore point |
 | Music button | Toggle music |

@@ -31,8 +31,8 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud").split(",");
-const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS").split(",");
+const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},get LOGLV(){return LOGLV},setLogLv:v=>{LOGLV=v},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
 let W, G, REPORT;
@@ -1479,6 +1479,93 @@ test("Mouse Jiggler: under 10% of the work over 3+ clients, but never zero; a ho
   check(G.jiggler() === null, "zero actions is the obsolete ending, not jiggling");
 });
 
+test("logging level: ERROR only incidents, WARN short, INFO full, DEBUG labels everything without touching the run", () => {
+  let saved = null; try { saved = W.localStorage.getItem("liftshift-loglevel"); } catch (e) {}
+  try {
+    let S = fresh({reveal: false}); const a = firstRack(S); standAt(S, G.RACKS[a.slot]);
+    const prompt = (lv, fix) => { G.setLogLv(lv); S.fix = fix; G.buildPrompt(); return S.prompt; };
+    const floats = lv => { G.setLogLv(lv); S.fl = []; G.fl(S.p, "OFFLINE", W.getComputedStyle(W.document.documentElement).getPropertyValue("--danger").trim());
+      G.fl(S.p, "Ticket closed", "#000"); G.fl(S.p, "Put the fire out first", "#000", 1, "✖"); return S.fl.map(f => f.text); };
+    // the grab hint: full at INFO, short at WARN, gone at ERROR
+    const info = prompt(2, null), warn = prompt(1, null), err = prompt(0, null);
+    check(info.includes("cutover") && warn === "Space: grab" && err === "", `grab hints ${info} / ${warn} / ${err}`);
+    // an incident always gets a hint, just a terse one at ERROR
+    a.fire = 10;
+    check(prompt(2, {kind: "fire"}).startsWith("Hold E: extinguish") && prompt(1, {kind: "fire"}) === "Hold E: extinguish" && prompt(0, {kind: "fire"}) === "Hold E", `fire hints ${prompt(2, {kind: "fire"})} / ${prompt(1, {kind: "fire"})} / ${prompt(0, {kind: "fire"})}`);
+    S.fix = null; a.fire = 0;
+    check(floats(2).join("|") === "OFFLINE|Ticket closed|Put the fire out first", `INFO floats ${floats(2)}`);
+    check(floats(1).join("|") === "OFFLINE|Put the fire out first", `WARN floats ${floats(1)}`);
+    check(floats(0).join("|") === "OFFLINE|✖", `ERROR floats ${floats(0)}`);
+    check(floats(3).every(t => /^\[(ERROR|WARN|INFO)\] /.test(t)), `DEBUG floats are tagged: ${floats(3)}`);
+    // the tutorial teaches from full hints whatever the setting
+    G.setLogLv(0); S.tut = {}; check(G.logLv() === 2, "the tutorial should show at least INFO"); S.tut = null;
+    // DEBUG drawing reads the run only: no randomness, no changes, hidden servers stay hidden
+    G.setLogLv(3); const hid = S.racks.find(x => x && x.hidden);
+    const before = JSON.stringify([S.p, S.energy, S.racks.map(x => x && [x.timer, x.hidden, x.covered]), S.fl.length]);
+    const random = W.Math.random; W.Math.random = () => { throw new Error("debug drawing used randomness"); };
+    const said = []; const ctx = W.document.querySelector("canvas").getContext("2d"), fill = ctx.fillText;
+    ctx.fillText = function (t, ...r) { said.push(String(t)); return fill.call(this, t, ...r); };
+    try { G.drawDebug(); } finally { W.Math.random = random; ctx.fillText = fill; }
+    check(JSON.stringify([S.p, S.energy, S.racks.map(x => x && [x.timer, x.hidden, x.covered]), S.fl.length]) === before, "debug drawing changed the run");
+    check(said.some(t => t.startsWith("player{")) && said.some(t => /TRACE/.test(t)), "debug labels or log tail missing");
+    check(said.some(t => t.startsWith("las_burn_rate_kusd_per_s ")) && said.some(t => t.startsWith('las_queue_depth{q="tickets"}')), "debug metrics missing");
+    // the tail carries real events at their own level, including ones a quieter level hid at the time
+    check(said.some(t => / INFO  Ticket closed$/.test(t)) && said.some(t => / ERROR OFFLINE$/.test(t)), `real events missing from the log tail: ${said.filter(t => /INFO|ERROR/.test(t))}`);
+    if (hid) check(!said.some(t => t.includes(hid.name)), "debug named a hidden server");
+    // the pause menu button cycles ERROR → WARN → INFO → DEBUG → ERROR
+    G.setLogLv(1); G.setMode("play"); G.togglePause();
+    const btn = () => W.document.querySelector("[data-act=loglevel]");
+    check(btn() && btn().textContent === "Logging level: WARN", "pause menu has no logging level button");
+    const seen = []; for (let i = 0; i < 4; i++) { btn().click(); seen.push(btn().textContent.split(": ")[1]); }
+    check(seen.join(",") === "INFO,DEBUG,ERROR,WARN", `button cycled ${seen}`);
+  } finally { G.setLogLv(2); try { if (saved === null) W.localStorage.removeItem("liftshift-loglevel"); else W.localStorage.setItem("liftshift-loglevel", saved); } catch (e) {} }
+});
+
+// each level gets its own fresh game frame: state outside S (restore points, for one) means two runs in one frame differ anyway.
+// Sound stays on, so this also catches sound effects shifting the dice.
+test("logging level only changes text: users catch you at the same moments and places at every level", async () => {
+  const runAt = async lv => {
+    const f = document.createElement("iframe"); f.style.cssText = "width:960px;height:700px;position:absolute;left:-9999px"; document.body.appendChild(f);
+    try {
+      await new Promise(res => { f.onload = res; f.srcdoc = SRC.replace(HOOK, EXPOSE).replace('<meta charset="utf-8">', '$&<base href="../">'); });
+      const FW = f.contentWindow, FG = FW.__G; let x = 7; FW.Math.random = () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; };
+      FG.setLogLv(lv); FG.newRun(); FG.startSprint(1); FG.setMode("play");
+      return walk(FG, FG.S);
+    } finally { f.remove(); }
+  };
+  const walk = (FG, S) => {
+    const caught = []; let held = null;
+    for (let i = 0; i < 1500; i++) {
+      const t = i * 0.1; S.p.x = 480 + Math.cos(t * 0.7) * 80; S.p.y = 300 + Math.sin(t * 0.9) * 150; S.energy = 100;
+      FG.update(0.1);
+      if (S.p.heldBy !== held) { held = S.p.heldBy; if (held) caught.push(`${i}@${Math.round(held.x)},${Math.round(held.y)}`); }
+    }
+    return JSON.stringify([S.diff, FG.S.hardcore ?? null, caught, S.run.held, S.budget.toFixed(4), S.users.map(u => [Math.round(u.x), Math.round(u.y), u.rank])]);
+  };
+  const ref = await runAt(2);
+  check(JSON.parse(ref)[3] > 0, "the walk never met a user, so this proves nothing");
+  for (const lv of [0, 1, 3]) { const got = await runAt(lv); check(got === ref, `${G.LOG_LEVELS[lv]} changed the simulation: ${got.slice(0, 160)} vs INFO ${ref.slice(0, 160)}`); }
+});
+
+test("sound and music never use the game's random rolls", () => {
+  const AU = G.AU, was = {ctx: AU.ctx, noise: AU.noise, on: AU.on}; let calls = 0, made = null;
+  const random = W.Math.random; W.Math.random = () => { calls++; return random(); };
+  try {
+    AU.on = true; AU.ctx = null; made = G.audio(); // a fresh context fills its noise buffer
+    check(made && AU.noise, "the test frame couldn't build audio");
+    for (const k of Object.keys(G.SFX)) G.SFX[k]();
+    check(calls === 0, `sound effects used Math.random ${calls} times`);
+    // the drums play into the music's own context, which may be an older one
+    if (was.ctx) Object.assign(AU, was);
+    if (G.MUS.filt) for (const k of ["kick", "hat", "snare"]) G.mDrum(k, AU.ctx.currentTime);
+    check(calls === 0, `music used Math.random ${calls} times`);
+  } finally {
+    W.Math.random = random;
+    if (made && made !== was.ctx) { made.close().catch(() => {}); }
+    Object.assign(AU, was); if (was.ctx) W.__liftShiftAudio = was.ctx;
+  }
+});
+
 /* ---------- runner ---------- */
 async function run() {
   const out = document.getElementById("out"), sum = document.getElementById("sum");
@@ -1502,7 +1589,8 @@ async function run() {
   const frame = document.getElementById("game");
   await new Promise(res => { frame.onload = res; frame.srcdoc = SRC.replace(HOOK, EXPOSE).replace('<meta charset="utf-8">', '$&<base href="../">'); });
   W = frame.contentWindow; G = W.__G;
-  if (G) G.setDifficulty("normal", false);
+  // checks see every hint and result (INFO) unless they pick a level; the saved setting is left alone
+  if (G) { G.setDifficulty("normal", false); G.setLogLv(2); }
   if (!G) record("the game starts inside the test frame", false, "it did not start; see the console");
   else {
     const realRandom = W.Math.random;
