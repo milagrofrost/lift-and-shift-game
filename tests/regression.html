@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -671,6 +671,87 @@ test("finishing a client without lifting a finger gets you fired as obsolete; on
   check(S.ss.human > 0, "holding E at the desk was not counted"); G.finishEngagement();
   check(!S.obsolete && doc.querySelector('[data-act="next"]'), "one action did not keep the job");
 });
+test("a no-AI career never offers the AI Agent or AI Chatbots, and skips the AI announcement", () => {
+  const S = fresh(); S.noAI = true; S.career = [{}, {}, {}, {}];
+  for (const id of ["agent", "chatbot"]) check(!G.canBuy(G.UPGRADES.find(u => u.id === id)), `${id} is for sale in a no-AI career`);
+  check(G.canBuy(G.UPGRADES.find(u => u.id === "patchbot")), "no-AI blocked a non-AI upgrade");
+  for (let k = 0; k < 40; k++) check(!G.rollOffers().some(id => id === "agent" || id === "chatbot"), "the shop offered AI");
+  S.career = [{}, {}]; S.ss.human = 3; S.ss.acts = 3; G.finishEngagement();
+  check(!S.agentNews && !S.offers.includes("agent"), "the AI strategy announcement still forced the agent into the shop");
+  S.noAI = false; check(G.canBuy(G.UPGRADES.find(u => u.id === "chatbot")), "chatbots unavailable in a normal career");
+});
+test("hands-on work counts as routine (tickets, email, FinOps, patching, inventory) or skilled (everything else)", () => {
+  const S = fresh(); G.setMode("play"); S.tk = [{age: 0}]; S.p.x = G.DESK.x; S.p.y = G.DESK.y; G.keys.fix = true; S.energy = 100;
+  try { G.doFix(0.05); } finally { G.keys.fix = false; }
+  check(S.ss.acts === 1 && S.ss.routine === 1, `a ticket was not routine: ${S.ss.acts}/${S.ss.routine}`);
+  const i = S.racks.findIndex(Boolean); S.racks[i].hidden = false; S.racks[i].fire = 50; S.p.x = G.RACKS[i].x; S.p.y = G.RACKS[i].y + 44; S.tk = []; G.keys.fix = true;
+  try { G.doFix(0.05); } finally { G.keys.fix = false; }
+  check(S.ss.acts === 2 && S.ss.routine === 1, `firefighting counted as routine: ${S.ss.acts}/${S.ss.routine}`);
+  check(G.skilledShare(S.ss) === 0.5, "skilled share is wrong");
+});
+test("a no-AI career from client 10 with under 15% skilled work gets outsourced after the review; more keeps the job", () => {
+  const doc = W.document;
+  const run = (noAI, n, acts, routine, human = acts) => { const S = fresh(); S.noAI = noAI; S.career = Array.from({length: n - 1}, () => ({name: "A", days: 1, stars: 4, late: 0}));
+    S.ss.human = human; S.ss.acts = acts; S.ss.routine = routine; G.finishEngagement(); return S; };
+  let S = run(true, G.OUTSOURCE_FROM, 20, 18);
+  check(S.outsourced && doc.querySelector('[data-act="outsourced"]') && !doc.querySelector('[data-act="next"]'), "10% skilled at client 10 did not get outsourced");
+  doc.querySelector('[data-act="outsourced"]').click();
+  check(G.mode === "end" && doc.body.textContent.includes("Outsourced") && doc.body.textContent.includes("Process Over People") && !G.BK.fired && doc.querySelector('[data-act="again"]'), "outsourced is not a winning end screen");
+  S = run(true, G.OUTSOURCE_FROM, 20, 17); check(!S.outsourced && doc.querySelector('[data-act="next"]'), "15% skilled work got outsourced");
+  S = run(true, G.OUTSOURCE_FROM - 1, 20, 20); check(!S.outsourced, "outsourced before client 10");
+  S = run(false, 12, 20, 20); check(!S.outsourced, "a career with AI available got outsourced");
+  S = run(true, 12, 0, 0, 0); check(S.obsolete && !S.outsourced, "a hands-off client should be obsolete, not outsourced");
+});
+test("each client starts with a short grace from users, and the temp's question waits for your immunity too", () => {
+  let S = fresh(); check(S.p.userImm === G.START_GRACE, `start grace is ${S.p.userImm}`);
+  S.users = [{x: S.p.x, y: S.p.y, vx: 0, vy: 0, rank: 3, cd: 0, turn: 9, line: ""}];
+  G.tickUsers(0.05); check(!S.p.heldBy, "a user grabbed you during the start grace");
+  S.p.userImm = 0; G.tickUsers(0.05); check(S.p.heldBy, "a user could not stop you after the grace ended");
+  S = fresh(); G.spawnTemp(); const T = S.temp; T.snack = false; T.nobadge = false; T.x = S.p.x + 10; T.y = S.p.y; T.idle = 0;
+  S.p.userImm = 1; seed(5); G.tickTemp(0.01); check(!T.asked && S.p.stun <= 0, "the temp stopped you during your immunity");
+  S.p.userImm = 0; T.idle = 0; let k = 0; while (!T.asked && k++ < 50) { T.idle = 0; G.tickTemp(0.01); }
+  check(T.asked && S.p.stun > 0, "the temp never asked its question");
+});
+test("the toolkit lists every upgrade you own, stackable or not; coffee and donuts are tallied for the career", () => {
+  const S = fresh(); S.upgrades = {runbooks: true, patchbot: 2, pac: 0};
+  const t = G.toolkitHtml(); check(t.includes("Runbooks") && t.includes("Patch Bot") && t.includes("2/3") && !t.includes("Policy as Code"), "toolkit is missing or wrong");
+  S.upgrades = {}; check(G.toolkitHtml() === "", "an empty toolkit should not show");
+  G.setMode("play"); S.st = [{x: S.p.x, y: S.p.y, life: 9, kind: "coffee"}, {x: S.p.x, y: S.p.y, life: 9, kind: "donut"}]; G.update(0.02);
+  check(S.snacks && S.snacks.coffee === 1 && S.snacks.donut === 1, `snacks ${JSON.stringify(S.snacks)}`);
+  G.showEnd(null); check(W.document.body.textContent.includes("Coffee & donuts"), "the end screen has no snack tally");
+});
+test("your avatar is exactly one emoji, kept across visits, and never anything else", () => {
+  const c = G.cleanAvatar;
+  check(c("🦊") === "🦊" && c("  🧙  ") === "🧙", "a plain emoji was refused");
+  check(c("🧑🏽‍🚀 and more") === "🧑🏽‍🚀", "a skin-toned ZWJ emoji was not kept as one");
+  check(c("🇨🇦") === "🇨🇦", "a flag was split or refused");
+  check(c("hello") === null && c("") === null && c("<b>") === null && c("1") === null, "text got through as an avatar");
+  let saved = null; try { saved = W.localStorage.getItem("liftshift-avatar"); } catch (e) {}
+  try {
+    check(G.setAvatar("🐱") && !G.setAvatar("cat"), "setAvatar accepted text or refused an emoji");
+    G.titleScreen(); const box = W.document.getElementById("avatar");
+    check(box && box.value === "🐱" && W.document.querySelector('.avpick.on[data-avatar="🐱"]'), "the menu does not show the chosen avatar");
+    check(W.localStorage.getItem("liftshift-avatar") === "🐱", "the avatar was not saved");
+  } finally { try { if (saved === null) W.localStorage.removeItem("liftshift-avatar"); else W.localStorage.setItem("liftshift-avatar", saved); } catch (e) {} G.setAvatar(saved || "🧑‍💻"); }
+});
+test("every upgrade has a Learn more link, listed on the menu screen", () => {
+  for (const u of G.UPGRADES) {
+    const l = G.LEARN[u.id];
+    check(l && /^https:\/\/[^"<>\s]+$/.test(l[0]) && l[1] && l[2], `${u.id} has no proper learning link`);
+  }
+  check(Object.keys(G.LEARN).every(id => G.UPGRADES.some(u => u.id === id)), "a learning link points at an upgrade that doesn't exist");
+  G.learnMore(); const links = [...W.document.querySelectorAll("#overlay a.learnlink")];
+  check(links.length === G.UPGRADES.length && links.every(a => a.target === "_blank" && a.rel.includes("noopener")), "the Learn more screen is missing links or opens them unsafely");
+  G.titleScreen(); check(W.document.querySelector('[data-act="learn"]'), "no Learn more button on the main menu");
+});
+test("About the author is on the main menu and links out safely", () => {
+  G.titleScreen(); check(W.document.querySelector('[data-act="author"]'), "no About the author button on the main menu");
+  G.aboutAuthor(); const links = [...W.document.querySelectorAll("#overlay .postlinks a")];
+  check(links.length === G.AUTHOR_LINKS.length && links.every(a => a.href.startsWith("https://") && a.target === "_blank" && a.rel.includes("noopener")), "author links are missing or open unsafely");
+  check(W.document.querySelector('#overlay [data-act="menu"]'), "no way back to the menu");
+  const cm = [...W.document.querySelectorAll("#overlay .comments .cmt p")].map(p => p.textContent);
+  check(cm.length >= 6 && cm.every(t => t && !/undefined|NaN/.test(t)), `the comments have a hole: ${cm.join(" | ")}`);
+});
 
 /* ---------- migration uptime burn ---------- */
 test("moving a server burns a quarter of an outage, and only if it is really shut down", () => {
@@ -929,7 +1010,7 @@ test("git blame turns on you after three clients", () => {
 });
 
 /* ---------- sharing the end report ---------- */
-const FACTS = {retired: {o: "r", head: "Retired", sub: "x"}, fired: {o: "u", head: "Open to work", sub: "x", who: "the SLA"}, resigned: {o: "q", x: 2, head: "Pursuing other opportunities", sub: "x"}, obsolete: {o: "o", head: "Replaced by AI", sub: "x"}};
+const FACTS = {retired: {o: "r", head: "Retired", sub: "x"}, fired: {o: "u", head: "Open to work", sub: "x", who: "the SLA"}, resigned: {o: "q", x: 2, head: "Pursuing other opportunities", sub: "x"}, obsolete: {o: "o", head: "Replaced by AI", sub: "x"}, outsourced: {o: "x", head: "Outsourced", sub: "x"}};
 test("every outcome has a post for every network, with the real numbers", () => {
   const S = fresh(); S.budget = -412; S.ss.mig = 7;
   for (const outcome of Object.keys(FACTS)) for (const net of Object.keys(G.SHARE_NETS)) for (let v = 0; v < 6; v++) {
@@ -958,8 +1039,8 @@ test("report links stay in step with the game and reject anything but numbers", 
   const f = G.shareFacts("fired", {o: "c", head: "Open to work", sub: "x", who: "y"}), r = REPORT.parseCode(G.shareCode(f));
   check(r && r.outcome === "c" && r.n === 2 && r.avg === 3.5 && r.mig === 23 && r.spend === -412, `round trip gave ${JSON.stringify(r)}`);
   check(REPORT.describe(r).head === "Open to work" && REPORT.describe(r).sub.includes("Failed compliance"), "fired report lost its reason");
-  for (const bad of ["", "r_9_1_1_1_1_0_0", "r_0_1_51_1_1_0_0", "x_0_1_1_1_1_0_0", "r_0_1_1_1_1_0_0<script>", "hello_world"]) check(REPORT.parseCode(bad) === null, `accepted ${bad}`);
-  for (const code of ["r_8_999_50_9999_-9999999_2_0", "u_0_0_0_0_0_0_0", "c_0_0_0_0_0_0_0", "b_0_0_0_0_0_0_0", "q_0_0_0_0_0_0_4", "o_0_0_0_0_0_0_0"]) check(!/undefined|NaN/.test(JSON.stringify(REPORT.describe(REPORT.parseCode(code)))), `hole in ${code}`);
+  for (const bad of ["", "r_9_1_1_1_1_0_0", "r_0_1_51_1_1_0_0", "z_0_1_1_1_1_0_0", "r_0_1_1_1_1_0_0<script>", "hello_world"]) check(REPORT.parseCode(bad) === null, `accepted ${bad}`);
+  for (const code of ["r_8_999_50_9999_-9999999_2_0", "u_0_0_0_0_0_0_0", "c_0_0_0_0_0_0_0", "b_0_0_0_0_0_0_0", "q_0_0_0_0_0_0_4", "o_0_0_0_0_0_0_0", "x_0_0_0_0_0_0_0"]) check(!/undefined|NaN/.test(JSON.stringify(REPORT.describe(REPORT.parseCode(code)))), `hole in ${code}`);
 });
 test("the preview image is a real 1200x630 PNG under the size limits", async () => {
   const png = await REPORT.renderCard(REPORT.describe(REPORT.parseCode("c_8_999_50_9999_-9999999_2_0")));
@@ -970,7 +1051,7 @@ test("the preview image is a real 1200x630 PNG under the size limits", async () 
 test("every end screen offers sharing, and it leaves the run alone", () => {
   const S = fresh(), doc = W.document, opened = [], realOpen = W.open; W.open = u => { opened.push(u); return null; };
   try {
-    for (const end of [() => G.showEnd("uptime"), () => G.showEnd("security"), () => G.showEnd(null), () => G.showEnd("obsolete"), () => G.resign()]) {
+    for (const end of [() => G.showEnd("uptime"), () => G.showEnd("security"), () => G.showEnd(null), () => G.showEnd("obsolete"), () => G.showEnd("outsourced"), () => G.resign()]) {
       end();
       for (const k of Object.keys(G.SHARE_NETS)) check(doc.querySelector(`[data-share="${k}"]`), `no ${k} button`);
       check(doc.activeElement && !doc.activeElement.dataset.share, "a share button took the opening focus");
@@ -979,7 +1060,7 @@ test("every end screen offers sharing, and it leaves the run alone", () => {
       check(before === [S.budget, S.security, S.err, S.points, S.career.length, S.sprint, G.BK.left].join(), "sharing changed the run");
       check(doc.getElementById("share-post").textContent.length > 0, "empty post preview");
     }
-    check(opened.length === 15 && opened.some(u => u.includes("x.com/intent")) && opened.some(u => u.includes("facebook.com/sharer")), `opened ${opened.length}`);
+    check(opened.length === 18 && opened.some(u => u.includes("x.com/intent")) && opened.some(u => u.includes("facebook.com/sharer")), `opened ${opened.length}`);
   } finally { W.open = realOpen; }
 });
 test("Not my problem counts racks about to fail an audit and leaks about to breach, without touching the run", () => {

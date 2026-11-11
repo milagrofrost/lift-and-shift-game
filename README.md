@@ -31,6 +31,10 @@ Later clients bring larger environments, hidden applications, and more operation
 
 There is one more way to win: automate yourself out of a job. A level 4 AI Agent with every foundation in place (plus Mover Bot for the migrations) can run a whole client by itself. Finish a client without doing a single thing yourself, and after the client review the AI agent gets you fired as obsolete instead of handing you the next client. Do even one thing and you stay employed.
 
+Prefer to do it without AI? Tick **Old school** on the main menu: the AI Agent and AI Chatbots never reach the shop. From the 10th client on, if the bots and your tooling do the engineering and under 15% of your own work is skilled (migrations, incidents, leaks), the job is down to a checklist, and after the review it gets outsourced. That's a win as well.
+
+Curious what a tool really does? **📚 Learn more** on the main menu lists every upgrade with a link to a good real-world explanation (Comfy Sneakers included), and each shop card links to the same page. **👤 About the author** has a very humble post from the person who made it, with links to [LinkedIn](https://www.linkedin.com/in/milagrofrost/) and [milagrofrost.com](https://milagrofrost.com).
+
 ![The on-premises room, operational hallway, and cloud migration floor](docs/screenshots/gameplay.png)
 
 ## What you learn by playing
@@ -113,7 +117,7 @@ The terminal keeps a play-by-play event log for the current client and a restore
 ### Humble brag
 If you get fired or resign mid-client, the report also counts what you're leaving behind as "Not my problem": everything flashing red as you walk out — visible racks that are uncovered and showing the red circle (the last quarter of their compliance cycle), and cloud leaks with a red border, about to be breached. You migrated what you could; those are for whoever gets hired next. On the resignation exit interview's carnage report each one adds a carnage point.
 
-Every end screen (retired, fired, obsolete, or resigned) has a share panel with a post written for LinkedIn, Facebook, X, or Instagram. Getting fired is reported as "Open to work"; the numbers are real. Each post links to a personal `/r/...` page whose 1200×630 preview image shows that report, so it appears as the picture on LinkedIn, Facebook, and X. No network lets a website attach an image directly: LinkedIn and X open with the post filled in and the square card on the clipboard to paste instead, Facebook takes only the link with the post on the clipboard, and Instagram uses the phone share sheet or a manual upload. Nothing is published until you do it yourself.
+Every end screen (retired, fired, obsolete, outsourced, or resigned) has a share panel with a post written for LinkedIn, Facebook, X, or Instagram. Getting fired is reported as "Open to work"; the numbers are real. Each post links to a personal `/r/...` page whose 1200×630 preview image shows that report, so it appears as the picture on LinkedIn, Facebook, and X. No network lets a website attach an image directly: LinkedIn and X open with the post filled in and the square card on the clipboard to paste instead, Facebook takes only the link with the post on the clipboard, and Instagram uses the phone share sheet or a manual upload. Nothing is published until you do it yourself.
 
 The report page and image are Cloudflare Pages Functions in `functions/`, with no dependencies or build step. Report links hold only numbers and fixed choices. To try them locally, run `npx wrangler pages dev .`; a plain static server doesn't run them.
 
