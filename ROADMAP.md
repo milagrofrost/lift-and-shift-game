@@ -55,7 +55,7 @@ Late-game AI was a disaster on a 10-client career with no Patch Bot: patching sa
 - Vendor swag loot crates: stress ball (+5 energy), conference lanyard (users hold you 10% less), "Cloud Ninja" T-shirt (does nothing), expired cloud credit (-$4k to process).
 - "Days since last incident" streak as the only streak mechanic.
 - A CAB gate on client 3.
-- Zombie users, fought off with a fire extinguisher on a new key.
+- Surreal second-career hallway users: see the brainstorm below. Hospital zombies interrupt but do not bite; combat is not part of the current concept.
 
 ## Multiplayer (two-player co-op)
 
@@ -84,3 +84,54 @@ Late-game AI was a disaster on a 10-client career with no Patch Bot: patching sa
 - Daily login rewards or streak guilt, except as a joke.
 - Paid loot boxes, unless the joke is that it contains an invoice.
 - Dedicated game servers for two-player games.
+
+## Second career: return, reassess, and the strange familiar (brainstorm, 11 November 2026)
+
+Planning notes only; nothing in this section is implemented or a settled specification.
+
+### Premise and how the idea evolved
+- The credits and LaS OS boot screen suggest a cycle, possibly a simulation. Keep the explanation unresolved; surreal familiarity is more useful than committing to simulation lore now.
+- The player previously migrated clients well and learned good practices, then was fired, replaced, outsourced, or left. In their absence, clients let those practices deteriorate and now hire the player back.
+- Initial concept: reverse the journey, migrating cloud workloads back to on-prem. Corporate strategy could swing back again after the ending; repeated full back-and-forth campaigns are not the intended requirement.
+- Latest direction broadens that: investigate and decide what should stay in cloud, return on-prem, or become hybrid. Improving the existing cloud estate can be a successful outcome. Explore cost savings, availability, and appropriate placement rather than teaching that either location is universally best.
+- Reuse the familiar map, design, and core interactions, but make the second career feel different through discovery, visibility, decisions, and atmosphere.
+
+### The dark cloud room
+- The cloud/data-center area is dark because the client lacks visibility into what it runs. A small pool of light surrounds the player; approaching something lets them see what it is without revealing the bigger picture.
+- Progression can enlarge that visible area and provide better monitoring. Monitoring may be an interim investment while migrating, or support a decision to stay.
+- Candidate distinction, not yet agreed: proximity reveals a service, investigation explains its purpose/cost/health/dependencies, and remote monitoring supplies current status. Consider keeping discovered locations with last-known status rather than requiring memorization.
+- Candidate loop: discover, stabilize, assess, improve or relocate, verify. Exact visibility rules, controls, progression, economics, and completion criteria remain open.
+- Design questions: keep incidents and interaction targets legible; darkness should communicate missing knowledge without making the game inaccessible. Resolve reduced-motion and other accessibility needs before implementation.
+
+### What went wrong after the player left
+Possible inherited problems: abandoned test resources and snapshots; oversized capacity; scaling instead of fixing faults; excessive data movement; resilience removed to cut costs; excessive automation permissions; ignored or disabled monitoring; poorly controlled retries.
+- These provide understandable causes for cost, availability, and control concerns. They are scenario candidates, not claims that repatriation fixes them automatically.
+- Earlier premise: the player recommends cleanup, but clients insist on returning on-prem and reject the advice.
+- Latest direction reopens that mandate: can evidence convince a client to optimize cloud, repatriate selectively, or accept hybrid? Whether persuasion is playable, narrative, or client-specific is undecided.
+- Candidate destination preparation: ready on-prem capacity before transfer while cloud costs continue. Dependencies and hybrid links could matter, but avoid making hybrid a free best answer.
+- Candidate success measure: a healthy, understood, economically appropriate service can be resolved in place; migration count alone should not force every workload to move. Scoring and real-world cost abstraction need design work.
+
+### Hallway: client personality becomes surreal
+- Intended eventual direction: the hallway is the place that expresses the client's personality; keep the infrastructure layout familiar across clients.
+- Return visits feel eerie, silly, and surreal. No explanation is settled for whether this is literal, distorted reality, or the player's perception.
+- Hospital: the hallway is full of zombies instead of ordinary users. They stop the player and say “brains,” or make a guttural sound. They do not bite. Familiar interruptions can carry the joke without introducing combat.
+- Dentist: loose visual possibilities include teeth, a walking tooth, and smiles. Needs thought; no chosen cast or mechanic yet.
+- TO DO, parked: daycare with babies saying “goo goo ga ga.” Do not develop this yet.
+- Keep the surreal atmosphere compatible with understandable technical cause and effect. Decide later how audio, dialogue, and visual themes vary.
+
+### AI branch: parked pending the core campaign
+- Earlier possibility: the AI left in control resists losing its cloud workloads. Repurpose the familiar FinOps scan as an intrusion scan; the player is the intruder.
+- The AI could detect the player and obstruct the cloud-to-on-prem migration, trying to preserve its control. Exact sabotage, counterplay, and consequences are undecided.
+- Candidate boundary: successfully isolated on-prem services escape its control, providing lasting progress. Explain any sabotage through actual remaining connections rather than arbitrary reach.
+- Latest instruction: set the AI conflict aside while developing the more realistic assessment/placement campaign. Whether the original AI remains, was unplugged, or copied itself is unresolved; duplication is a possible trope, not established lore.
+- Non-AI opposition is also parked. Do not require an antagonist for the core assessment loop to work.
+
+### Next thinking, not implementation tasks
+- [ ] Define the second career's finish condition across cloud, on-prem, and hybrid outcomes.
+- [ ] Find the smallest distinct discovery/visibility and placement loop worth prototyping.
+- [ ] Decide what carries over from the first career and how the return is unlocked.
+- [ ] Reconcile client mandates with player discretion and evidence-based persuasion.
+- [ ] Explore hospital and dentist hallway treatments; keep daycare parked.
+- [ ] Revisit the AI and non-AI variants once the underlying campaign works.
+
+Earlier suggestions such as remembered resignation text, a helper AI fighting another AI, and specific boot-screen messages remain optional brainstorms, not requirements.
