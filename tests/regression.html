@@ -186,8 +186,9 @@ test("Mr Paperclip backseat-drives: micromanages held work, sighs at a filling t
     S.fix={kind:"patch",key:"p0"};G.keys.fix=true;for(let i=0;i<40;i++)G.tickClip(.05);G.keys.fix=false;S.fix=null;
     check(G.CLIP_LINES.working.includes(c.say),`no micromanaging while you hold E, got "${c.say}"`);
     S.t+=21;c.still=0;G.tickClip(.05);check(G.CLIP_LINES.chatter.includes(c.say),`no unsolicited advice in a quiet stretch, got "${c.say}"`);
-    S.t+=13;S.fix={kind:"fire",key:"f0"};G.keys.fix=true;for(let i=0;i<40;i++)G.tickClip(.05);G.keys.fix=false;S.fix=null;G.tickClip(.05);
-    check(c.say==="Hey, you're getting it all over me!",`no extinguisher complaint while fighting a fire, got "${c.say}"`);
+    // some fires, not every fire
+    let sprays=0;for(let k=0;k<40;k++){S.t+=13;c.say="";S.fix={kind:"fire",key:"f0"};G.keys.fix=true;for(let i=0;i<40;i++)G.tickClip(.05);G.keys.fix=false;S.fix=null;G.tickClip(.05);if(G.CLIP_LINES.spray.includes(c.say))sprays++;}
+    check(sprays>0&&sprays<40,`he should complain about some fires but not all, did ${sprays}/40`);
   }finally{W.Math.random=random;G.keys.fix=false;}
 });
 test("Mr Paperclip notices a paperclip avatar once, at his first client", () => {

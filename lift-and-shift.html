@@ -3483,7 +3483,7 @@ const CLIP_LINES={
   // your avatar is a paperclip too: said once, at the first client he's with you
   twin:["Imitation is the most sincere form of flattery. So I thank you.","Oh, we're matching? This is awkward. I'm the original.","Two paperclips, one data center. They'll never tell us apart. Until you start working.","Nice avatar. Bold choice. Is it legally distinct?"],
   // holding E on a fire: he's standing right next to it
-  spray:["Hey, you're getting it all over me!"],
+  spray:["Hey, you're getting it all over me!","My googly eyes! I can't see!","Paperclips don't burn. Spray the SERVER.","Watch the aim! I just got polished.","That's not foam, that's a lawsuit."],
   // back on the floor after the cheat menu was open
   cheat:["sudo su","H4X0R5!1!!","Awwwwwww I'm telling on you!","I saw that. I see everything. I'm a paperclip.","Cheat codes? In MY data center?","I'll pretend I didn't see that. For a fee.","Linda's going to hear about this."],
   done:["We did it! By 'we' I mean I watched.","Five stars! Not from me.","Client complete. I'll accept my bonus in office supplies.","I'll mention you in my promotion packet. In a footnote."],
@@ -3519,7 +3519,8 @@ function tickClip(dt){
   if(!c.late&&overdue()>0){c.late=true;clipEv("late");}
   // micromanaging: hold E on a job for a moment and he checks in
   c.work=keys.fix&&S.fix?(c.work||0)+dt:0;
-  if(c.work>=1.5&&clipEv(S.fix&&S.fix.kind==="fire"?"spray":"working"))c.work=-99; // on a fire, he's in the spray zone
+  // on a fire he's in the spray zone, but he only complains about some of them (about 2 in 5)
+  if(c.work>=1.5){if(S.fix&&S.fix.kind==="fire"){if(clipRand()<0.4)clipEv("spray");c.work=-99;}else if(clipEv("working"))c.work=-99;}
   // tickets piling up (4 of 5): he'd like to take it offline. Again once it's worked down to 2.
   if(!c.q&&S.tk.length>=4){c.q=true;clipEv("queue");}else if(c.q&&S.tk.length<=2)c.q=false;
   // a quiet stretch while you're busy: unsolicited advice and armchair architecture
