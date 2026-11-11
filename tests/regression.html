@@ -197,6 +197,13 @@ test("Mr Paperclip notices a paperclip avatar once, at his first client", () => 
     G.setAvatar("🐱");const S2=fresh();S2.upgrades.clip=true;G.startSprint(2);check(G.CLIP_LINES.start.includes(S2.clipC.say),"a cat avatar got the twin line");
   } finally { try { if (saved === null) W.localStorage.removeItem("liftshift-avatar"); else W.localStorage.setItem("liftshift-avatar", saved); } catch (e) {} G.setAvatar(saved || "🧑‍💻"); }
 });
+test("Mr Paperclip calls you out when you come back from the cheat menu", () => {
+  const S=fresh();S.upgrades.clip=true;G.clipReset();G.setMode("play");S.t+=5;const was=G.DEV.unlocked;
+  try{
+    G.DEV.unlocked=false;G.devShow();G.devClose();check(!G.CLIP_LINES.cheat.includes(S.clipC.say),"a plain terminal visit got a cheat line");
+    G.DEV.unlocked=true;G.devShow();G.devClose();check(G.mode==="play"&&G.CLIP_LINES.cheat.includes(S.clipC.say),`no cheat line after the cheat menu, got "${S.clipC.say}"`);
+  }finally{G.DEV.unlocked=was;}
+});
 test("Mr Paperclip comments in the shop and gets a memorial in the old school credits", () => {
   const S=fresh();S.upgrades.clip=true;G.clipReset();S.time=95;S.ss.human=1;S.ss.acts=1;G.setMode("play");G.finishEngagement(); // one human action, so the review reaches the shop
   check(Math.round(S.clipDays)===10,`his days on the team should count this client, got ${S.clipDays}`);
