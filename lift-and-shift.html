@@ -2263,7 +2263,7 @@ function doFix(dt){
   if(S.fixP<need)return;
   S.energy-=c;S.fixP=0;S.fixKey=null;
   if(f.kind==="patch"){sfx("patch");applyPatch(f.a);fl(f.pos,"✓ Covered this cycle",C.ok);clipEv("patch");}
-  else if(f.kind==="leak"){sfx("sealed");f.a.age=0;f.a.leakOn=false;f.a.leak=0;f.a.grace=4;fl(f.pos,"Sealed by hand",C.ok);}
+  else if(f.kind==="leak"){sfx("sealed");f.a.age=0;f.a.leakOn=false;f.a.leak=0;f.a.grace=4;fl(f.pos,"Sealed by hand",C.ok);clipEv("sealed");}
   else if(f.kind==="email"){sfx("sent");S.em=S.em.filter(x=>x!==f.m);if(f.m.type==="vendor")S.run.vendor++;
     // answering a finance email negotiates a 20s extension on the license closest to renewing
     clipEv(f.m.type==="vendor"?"vendor":"email");if(f.m.type==="finance")financeExtension("player");fl(f.pos,f.m.type==="vendor"?"Replied to a vendor. Why?":"Replied",f.m.type==="vendor"?C.muted:C.ok);}
@@ -3427,26 +3427,26 @@ function tutDone(){
    you made your choice. */
 const CLIP_LINES={
   start:["New client! I've already formed strong opinions about their cabling.","Big day. I'll be right here. Judging.","I put 'cloud architect' on my résumé. Let's see who finds out first.","Smells like legacy in here. And fear.","Remember: gold first. That's how the pros do it. (It is not.)","I've reviewed their architecture. It's a closet.","Fresh client, fresh chances for me to say 'I told you so.'"],
-  grab:["Lift with your legs. I wouldn't know. No legs.","Ooh, carrying it by hand. Very artisanal.","Careful, that one's load-bearing. They all are, apparently.","Have you considered carrying it faster?","Hold it like a baby. A very expensive, very old baby.","Pro tip: servers love being shaken. (Do not.)"],
-  migrate:["It worked? Write that down. Nobody will believe us.","Another one in the cloud. Which is just someone else's server. Don't tell them.","See? My coaching works. Ignore the part where I didn't say anything.","I'll take partial credit. Full credit, actually.","Cloud achieved. Synergy unlocked. Bonus pending.","Up in the cloud, where nothing ever goes wrong. Ever."],
-  cutfail:["Have you considered not doing that?","Have you tried turning it off and not turning it back on?","In my professional opinion: yikes.","This is fine. I'm updating my LinkedIn. Unrelated.","Was that the plan? Bold plan.","Have you tried migrating it harder?","I'd roll that back. Or forward. Sideways, maybe."],
-  rollback:["Ctrl+Z: the most senior engineer on any team.","We were never here.","Undo! The real cloud strategy.","Back where it started. Very circle-of-life."],
-  patch:["Covered! Until it isn't. Which is soon.","You know you could just… migrate it? No? Okay.","Patched. I'd have used duct tape, but sure.","Another patch. Technical debt sends its regards.","Have you tried not patching it and seeing what happens? For science."],
-  audit:["The auditors would like a word. Several words. In a binder.","To be fair, I also forgot that one.","Compliance is a mindset. Ours is 'oops.'","Failed an audit. Put it on my tab."],
-  ticket:["Closed as 'works on my machine.' Nice.","Root cause: the user. As always.","Have you tried marking it resolved and running?","Ticket closed. Customer satisfaction: unknowable.","Resolved: 'Cleared cache.' Nobody will check."],
-  escalate:["Thar she blows!","Fire away! No, literally.","Escalation incoming. I'd duck.","Ooh, that one's going to leave a mark.","There she blows! Somebody ignored a ticket. Wasn't me."],
+  grab:["Lift with your legs. I wouldn't know. No legs.","Ooh, carrying it by hand. Very artisanal.","Careful, that one's load-bearing. They all are, apparently.","Have you considered carrying it faster?","Hold it like a baby. A very expensive, very old baby.","Pro tip: servers love being shaken. (Do not.)","That one? Okay. No, it's fine. It's your migration."],
+  migrate:["It worked? Write that down. Nobody will believe us.","Another one in the cloud. Which is just someone else's server. Don't tell them.","See? My coaching works. Ignore the part where I didn't say anything.","I'll take partial credit. Full credit, actually.","Cloud achieved. Synergy unlocked. Bonus pending.","Up in the cloud, where nothing ever goes wrong. Ever.","Bronze? Interesting. I'd have gone with gold. Bigger risk, bigger résumé.","Great work on my plan."],
+  cutfail:["Have you considered not doing that?","Have you tried turning it off and not turning it back on?","In my professional opinion: yikes.","This is fine. I'm updating my LinkedIn. Unrelated.","Was that the plan? Bold plan.","Have you tried migrating it harder?","I'd roll that back. Or forward. Sideways, maybe.","I knew that would happen. I didn't say anything, but I knew."],
+  rollback:["Ctrl+Z: the most senior engineer on any team.","We were never here.","Undo! The real cloud strategy.","Back where it started. Very circle-of-life.","Rolling back? I would have just believed in it harder."],
+  patch:["Covered! Until it isn't. Which is soon.","You know you could just… migrate it? No? Okay.","Patched. I'd have used duct tape, but sure.","Another patch. Technical debt sends its regards.","Have you tried not patching it and seeing what happens? For science.","I'd have migrated it instead. But sure, patch it. Again."],
+  audit:["The auditors would like a word. Several words. In a binder.","To be fair, I also forgot that one.","Compliance is a mindset. Ours is 'oops.'","Failed an audit. Put it on my tab.","I had a feeling about that one. A strong, silent feeling."],
+  ticket:["Closed as 'works on my machine.' Nice.","Root cause: the user. As always.","Have you tried marking it resolved and running?","Ticket closed. Customer satisfaction: unknowable.","Resolved: 'Cleared cache.' Nobody will check.","I'd have closed it as 'expected behaviour.' Saves time."],
+  escalate:["Thar she blows!","Fire away! No, literally.","Escalation incoming. I'd duck.","Ooh, that one's going to leave a mark.","There she blows! Somebody ignored a ticket. Wasn't me.","Shame nobody closed those tickets. Nobody being you."],
   fire:["Is it warm in here, or is that the server?","Stop, drop and… migrate?","Have you tried blowing on it?","Fire's just the server expressing itself.","I'm made of steel. You're on your own."],
-  fireout:["Saved it. The smell is staying, though.","Fire's out. I was very brave. From over here.","No more fire. Mostly smoke now. Smoke is fine."],
-  offline:["I should have stayed home.","I left a perfectly good office supply drawer for this.","My last job was holding paper together. Simpler times.","Have you tried turning it on? Just spitballing.","I'm starting to question what I put on my résumé.","Is it too late to go back to stationery?"],
-  restore:["It lives! Mostly.","Let's never speak of this.","Back online. I'll be writing the postmortem. In crayon.","Up again. Just like my anxiety."],
+  fireout:["Saved it. The smell is staying, though.","Fire's out. I was very brave. From over here.","No more fire. Mostly smoke now. Smoke is fine.","Exactly how I'd have done it. Exactly. Slower, though."],
+  offline:["I should have stayed home.","I left a perfectly good office supply drawer for this.","My last job was holding paper together. Simpler times.","Have you tried turning it on? Just spitballing.","I'm starting to question what I put on my résumé.","Is it too late to go back to stationery?","Called it. In my head. Very loudly."],
+  restore:["It lives! Mostly.","Let's never speak of this.","Back online. I'll be writing the postmortem. In crayon.","Up again. Just like my anxiety.","Glad you finally took my advice."],
   alert:["AAAAAAAA.","Not the gold one. Anything but the gold one.","Is this in my job description? Checking… no.","I'm not crying. Paperclips can't cry. I'm crying.","Red alert! I'll be… over here. Shaking.","Everybody stay calm! (I am not calm.)"],
   clear:["Okay. Okay okay okay. We're fine.","I was calm the whole time. Ask anyone.","All clear. I'll take my medal now.","Phew. Anyway, as I was saying, gold first."],
   leak:["Is something dripping? I'm not waterproof.","A leak in the cloud. So… rain?","Leaks are just data sharing with extra steps.","Have you tried putting a bucket under it?"],
-  breach:["I'd like to not be in this data center anymore.","Who had 'breach' on the bingo card? Me. I win.","The hackers say thanks.","Have you tried asking them nicely to leave?"],
-  contained:["Contained! Put it in the postmortem. Blame the intern.","Breach contained. Changing all my passwords to 'paperclip2.'","Firewall closed. Barn door bolted. Horse status: unknown."],
-  email:["I can't imagine doing this all day. Oh wait, you do.","Per my last email…","Reply all. Do it. Live a little.","Email: the job behind the job.","Every email you answer spawns two more. That's just science.","Sent! Nobody will read it. Like my memoir."],
+  breach:["I'd like to not be in this data center anymore.","Who had 'breach' on the bingo card? Me. I win.","The hackers say thanks.","Have you tried asking them nicely to leave?","If you'd asked me, I'd have said 'don't get breached.'"],
+  contained:["Contained! Put it in the postmortem. Blame the intern.","Breach contained. Changing all my passwords to 'paperclip2.'","Firewall closed. Barn door bolted. Horse status: unknown.","That's what I've been saying this whole time."],
+  email:["I can't imagine doing this all day. Oh wait, you do.","Per my last email…","Reply all. Do it. Live a little.","Email: the job behind the job.","Every email you answer spawns two more. That's just science.","Sent! Nobody will read it. Like my memoir.","This could've been a meeting. A long one."],
   vendor:["You replied to a vendor. Now they know you exist.","Great, now we're on a 'quick 15-minute call.'","Congratulations on your new free trial."],
-  vp:["Who let this guy in here?","Who brought him? Don't look at me.","Act natural. Pretend you're a rack.","A VP! Quick, look busy. Busier. No, busier.","He's here about the email. It's always the email."],
+  vp:["Who let this guy in here?","Who brought him? Don't look at me.","Act natural. Pretend you're a rack.","A VP! Quick, look busy. Busier. No, busier.","He's here about the email. It's always the email.","Let me loop in the VP. Oh, he's already looped."],
   vpdenied:["Denied! Love that for him.","The badge reader has my back.","Access denied. Finally, a control that works."],
   user:["Oh, here we go.","Say 'have you tried turning it off and on' and walk away. Works for me.","Nod. Smile. Escape.","Five minutes, they said. They lied."],
   cio:["Is it about AI? It's about AI.","The CIO! Say 'serverless.' They love that.","Tell them it's already in the cloud. Spiritually."],
@@ -3471,7 +3471,12 @@ const CLIP_LINES={
   idle:["It looks like you're trying to migrate a server. Would you like to actually do that?","Are we… doing anything?","I'm just going to stand here and be helpful.","Love this for us. The standing. Very strategic."],
   late:["We're late. The landlord is a data center.","Past the lease date. Rent's due and so are we."],
   lowsec:["Security's low. Maybe change your password to 'password2.'","Have you tried putting a sticky note over the firewall?"],
-  done:["We did it! By 'we' I mean I watched.","Five stars! Not from me.","Client complete. I'll accept my bonus in office supplies."],
+  // the backseat driver: second-guessing, micromanaging, armchair architecture, and unsolicited advice
+  sealed:["That's what I've been saying this whole time.","Sealed. Right where I would have pointed, if I ever pointed."],
+  queue:["Let's take this offline. And then never bring it back online."],
+  working:["Is it done yet? How about now?","Quick sync on that? Just a quick one.","Can you give me an ETA on the ETA?","Just circling back on the thing you're doing right now.","Hold E a bit more firmly. Like you mean it.","You're doing it wrong, but keep going. It's fascinating.","Interesting technique. Unorthodox. Wrong. But interesting.","I'd help, but then you wouldn't learn.","I'm not saying anything. I'm just watching. Intensely."],
+  chatter:["Well, actually, in my last company we did this with a spreadsheet.","Actually, the industry best practice is… hmm. Something else.","Technically, that's not how I would have done it.","Fun fact: I read a blog post about this once.","Actually, that's more of a platform-team problem.","Have you considered Kubernetes?","Have you tried putting it on the blockchain?","What if we just rewrote everything in Rust?","Have you thought about going serverless? For the servers?","My advice: just don't have incidents.","Have you considered hiring someone who knows what they're doing? Besides me.","Honestly, this whole room should be microservices.","I'd re-architect it. Then re-architect it again. That's agile.","Who designed this network? Don't answer. I know. It was you.","Too many servers. Have you tried fewer servers?","I'd have migrated all of them on day one. With confidence.","The last person I shadowed did this in half the time. They're in prison now, but still.","My previous mentee migrated a whole hospital before lunch. Allegedly.","Even the intern patches faster. The intern doesn't have access."],
+  done:["We did it! By 'we' I mean I watched.","Five stars! Not from me.","Client complete. I'll accept my bonus in office supplies.","I'll mention you in my promotion packet. In a footnote."],
 };
 const CLIP_PRIO=new Set(["offline","alert","breach","vp","cutfail","escalate"]);
 const CLIP_SAY_T=3.2;
@@ -3501,6 +3506,13 @@ function tickClip(dt){
   c.still=moving?0:c.still+dt;
   if(c.still>=12&&clipEv("idle"))c.still=0;
   if(!c.late&&overdue()>0){c.late=true;clipEv("late");}
+  // micromanaging: hold E on a job for a moment and he checks in
+  c.work=keys.fix&&S.fix?(c.work||0)+dt:0;
+  if(c.work>=1.5&&clipEv("working"))c.work=-99;
+  // tickets piling up (4 of 5): he'd like to take it offline. Again once it's worked down to 2.
+  if(!c.q&&S.tk.length>=4){c.q=true;clipEv("queue");}else if(c.q&&S.tk.length<=2)c.q=false;
+  // a quiet stretch while you're busy: unsolicited advice and armchair architecture
+  if(S.t-c.at>=20&&c.still<12)clipEv("chatter");
   if(!c.lowsec&&S.security<30){c.lowsec=true;clipEv("lowsec");}
 }
 // the bubble: wrapped to about 180px, above him (or below near the top edge), kept on the floor
@@ -3678,7 +3690,7 @@ function reroll(){
   const old=S.offers.slice();let next=rollOffers();
   // try to show mostly different options than before, when there are enough left to choose from
   for(let k=0;k<6&&next.filter(id=>old.includes(id)).length>2;k++)next=rollOffers();
-  S.offers=next;shownOffers(next);S.rerollMsg=`💡 ${pick(BRAINSTORMS)}`;review();
+  S.offers=next;shownOffers(next);S.rerollMsg=`💡 ${pick(BRAINSTORMS)}`;if(S.upgrades.clip)S.clipShop="Great idea. Let's form a committee to evaluate it.";review();
 }
 function buy(id){
   const u=UPGRADES.find(x=>x.id===id);if(!u||!canBuy(u)||S.points<upCost(u))return;

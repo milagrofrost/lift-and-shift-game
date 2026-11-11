@@ -177,6 +177,17 @@ test("Mr Paperclip: a 2-point non-AI perk whose every line is +1 energy, paced 8
   }finally{W.Math.random=random;}
   G.newRun(true);G.S.upgrades.clip=true;G.clipReset();check(!G.clipEv("patch"),"he talks over the tutorial's paperclip");
 });
+test("Mr Paperclip backseat-drives: micromanages held work, sighs at a filling ticket queue, and fills quiet stretches", () => {
+  const S=fresh();S.upgrades.clip=true;G.clipReset();const c=S.clipC;
+  const random=W.Math.random;W.Math.random=()=>{throw new Error("Mr Paperclip used the game's randomness");};
+  try{
+    S.tk=[{age:0},{age:0},{age:0},{age:0}];G.tickClip(.05);check(G.CLIP_LINES.queue.includes(c.say),"no line when the ticket queue fills");
+    S.t+=13;S.tk=[];G.tickClip(.05);
+    S.fix={kind:"patch",key:"p0"};G.keys.fix=true;for(let i=0;i<40;i++)G.tickClip(.05);G.keys.fix=false;S.fix=null;
+    check(G.CLIP_LINES.working.includes(c.say),`no micromanaging while you hold E, got "${c.say}"`);
+    S.t+=21;c.still=0;G.tickClip(.05);check(G.CLIP_LINES.chatter.includes(c.say),`no unsolicited advice in a quiet stretch, got "${c.say}"`);
+  }finally{W.Math.random=random;G.keys.fix=false;}
+});
 test("Mr Paperclip comments in the shop and gets a memorial in the old school credits", () => {
   const S=fresh();S.upgrades.clip=true;G.clipReset();S.time=95;S.ss.human=1;S.ss.acts=1;G.setMode("play");G.finishEngagement(); // one human action, so the review reaches the shop
   check(Math.round(S.clipDays)===10,`his days on the team should count this client, got ${S.clipDays}`);
