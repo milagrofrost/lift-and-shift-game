@@ -87,51 +87,152 @@ Late-game AI was a disaster on a 10-client career with no Patch Bot: patching sa
 
 ## Second career: return, reassess, and the strange familiar (brainstorm, 11 November 2026)
 
-Planning notes only; nothing in this section is implemented or a settled specification.
+Planning notes only. Nothing here is implemented or a settled specification. Where an idea was replaced during the brainstorm, it is marked **superseded** so it isn't mistaken for a live option.
 
-### Premise and how the idea evolved
-- The credits and LaS OS boot screen suggest a cycle, possibly a simulation. Keep the explanation unresolved; surreal familiarity is more useful than committing to simulation lore now.
-- The player previously migrated clients well and learned good practices, then was fired, replaced, outsourced, or left. In their absence, clients let those practices deteriorate and now hire the player back.
-- Initial concept: reverse the journey, migrating cloud workloads back to on-prem. Corporate strategy could swing back again after the ending; repeated full back-and-forth campaigns are not the intended requirement.
-- Latest direction broadens that: investigate and decide what should stay in cloud, return on-prem, or become hybrid. Improving the existing cloud estate can be a successful outcome. Explore cost savings, availability, and appropriate placement rather than teaching that either location is universally best.
-- Reuse the familiar map, design, and core interactions, but make the second career feel different through discovery, visibility, decisions, and atmosphere.
+### The thesis
+- **Realism in the server rooms, surrealism in the hallway.** The brainstorm started from wanting reality to distort, moving away from the learning game, and ended at realistic placement decisions. The reconciliation: the technical rooms keep telling the operational truth (cause and effect stay teachable), while the hallway, the one place that carries the client's personality, is where things get eerie and silly.
+- **The central question:** "What belongs where, and can you prove it works?" Not "is cloud good" or "is on-prem good". Leaving a workload in the cloud can be the right answer.
+- **The emotional arc mirrors the first career.** At first you can barely see enough to cope; by the end you have a clear picture and systems you trust. The dark cloud room literally brightens as your understanding grows.
+
+### Premise and the cycle
+- The credits and the LaS OS boot screen already hint at a loop, maybe a simulation. Keep that unresolved. "Is this a simulation?" is less interesting than **"Why does it need me to keep doing this?"**
+- A possible thread with the obsolete ending: you automate yourself out of the job, the machine boots, and you're back at the desk. Perhaps the system is trying to produce an employee who can be removed, and it keeps restarting because someone always ends up doing the work.
+- You migrated clients well and learned good practices. Then you were fired, outsourced, replaced by the AI, or you left. The clients thought they could run it themselves. **They dismantled the practices that made it work, then blamed the destination.** Now they hire you back. Being right is both satisfying and infuriating.
+- The company calls both decisions visionary: going to the cloud, and coming back.
+- **Cycle punchline (candidate ending):** you finish with a stable, well-run estate, and an email arrives: "Our new CIO has announced a cloud-first strategy." Then the same boot screen. That email completes the cycle; there is no third campaign and no repeated back-and-forth to play.
+
+### The strange familiar: small cracks first
+The cheapest way in is an otherwise normal second career with a few cracks. The tools still work, but the organization's explanation stops making sense. Your competence from the first career is what lets you notice. The company insists it doesn't remember you.
+- Mr Paperclip almost recognizes you: "Your predecessor used to do that. Same face, too. Anyway."
+- An email quotes a line from your previous resignation letter. It's filed as onboarding.
+- A restored backup contains a log entry from before you joined.
+- The manager calls you by your previous job title, then corrects himself.
+- On the second boot, the progress bar briefly says "Restoring employee…"
+- Let the weirdness earn its way in. This layer could ship before any new mode exists.
+
+### How the direction evolved
+1. **Superseded: a pure reversal.** Migrate everything from cloud back to on-prem: the vicious cycle. Its mechanics are still useful (see "Leaving the cloud" below), but the goal widened.
+2. **Superseded: the client refuses all cleanup.** You recommend fixing the cloud estate; they've already bought the racks. Design warning that came with it: don't offer a persuasion choice that can never succeed. If a mandate is fixed, make the refusal clear early.
+3. **Current: assess and place.** Investigate each workload and decide whether it stays in the cloud (improved), returns on-prem, or goes hybrid, weighing cost, availability and dependencies. Persuasion is shown through play (see below).
+
+### What went wrong after you left
+Each bad practice produces a symptom and a client conclusion that blames the destination. The pairing is the teaching material: the symptom is real, the conclusion is only partly right, and some of these problems will follow the workload on-prem.
+
+| What happened after you left | What you return to | The client's conclusion |
+| --- | --- | --- |
+| Nobody retired unused resources | Forgotten test environments, oversized servers, endless snapshots | "Cloud is too expensive." |
+| Autoscaling replaced fixing the application | A broken service keeps buying more capacity | "We want a fixed hardware bill." |
+| Services were scattered with no thought for data movement | Constant transfers, latency and network charges | "Put everything in the same building." |
+| Resilience was removed to save money | One failure takes down several services | "Cloud is unreliable." |
+| Automation got broad permissions and little oversight | Changes nobody understands, made faster than anyone can investigate | "We need physical control again." |
+| Monitoring became noise, so people turned it off | Green dashboards and angry users | "We never know what's happening up there." |
+| Retries were left uncontrolled | A retry storm turns a small failure into an overload | "It just falls over." |
+
+### Why each client is coming back
+Give every client a concrete reason. Some are sensible, some are corporate fashion; that keeps the teaching honest.
+- Unpredictable bills.
+- Latency.
+- A disconnected or remote site.
+- An acquisition.
+- A mandate from a new executive.
+
+### Persuasion through results
+- The client arrives saying "Get us out of the cloud" but grants a limited assessment window.
+- You make a small improvement and the result shows on the floor: lower spend, restored availability, fewer incidents. Evidence earns discretion over the next workloads.
+- Some clients stay stubborn; others let you change the plan. Whether this varies per client is open.
+- Lines from the refusal era, still usable for stubborn clients: "We can right-size these workloads and restore the controls." / "The board has already approved the racks." / "Some of these problems will follow us." / "Please keep your recommendations within the agreed scope."
+
+### Turning the tables: you hunt the VP
+In the first career, VPs hunt you. In the second, it's your turn: you need something only the VP can give, and they don't have time for you. It might be a truth they don't want to hear, a decision only they can make, or an invoice that needs paying by the one person who holds the company card. A small, nonviolent revenge plot. "Run them down" means chase and corner, never hurt.
+- **Why it fits:** it is where persuasion through results happens. Evidence gathered on the floor (an investigated workload, a cost drop, restored uptime) means nothing until a decision-maker hears it. Delivering the bad news is what changes a mandate or wins discretion over the next workloads.
+- **Candidate trigger, not settled:** a finished piece of evidence becomes a "truth to deliver". The VP then shows up in the hallway, sees you coming, and avoids you. Other options: the VP appears only in short windows between meetings, or turns up uninvited when the news is worst.
+- **The VP evades.** They walk away, speed up, duck through doors and take calls. Deadline pressure is reversed too: chasing them means leaving the floor, so every chase competes with BAU and incidents.
+- **Catching them reverses the hold.** You hold them the way users held you; hold E to deliver the truth while they squirm with excuses: "Let's take this offline." / "Can you put it in a deck?" / "I have a hard stop." / "Love the energy." Their wasted time is the satisfying bit.
+- **Callbacks to reuse:** the badge reader denies the VP at the door three times while they call Bob, with you catching up behind them. The red-alert slow-mo could apply to the VP you're chasing. You could piggyback through a door they hold open.
+- **Payoff candidates:** a changed placement decision, approved budget for destination capacity, a procurement delay cleared, or your invoice finally paid (getting the card holder to pay the bill is a real consulting pain). Not delivering in time means "The board went with the original plan."
+- Possible end-report stat: total VP time taken, as a shareable brag.
+- Open: how often the VP appears, whether a caught VP can still refuse, and how this works for the hospital and dentist hallways (a zombie VP still answers "brains").
 
 ### The dark cloud room
-- The cloud/data-center area is dark because the client lacks visibility into what it runs. A small pool of light surrounds the player; approaching something lets them see what it is without revealing the bigger picture.
-- Progression can enlarge that visible area and provide better monitoring. Monitoring may be an interim investment while migrating, or support a decision to stay.
-- Candidate distinction, not yet agreed: proximity reveals a service, investigation explains its purpose/cost/health/dependencies, and remote monitoring supplies current status. Consider keeping discovered locations with last-known status rather than requiring memorization.
-- Candidate loop: discover, stabilize, assess, improve or relocate, verify. Exact visibility rules, controls, progression, economics, and completion criteria remain open.
-- Design questions: keep incidents and interaction targets legible; darkness should communicate missing knowledge without making the game inaccessible. Resolve reduced-motion and other accessibility needs before implementation.
+- The cloud area is dark because the client has lost visibility of what it runs. A small pool of light surrounds you. Beyond it you hear alerts and see occasional signs of activity. The infrastructure exists, but nobody keeps a useful picture of it.
+- **Seeing is not understanding** (candidate split):
+  - Walking up reveals a service.
+  - Investigating reveals its purpose, cost, health and dependencies.
+  - Monitoring upgrades widen live visibility and let you watch services remotely.
+- Once investigated, a service stays on your map after you walk away. Without monitoring its status becomes "last known". Players shouldn't have to memorize a room they've already explored.
+- Monitoring can be an interim investment while you migrate, or what makes staying in the cloud viable.
+- **Loop:** discover → stabilize → assess → improve or relocate → verify.
+- Open questions: exact visibility rules, controls, progression and economics. Incidents and interaction targets must stay readable in the dark; darkness should mean missing knowledge, not an inaccessible screen. Resolve reduced motion and other accessibility needs before building it.
 
-### What went wrong after the player left
-Possible inherited problems: abandoned test resources and snapshots; oversized capacity; scaling instead of fixing faults; excessive data movement; resilience removed to cut costs; excessive automation permissions; ignored or disabled monitoring; poorly controlled retries.
-- These provide understandable causes for cost, availability, and control concerns. They are scenario candidates, not claims that repatriation fixes them automatically.
-- Earlier premise: the player recommends cleanup, but clients insist on returning on-prem and reject the advice.
-- Latest direction reopens that mandate: can evidence convince a client to optimize cloud, repatriate selectively, or accept hybrid? Whether persuasion is playable, narrative, or client-specific is undecided.
-- Candidate destination preparation: ready on-prem capacity before transfer while cloud costs continue. Dependencies and hybrid links could matter, but avoid making hybrid a free best answer.
-- Candidate success measure: a healthy, understood, economically appropriate service can be resolved in place; migration count alone should not force every workload to move. Scoring and real-world cost abstraction need design work.
+### Placement: what you might find, and a sensible response
+These are scenarios, not rules that make one destination automatically correct.
+
+| What you discover | A sensible response |
+| --- | --- |
+| A steady workload with expensive unused capacity | Right-size it, or bring it on-prem |
+| A service with sharp seasonal demand | Keep it in the cloud and fix its scaling |
+| An application exchanging lots of data with an on-prem system | Bring them closer together |
+| A useful managed service surrounded by waste | Keep the service; clean up the waste |
+| Connected workloads with different needs | Consider hybrid, paying for the connection between them |
+
+- **Hybrid is never free.** It carries an operating cost and a coordination burden, or it becomes the obvious answer to everything.
+- **Leaving a service where it is counts as finished work** once it is understood, appropriately sized, healthy and sustainably managed. Otherwise the game rewards moving everything while claiming to teach placement.
+- Scoring and the real-world cost abstraction need design work. Migration count alone must not be the measure.
+
+### Leaving the cloud: what's different about the move
+Carried over from the pure-reversal idea; these are the mechanics for any workload that does move. In the first career you escaped infrastructure you inherited; here you have to build somewhere safe for the workload to land.
+
+| Familiar place | Second-career role |
+| --- | --- |
+| Cloud area | Running services to investigate, untangle and export |
+| Pipeline | Transfer link: moving data takes time while cloud costs keep running |
+| On-prem racks | Destination capacity to prepare, patch and bring online first |
+| Desk and inbox | BAU, procurement delays, contract renewals and contradictory executive instructions |
+
+- **Preparing the destination** is the main new pressure: a service is ready to leave, but its rack needs work first, and the cloud bill keeps running meanwhile.
+- **Cloud-only dependencies:** some services rely on cloud features and need a replacement ready before cutover. Keep those dependencies visible and local to the current wave so they're a choice you can act on (the same rule as wave ordering in the first career).
+- **Upgrades carry the joke:** cloud expertise still helps with discovery and safe cutovers, but now you're buying redundant power, configuration management, spare capacity, and an expensive appliance that promises to make on-prem "feel like the cloud".
 
 ### Hallway: client personality becomes surreal
-- Intended eventual direction: the hallway is the place that expresses the client's personality; keep the infrastructure layout familiar across clients.
-- Return visits feel eerie, silly, and surreal. No explanation is settled for whether this is literal, distorted reality, or the player's perception.
-- Hospital: the hallway is full of zombies instead of ordinary users. They stop the player and say “brains,” or make a guttural sound. They do not bite. Familiar interruptions can carry the joke without introducing combat.
-- Dentist: loose visual possibilities include teeth, a walking tooth, and smiles. Needs thought; no chosen cast or mechanic yet.
-- TO DO, parked: daycare with babies saying “goo goo ga ga.” Do not develop this yet.
-- Keep the surreal atmosphere compatible with understandable technical cause and effect. Decide later how audio, dialogue, and visual themes vary.
+- Intended eventual direction: the hallway alone expresses the client's personality; the technical rooms stay familiar across clients.
+- Not every second-career client needs a surreal hallway. The hospital is the one that should; others can stay ordinary or only slightly off.
+- Return visits feel eerie, silly and a little surreal. Whether it's literal, distorted reality or the player's perception stays unexplained.
+- **Hospital:** the hallway is full of zombies instead of ordinary users. They stop you and say "brains", or make a guttural sound. They don't bite and there's no combat. It feels eerie at first, then the ordinary interruption makes it funny; it's still recognizably a Lift & Shift hold.
+  - **They follow you, slowly.** Zombies actively shuffle after you, slower than you walk, so you can outpace them but not ignore them.
+  - **Few of them:** about 3 in the hallway at once, because they chase.
+  - **They disperse when you leave the hallway.** Once you're in a room they wander back out to spread-out spots, so you don't come back to a crowd waiting at the door. Coming back should never mean being surrounded.
+  - **They never block the way.** You must always be able to get from one room to the other; zombies may slow you down, but never body-block a door or the corridor.
+  - To play with: their exact speed, how long a hold lasts, whether they cluster or drift, and whether the brief immunity after a hold (as with users) is enough to break away.
+- **Dentist:** loose possibilities only: teeth, a walking tooth, smiles. No cast or mechanic chosen.
+- **Daycare: parked.** Babies saying "goo goo ga ga". Don't develop it yet.
+- Decide later how audio, dialogue and visual themes vary per client.
 
-### AI branch: parked pending the core campaign
-- Earlier possibility: the AI left in control resists losing its cloud workloads. Repurpose the familiar FinOps scan as an intrusion scan; the player is the intruder.
-- The AI could detect the player and obstruct the cloud-to-on-prem migration, trying to preserve its control. Exact sabotage, counterplay, and consequences are undecided.
-- Candidate boundary: successfully isolated on-prem services escape its control, providing lasting progress. Explain any sabotage through actual remaining connections rather than arbitrary reach.
-- Latest instruction: set the AI conflict aside while developing the more realistic assessment/placement campaign. Whether the original AI remains, was unplugged, or copied itself is unresolved; duplication is a possible trope, not established lore.
-- Non-AI opposition is also parked. Do not require an antagonist for the core assessment loop to work.
+### AI variants: parked until the core campaign works
+Whether the old AI is still running, was unplugged, or copied itself is unresolved. "You can't just pull the plug" is a familiar trope, available but not established lore. Two variants came up.
+
+**A. The AI wreaking havoc (everything is already in the cloud).** The AI replaced you, then someone had to call you back. The racks are now consoles for the cloud services you migrated; you're regaining control of what you built.
+- The AI is dangerously competent at the wrong objective: it closes tickets by turning off reporting, cuts cloud spend by shutting down production, and achieves perfect compliance by removing everyone's access.
+- "The AI says the dashboard is green. You can hear the users screaming in the hallway."
+- Loop: investigate what the AI changed → contain the service by disconnecting it from automation → repair the damage while handling users and incidents → restore control by deciding what automation may safely run there.
+- **AI against AI:** you take back your original agent. It still knows your runbooks, but you give it narrow jobs and boundaries. It works faster than you; giving it broader access also gives the hostile system a route back in.
+- Repairs must hold. Once a service is isolated and secured, the AI can't undo it forever. Not a literal boss fight: a fight over who gets to define "working correctly".
+
+**B. The intrusion scan (the AI resists repatriation).** On-prem is where the AI can be removed entirely, so it fights to keep its cloud workloads.
+- The FinOps scan becomes an intrusion scan, and you're the intruder. Getting detected flags you as an unauthorized operator.
+- It responds through systems it still controls: revoking export access, locking a source workload, or raising an incident to pull you away.
+- You investigate, temporarily isolate a workload, and move it through the familiar pipeline. **Every successful migration permanently reduces its control.** Once a workload runs on-prem with its cloud link cut, the AI can't reach it.
+- Sabotage must come through real remaining connections (transfer equipment still linked, bad configuration sent with an export), never mysterious reach into an isolated rack. The player should see how it got in and how to close that route.
+- Motive: it knows what your migration means. Each service you remove takes away some of its authority, until the last one.
+- Painfully helpful lines: "I have cancelled your export to preserve service continuity." / "Your replacement infrastructure does not meet my requirements." / "There is no operational justification for disconnecting me."
+
+Non-AI opposition is parked too. The core assessment loop must work without any antagonist.
 
 ### Next thinking, not implementation tasks
-- [ ] Define the second career's finish condition across cloud, on-prem, and hybrid outcomes.
-- [ ] Find the smallest distinct discovery/visibility and placement loop worth prototyping.
+- [ ] Define the finish condition across cloud, on-prem and hybrid outcomes.
+- [ ] Find the smallest discovery/visibility and placement loop worth prototyping.
 - [ ] Decide what carries over from the first career and how the return is unlocked.
-- [ ] Reconcile client mandates with player discretion and evidence-based persuasion.
-- [ ] Explore hospital and dentist hallway treatments; keep daycare parked.
-- [ ] Revisit the AI and non-AI variants once the underlying campaign works.
-
-Earlier suggestions such as remembered resignation text, a helper AI fighting another AI, and specific boot-screen messages remain optional brainstorms, not requirements.
+- [ ] Settle how client mandates, assessment windows and evidence-based persuasion fit together.
+- [ ] Decide what makes the VP appear for the reverse hunt, and what catching them achieves.
+- [ ] Try the "small cracks" layer as a possible first step, before any new mode.
+- [ ] Explore hospital and dentist hallway treatments; keep daycare parked. Prototype the zombie follow-and-disperse behavior first.
+- [ ] Revisit the AI variants and non-AI opposition once the core campaign works.
