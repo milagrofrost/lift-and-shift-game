@@ -408,6 +408,12 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
 @keyframes freezedrop{0%{opacity:0;transform:scale(1.7)}22%{opacity:1;transform:scale(1)}70%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.6)}}
 @media (prefers-reduced-motion:reduce){#freeze-banner.show b{animation:freezefade 1s linear forwards}@keyframes freezefade{0%,85%{opacity:1}100%{opacity:0}}}
 @media (prefers-reduced-motion:reduce){.toast{animation-duration:4.2s;animation-name:fade}@keyframes fade{0%,90%{opacity:1}100%{opacity:0}}}
+/* toasts slide to the top while you're at the ticket queue (they'd cover it), and go quiet in DEBUG, whose log already has them;
+   opacity keeps them readable to screen readers */
+#toasts{transition:bottom .25s ease,transform .25s ease}
+#toasts.top{bottom:calc(100% - 10px);transform:translate(-50%,100%)}
+#toasts.quiet{opacity:0}
+@media (prefers-reduced-motion:reduce){#toasts{transition:none}}
 </style>
 <!-- ==== Markup: HUD, game canvas, touch controls, overlay, terminal ==== -->
 
@@ -2008,7 +2014,21 @@ function logLv(){return S&&S.tut?Math.max(2,LOGLV):LOGLV;}
 // DEBUG's log tail is the real event stream: every floating text (at its own level, shown or not) and every toast.
 // Kept outside S, so restores and saves never carry it; entries from another run or a rewound clock are skipped.
 const DBG_LOG=[];
-function dbgLog(lvl,text){if(!S)return;DBG_LOG.push({s:S,t:S.t,lvl,text});if(DBG_LOG.length>40)DBG_LOG.shift();}
+function dbgLog(lvl,text){if(!S)return;DBG_LOG.push({s:S,t:S.t,lvl,text});if(DBG_LOG.length>80)DBG_LOG.shift();}
+// red alert: the log fills with ERRORs every 0.45 s, alternating the real incidents (visible ones only) with general panic.
+// No randomness and nothing in S: the lines are dealt in order.
+const DBG_ALERT=["pager: 47 unacknowledged alerts","#incident: 212 people joined, 0 responders","status page: \"All systems operational\" (lie detected)",
+  "on-call rotation: it's you","rollback plan: file not found","SLA: breached (probably)","VP detected in hallway, heading your way",
+  "coffee: depleted","stack trace too long to display (it's the whole stack)","alert fatigue: alert about alerts suppressed",
+  "runbook.md: last edited 2017","bridge call: someone is eating on unmute"];
+let dbgAlertNext=0,dbgAlertN=0;
+function dbgAlertTick(){
+  if(!S.alert||dbgAlertNext>S.t+1){dbgAlertNext=S.alert?S.t:0;if(!S.alert)return;}
+  if(S.t<dbgAlertNext)return;dbgAlertNext=S.t+0.45;const n=dbgAlertN++,inc=[];
+  S.racks.forEach(a=>{if(!a||a.hidden)return;if(a.down)inc.push(`${a.name}: connection refused (outage)`);else if(a.fire>0)inc.push(`${a.name}: thermal event, fire at ${Math.round(a.fire)}%`);});
+  S.cloud.forEach(a=>{if(!a)return;if(a.breach)inc.push(`${a.name}: unauthorized access (breach)`);else if(a.down)inc.push(`${a.name}: 503 Service Unavailable (failed cutover)`);});
+  dbgLog(0,n%2===0&&inc.length?inc[(n>>1)%inc.length]:DBG_ALERT[n%DBG_ALERT.length]);
+}
 function fl(p,text,color,lvl,short){
   if(lvl==null)lvl=color===C.danger?0:color===C.amber||color===C.leak?1:2;
   dbgLog(lvl,text);
@@ -2557,7 +2577,7 @@ function tickSlow(dt){
 const slowDepth=()=>S?clamp((1-(S.slow??1))/(1-ALERT_SLOW.easy),0,1):0;
 function update(dt){
   tickSlow(dt);
-  S.t+=dt;S.time+=dt;
+  S.t+=dt;S.time+=dt;dbgAlertTick();
   const e0=S.energy;
   const P=S.p;if(P.stun>0)P.stun-=dt;if(P.inv>0)P.inv-=dt;
   const stk=stick.on&&(stick.x||stick.y),mx=stk?stick.x:(keys.r?1:0)-(keys.l?1:0),my=stk?stick.y:(keys.d?1:0)-(keys.u?1:0),m=stk?1:Math.hypot(mx,my)||1;
@@ -2924,20 +2944,53 @@ function drawDebugMetrics(){
     `las_apps{where="cloud"} ${liveCloud()}`,
     `las_humans_in_hallway ${S.users.length}`,
     `las_engineer_energy_ratio ${(S.energy/100).toFixed(2)}`];
-  ctx.font=`500 8.5px ${MONO}`;const bw=Math.max(...rows.map(r=>ctx.measureText(r).width))+12,bh=rows.length*11+8,bx=W-bw-6,by=34;
-  ctx.fillStyle="rgba(4,10,6,.8)";ctx.fillRect(bx,by,bw,bh);
-  rows.forEach((r,k)=>tx(r,bx+6,by+9+k*11,8.5,k?"#9fe870":"#6b8f5a",{align:"left",weight:500}));
+  // it gets out of the way of a leak (so you can catch it before it breaches), a breach or a failed cutover underneath it
+  drawPanel("metrics","tr",rows.map((line,k)=>({line,col:k?"#9fe870":"#6b8f5a"})),
+    {blocked:r=>S.cloud.some((a,i)=>a&&(a.leakOn||a.breach||a.down)&&inRect(SLOTS[i],r,30))});
 }
-// the log tail: the real events of this run at their own level, with a joke TRACE line every 2.5 s for texture
+// the log tail: the real events of this run at their own level, with a joke TRACE line every 2.5 s for texture.
+// Long lines (toasts, mostly) wrap rather than lose their ending, since DEBUG shows toasts only here.
 function drawDebugTail(){
-  const COL=["#ff8f84","#ffc46b","#9fe870"],rows=[];
+  const COL=["#ff8f84","#ffc46b","#9fe870","#8fd3ff"],rows=[],WRAP=72;
   for(const e of DBG_LOG)if(e.s===S&&e.t<=S.t)rows.push({t:e.t,lvl:LOG_LEVELS[e.lvl],text:e.text,col:COL[e.lvl]});
   for(let k=Math.floor(S.t/2.5);k>=Math.max(0,Math.floor(S.t/2.5)-7);k--)rows.push({t:k*2.5,lvl:"TRACE",text:DEBUG_LINES[(k*7)%DEBUG_LINES.length].replace(/^(TRACE|DEBUG) /,""),col:"#6b8f5a"});
-  rows.sort((p,q)=>p.t-q.t);const show=rows.slice(-8).map(r=>{const t=r.text.replace(/\s+/g," ");
-    return {...r,line:`${r.t.toFixed(2).padStart(7)} ${r.lvl.padEnd(5)} ${t.length>66?t.slice(0,65)+"…":t}`};});
-  ctx.font=`500 8.5px ${MONO}`;const bw=Math.max(...show.map(r=>ctx.measureText(r.line).width),10)+12,bh=show.length*11+8,by=H-bh-6;
-  ctx.fillStyle="rgba(4,10,6,.82)";ctx.fillRect(6,by,bw,bh);
-  show.forEach((r,k)=>tx(r.line,12,by+9+k*11,8.5,r.col,{align:"left",weight:500}));
+  rows.sort((p,q)=>p.t-q.t);const lines=[];
+  for(const r of rows.slice(-9)){const t=r.text.replace(/\s+/g," "),parts=[];
+    for(let i=0;i<t.length&&parts.length<3;i+=WRAP)parts.push(t.slice(i,i+WRAP));
+    if(parts.length===3&&t.length>WRAP*3)parts[2]=parts[2].slice(0,-1)+"…";
+    parts.forEach((p,k)=>lines.push({line:k?`${"".padStart(13)} ${p}`:`${r.t.toFixed(2).padStart(7)} ${r.lvl.padEnd(5)} ${p}`,col:r.col}));}
+  // it moves up to the top left while a (known) bottom server it would cover needs you: offline, burning,
+  // or with a license renewal due within 45 s. Except when a server it would cover up there is burning too, and so is
+  // one down here: then it stays put, whatever the licenses say, since a bottom fire is the easier one to watch around it
+  const under=(r,f)=>S.racks.some((a,i)=>a&&!a.hidden&&f(a)&&inRect(RACKS[i],r,30)),burning=a=>a.fire>0;
+  drawPanel("logs","bl",lines.slice(-9),{up:(bottom,top)=>!(under(bottom,burning)&&under(top,burning))&&
+    under(bottom,a=>a.down||burning(a)||(a.lic>0&&a.lic<=LOG_MOVE_LIC))});
+}
+/* DEBUG panels minimize to a small tab when you walk up to them (or when an incident is under them, via blocked) and
+   come back once you've moved on; the log can also slide up out of the way (via up). Hysteresis stops them flapping
+   at the edge; the easing state is cosmetic and lives outside S. */
+const PANEL={},LOG_MOVE_LIC=45;
+const inRect=(p,r,m=0)=>p.x>r.x-m&&p.x<r.x+r.w+m&&p.y>r.y-m&&p.y<r.y+r.h+m;
+function drawPanel(key,corner,rows,{blocked=()=>false,up=()=>false}={}){
+  ctx.font=`500 8.5px ${MONO}`;
+  const w=Math.max(...rows.map(r=>ctx.measureText(r.line).width),10)+12,h=rows.length*11+8;
+  const st=PANEL[key]||(PANEL[key]={m:1,min:false,u:0,up:false});
+  // where it lives: its own corner, or the top left when that corner is needed
+  // (judged at its full 9-line height, so whether it moves doesn't depend on how many lines it has yet)
+  const home={x:corner==="tr"?W-w-6:6,y:corner==="tr"?34:H-h-6,w,h},FH=9*11+8;st.up=up({...home,y:H-6-FH,h:FH},{x:6,y:34,w,h:FH});
+  const full=st.up?{x:6,y:34,w,h}:home,block=blocked(full);
+  if(!st.min&&(inRect(S.p,full,40)||block))st.min=true;
+  else if(st.min&&!block&&!inRect(S.p,full,70))st.min=false;
+  const ease=(v,g)=>{v=RM?g:v+(g-v)*0.2;return Math.abs(g-v)<0.01?g:v;};
+  st.m=ease(st.m,st.min?0:1);st.u=ease(st.u,st.up?1:0);
+  const label=`${st.min?"▸":"▾"} ${key}${key==="logs"?` (${rows.length})`:""}`,tw=ctx.measureText(label).width+12,th=15;
+  const cw=tw+(w-tw)*st.m,ch=th+(h-th)*st.m,cx=corner==="tr"?W-6-cw:6,cy=corner==="tr"?34:(H-6-ch)+(34-(H-6-ch))*st.u;
+  ctx.fillStyle="rgba(4,10,6,.82)";ctx.fillRect(cx,cy,cw,ch);
+  if(st.m>0.5){ctx.save();ctx.beginPath();ctx.rect(cx,cy,cw,ch);ctx.clip();ctx.globalAlpha=(st.m-0.5)*2;
+    // the log keeps its newest lines in view as it shrinks; the metrics keep their top
+    const y0=corner==="bl"?cy+ch-h:cy;
+    rows.forEach((r,k)=>tx(r.line,cx+6,y0+9+k*11,8.5,r.col,{align:"left",weight:500}));ctx.restore();}
+  else{ctx.globalAlpha=1-st.m*2;tx(label,cx+6,cy+th/2,8.5,"#9fe870",{align:"left",weight:500});ctx.globalAlpha=1;}
 }
 function drawPlayer(){
   const P=S.p;
@@ -3071,6 +3124,9 @@ function hud(){
   $("freeze").disabled=mode!=="play"||!S.upgrades.freezecharge;
   $("freeze").textContent=S.upgrades.freezecharge?"❄ Freeze (F) · 1 charge":"❄ Freeze · buy between clients";
   if(!S)return;
+  // toasts: quiet in DEBUG while its log is on screen, and up top while you're working the ticket queue (hysteresis: 115 in, 150 out)
+  {const tb=$("toasts"),onFloor=["play","paused","console"].includes(mode),near=mode==="play"&&dist(S.p,DESK)<(tb.classList.contains("top")?150:115);
+    tb.classList.toggle("quiet",onFloor&&logLv()>=3);if(mode==="play")tb.classList.toggle("top",near);}
   {const on=!!S.tut&&["play","paused","celebrate"].includes(mode);if($("clip").hidden===on){$("clip").hidden=!on;if(on)tutFitClip();else tutHighlight(null);}}
   const c=client(),late=overdue();
   $("h-sprint").textContent=`#${S.sprint}`;
@@ -4145,7 +4201,15 @@ function resign(){
 /* ---------- console ---------- */
 const DEV={unlocked:false,prev:null};
 const devHash=s=>[...s].reduce((h,c)=>((Math.imul(h,33)^c.charCodeAt(0))>>>0),5381);
-function devLog(t){const l=$("devlog");l.textContent+=`${t}\n`;l.parentElement.scrollTop=l.parentElement.scrollHeight;}
+/* DEBUG logging mirrors the terminal: what you type and what it answers, as DEBUG lines in the log tail. The cheat
+   command never shows (its echo is masked), and opening the cheat menu is logged as an ERROR, because it is one. */
+const CHEAT_HASH=1903980526,CHEATER="CHEATER CHEATER PUMPKIN EATER";
+function ttyLog(t){
+  const lines=String(t).split("\n").filter(Boolean);if(!lines.length)return;let l=lines[0];
+  if(l.startsWith("$ ")&&devHash(l.slice(2).trim().toLowerCase().replace(/\s+/g," "))===CHEAT_HASH)l="$ ******** (redacted by Compliance)";
+  dbgLog(3,`tty0: ${l}${lines.length>1?` (+${lines.length-1} line${lines.length>2?"s":""})`:""}`);
+}
+function devLog(t){ttyLog(t);const l=$("devlog");l.textContent+=`${t}\n`;l.parentElement.scrollTop=l.parentElement.scrollHeight;}
 function devSet(id,L){
   const u=UPGRADES.find(x=>x.id===id);if(!u)return;S.dev=true;
   L=clamp(L,0,u.max||1);S.upgrades[id]=u.max?L:L>0;
@@ -4333,7 +4397,7 @@ function cliRun(cmd){
 const cliNorm=v=>v.trimStart().toLowerCase().replace(/\s+/g," ");
 function devRun(raw){
   const cmd=raw.trim().toLowerCase().replace(/\s+/g," ");if(!cmd)return;
-  if(devHash(cmd)===1903980526){DEV.unlocked=true;devLog("Access granted. Please don't tell Compliance.");devMenu();return;}
+  if(devHash(cmd)===CHEAT_HASH){DEV.unlocked=true;devLog("Access granted. Please don't tell Compliance.");dbgLog(0,CHEATER);devMenu();return;}
   if(cmd.endsWith("?")){cliHelp(cliNorm(raw.trim()));return;}
   if(backupCmd(cmd)||cliRun(cmd))return;
   if(cmd==="exit"||cmd==="logout"){devClose();return;}
@@ -4344,8 +4408,10 @@ function devShow(){
   if(mode==="restoring"||mode==="restored")return;
   DEV.prev=mode;if(mode==="play"){mode="console";resetTouch();for(const k in keys)keys[k]=false;}
   $("devterm").hidden=false;devMenu();bkRender();$("devinput").focus();
+  dbgLog(3,`tty0: session opened (${DEV.prev==="play"?"game paused":DEV.prev})`);if(DEV.unlocked)dbgLog(0,CHEATER);
 }
 function devClose(){
+  if(!$("devterm").hidden)dbgLog(3,"tty0: session closed");
   $("devterm").hidden=true;BK.armed=null;BK.open=false;
   if(DEV.prev==="play"){mode="play";if(DEV.unlocked)clipEv("cheat");} // back from the cheat menu: he saw that
   else if(DEV.prev==="review")review();

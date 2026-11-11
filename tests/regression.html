@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},get LOGLV(){return LOGLV},setLogLv:v=>{LOGLV=v},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -1545,6 +1545,75 @@ test("logging level only changes text: users catch you at the same moments and p
   const ref = await runAt(2);
   check(JSON.parse(ref)[3] > 0, "the walk never met a user, so this proves nothing");
   for (const lv of [0, 1, 3]) { const got = await runAt(lv); check(got === ref, `${G.LOG_LEVELS[lv]} changed the simulation: ${got.slice(0, 160)} vs INFO ${ref.slice(0, 160)}`); }
+});
+
+test("DEBUG logs the terminal session, and the cheat menu as CHEATER CHEATER PUMPKIN EATER", () => {
+  const S = fresh(), was = G.DEV.unlocked; G.setMode("play");
+  const since = () => G.DBG_LOG.filter(e => e.s === S).map(e => `${G.LOG_LEVELS[e.lvl]} ${e.text}`);
+  try {
+    G.DEV.unlocked = false; G.devShow();
+    G.devLog("$ ping linda"); G.devRun("ping linda"); G.devRun("man restore");
+    G.devClose();
+    const log = since();
+    check(log.includes("DEBUG tty0: session opened (game paused)") && log.includes("DEBUG tty0: session closed"), `session not logged: ${log}`);
+    check(log.includes("DEBUG tty0: $ ping linda") && log.includes("DEBUG tty0: Request timed out. Linda is at lunch."), `command or reply not logged: ${log}`);
+    check(log.some(t => /^DEBUG tty0: RESTORE\(1\) \(\+\d lines\)$/.test(t)), `multi-line reply not summarised: ${log}`);
+    check(!log.includes(`ERROR ${G.CHEATER}`), "a plain terminal visit was called cheating");
+    G.DEV.unlocked = true; G.devShow(); G.devClose();
+    check(since().includes(`ERROR ${G.CHEATER}`), "opening the cheat menu wasn't logged");
+    check(G.mode === "play", "the terminal didn't hand the game back");
+  } finally { G.DEV.unlocked = was; }
+});
+
+test("DEBUG: red alerts flood the log with ERRORs, panels duck for you and for incidents, toasts move off the ticket queue", () => {
+  const doc = W.document, tb = doc.getElementById("toasts");
+  try {
+    // red alert: an ERROR about every half second, naming the real (visible) incident between the general panic
+    let S = fresh(); const a = firstRack(S); S.alert = true; a.fire = 30;
+    const errs = () => G.DBG_LOG.filter(e => e.s === S && e.lvl === 0).map(e => e.text);
+    for (let i = 0; i < 30; i++) { S.alert = true; a.fire = 30; G.update(0.1); }
+    const got = errs();
+    check(got.length >= 5 && got.some(t => t.startsWith(`${a.name}: thermal event`)) && got.some(t => !t.includes(a.name)), `alert ERRORs: ${got}`);
+    S.alert = false; const n = errs().length; for (let i = 0; i < 20; i++) { S.alert = false; G.update(0.1); }
+    check(errs().length === n, "ERRORs kept coming after the alert cleared");
+    // panels: walking up to the log minimizes it, walking away brings it back; a breach under the metrics minimizes them
+    S = fresh(); G.setLogLv(3); a.fire = 0;
+    const frames = n => { for (let i = 0; i < n; i++) G.drawDebug(); };
+    S.p.x = 40; S.p.y = 530; frames(30);
+    check(G.PANEL.logs.min && G.PANEL.logs.m === 0, "the log didn't minimize when you walked up to it");
+    S.p.x = 480; S.p.y = 280; frames(30);
+    check(!G.PANEL.logs.min && G.PANEL.logs.m === 1, "the log didn't come back after you left");
+    check(!G.PANEL.metrics.min, "the metrics minimized for no reason");
+    // the log moves up to the top left while a known bottom server is offline, burning or due to renew within 45 s
+    const saved9 = S.racks[9], bottom = {...firstRack(S), slot: 9, hidden: false, down: false, fire: 0, lic: 0}; S.racks[9] = bottom;
+    const up = () => { frames(30); return G.PANEL.logs.up && G.PANEL.logs.u === 1; };
+    check(!up(), "the log moved up for a healthy bottom server");
+    bottom.down = true; check(up(), "the log didn't move up for an offline bottom server");
+    bottom.down = false; bottom.fire = 20; check(up(), "the log didn't move up for a burning bottom server");
+    bottom.fire = 0; bottom.lic = 30; check(up(), "the log didn't move up for a renewal due in 30 s");
+    bottom.lic = 100; check(!up() && G.PANEL.logs.u === 0, "the log didn't come back down");
+    bottom.hidden = true; bottom.down = true; check(!up(), "the log moved for a hidden server, giving it away");
+    // a fire up top and a fire down here: it stays put, even with a renewal due down here
+    const saved0 = S.racks[0], top = {...firstRack(S), slot: 0, hidden: false, down: false, fire: 0, lic: 0}; S.racks[0] = top;
+    Object.assign(bottom, {hidden: false, down: false, fire: 20, lic: 30}); top.fire = 20;
+    check(!up() && G.PANEL.logs.u === 0, "the log moved up onto a fire while a bottom server burns too");
+    top.fire = 0; check(up(), "the log stayed down once the top fire was out");
+    top.down = true; check(up(), "an offline top server shouldn't keep it down: only two fires do");
+    S.racks[0] = saved0; S.racks[9] = saved9; frames(30);
+    S.cloud[3] = {name: "breached-app", tier: "bronze", breach: true}; frames(30);
+    check(G.PANEL.metrics.min, "a breach under the metrics didn't minimize them");
+    S.cloud[3] = null; frames(30);
+    check(!G.PANEL.metrics.min, "the metrics stayed minimized after the breach went");
+    S.cloud[3] = {name: "leaky-app", tier: "bronze", leakOn: true, leak: 12}; frames(30);
+    check(G.PANEL.metrics.min, "a leak under the metrics didn't minimize them");
+    S.cloud[3] = null; frames(30);
+    check(!G.PANEL.metrics.min, "the metrics stayed minimized after the leak was sealed");
+    // toasts: quiet in DEBUG, normal otherwise; up top at the ticket queue, back down away from it
+    G.setMode("play"); G.hud(); check(tb.classList.contains("quiet"), "DEBUG still shows toasts");
+    G.setLogLv(1); G.hud(); check(!tb.classList.contains("quiet"), "WARN hid the toasts");
+    S.p.x = G.DESK.x; S.p.y = G.DESK.y - 20; G.hud(); check(tb.classList.contains("top"), "toasts didn't move up at the ticket queue");
+    S.p.x = 480; S.p.y = 150; G.hud(); check(!tb.classList.contains("top"), "toasts didn't come back down");
+  } finally { G.setLogLv(2); tb.classList.remove("top", "quiet"); }
 });
 
 test("sound and music never use the game's random rolls", () => {
