@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,CREDITS_OLD,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -157,6 +157,32 @@ test("tutorial: a staged leak grows a little slower than usual, still breaches i
   G.update(.1);check(S.alert,"a tutorial breach didn't raise a red alert");
   for(let i=0;i<300;i++)G.update(.1);
   check(!S.cloud[1].breach,"a tutorial breach spread to its neighbour");
+});
+test("Mr Paperclip: a 2-point non-AI perk whose every line is +1 energy, paced 8-12s, alarms jump the queue", () => {
+  const S=fresh();const u=G.UPGRADES.find(x=>x.id==="clip");
+  check(u&&u.cost===2&&!u.ai&&!u.max,"Mr Paperclip should be a 2-point one-off that isn't AI");
+  S.noAI=true;check(G.canBuy(u),"old school careers can't buy Mr Paperclip");S.noAI=false;
+  S.energy=50;check(!G.clipEv("patch")&&S.energy===50,"he talks before he's hired");
+  S.upgrades.clip=true;G.clipReset();
+  const random=W.Math.random;W.Math.random=()=>{throw new Error("Mr Paperclip used the game's randomness");};
+  try{
+    check(G.clipEv("patch")&&S.energy===51&&S.clipC.say&&G.CLIP_LINES.patch.includes(S.clipC.say),"his line or his +1 energy is missing");
+    const gap=S.clipC.next-S.clipC.at;check(gap>=8&&gap<=12,`the gap after a line should be 8-12s, got ${gap}`);
+    check(!G.clipEv("ticket"),"an ordinary line ignored the 8-12s gap");
+    S.t+=1.6;check(G.clipEv("offline")&&G.CLIP_LINES.offline.includes(S.clipC.say),"an outage didn't jump the queue");
+    S.t+=2;check(!G.clipEv("offline"),"the same alarm repeated within 12 seconds");
+    // a whole bag goes by without repeats
+    G.clipReset();const seen=[];for(const _ of G.CLIP_LINES.escalate){S.t+=13;G.clipEv("escalate");seen.push(S.clipC.say);}
+    check(new Set(seen).size===G.CLIP_LINES.escalate.length,`escalation lines repeated before the list ran out: ${seen}`);
+  }finally{W.Math.random=random;}
+  G.newRun(true);G.S.upgrades.clip=true;G.clipReset();check(!G.clipEv("patch"),"he talks over the tutorial's paperclip");
+});
+test("Mr Paperclip comments in the shop and gets a memorial in the old school credits", () => {
+  const S=fresh();S.upgrades.clip=true;G.clipReset();S.time=95;S.ss.human=1;S.ss.acts=1;G.setMode("play");G.finishEngagement(); // one human action, so the review reaches the shop
+  check(Math.round(S.clipDays)===10,`his days on the team should count this client, got ${S.clipDays}`);
+  const doc=W.document;check(doc.querySelector(".clipnote")&&doc.body.textContent.includes("Mr Paperclip:"),"no Mr Paperclip line in the shop");
+  S.points=13;S.offers=["patchbot"];G.buy("patchbot");check(doc.body.textContent.includes(G.CLIP_SHOP.patchbot),"no comment on the Patch Bot");
+  const c=G.creditsOld().map(x=>x[1]).join(" ");check(c.includes("Mr Paperclip")&&c.includes("R.I.P. · 10 days in the game"),`memorial is wrong: ${c}`);
 });
 test("re-rendering the review keeps its scroll position; a new review opens at the top", () => {
   const S=fresh();S.points=13;G.setMode("play");G.finishEngagement();
@@ -777,8 +803,8 @@ test("the outsourced ending offers its own credits with a retro green LaS OS boo
   const roll = [...doc.querySelectorAll("#credits")].pop();
   check(G.mode === "credits" && roll && roll.classList.contains("retro"), "no retro credits");
   const text = roll.textContent;
-  for (const [, line] of G.CREDITS_OLD) check(text.includes(line), `credits miss "${line}"`);
-  check(!text.includes("Claude") && text.indexOf("Matt Frost") < text.indexOf("definitely not AI"), "old school credits are wrong");
+  check(!text.includes("Claude") && text.indexOf("Matt Frost") < text.indexOf("Mr Paperclip"), "old school credits are wrong");
+  check(roll.querySelector(".clipcred svg") && text.includes("R.I.P.") && text.includes("0 days in the game"), "Mr Paperclip's memorial is missing");
   const boot = roll.querySelector(".boot");
   check(boot && boot.textContent.includes("LaS OS") && boot.querySelector(".bar"), "no LaS OS boot screen with a progress bar");
   check(W.getComputedStyle(boot).fontFamily.includes("Mono"), "the boot screen is not retro");

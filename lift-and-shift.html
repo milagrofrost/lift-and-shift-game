@@ -239,6 +239,7 @@ kbd{font-family:var(--f-mono);font-size:11.5px;background:var(--panel-2);border:
 #credits .roll,#credits .boot{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;padding:0 16px;opacity:0;transition:opacity 1.2s ease}
 #credits .roll.show,#credits .boot.show{opacity:1}
 #credits .roll{color:#e6edf3;font-family:"IBM Plex Sans","Segoe UI",sans-serif}
+#credits .clipcred svg{display:block;width:44px;height:84px;margin:14px auto 2px}
 #credits h2{font-family:"Chakra Petch","Segoe UI",sans-serif;font-size:clamp(30px,6vw,48px);letter-spacing:.12em;text-transform:uppercase;color:#ffb547;margin:0 0 6vh}
 #credits p{font-size:clamp(20px,3.6vw,30px);margin:0 0 3vh}
 #credits p.small{font-size:clamp(15px,2.4vw,19px);color:#8aa0b0;font-style:italic;margin-bottom:1.5vh}
@@ -693,6 +694,7 @@ const UPGRADES=[
   {id:"snacks",name:"Snack Budget",icon:"🍩",cost:2,max:3,desc:"Finance approved more donuts and coffee. Pickups show up at 35% shorter intervals per level, and one more can be out at a time."},
   {id:"vendor",name:"Vendor Negotiation",icon:"🤝",cost:2,max:3,desc:"License renewals cost 20% less per level."},
   {id:"manager",name:"A Manager Who Fights for You",icon:"👔",cost:5,max:3,desc:"All levels automatically call a change freeze for gold outages or breaches (10/14/18 seconds; cooldown 60/50/40 seconds). They also speed up uptime recovery. Level 1: answers your email, but chats with users and sometimes wanders over to look at a server (half the time, it goes offline; hold E at that server to shoo them away). Each server they break keeps them out of the data center longer. Level 2: focuses on email and rarely touches servers. Level 3: also stands guard at your doorway and shoves users out of your way as you cross the hallway."},
+  {id:"clip",name:"Mr Paperclip · Reverse Shadow",icon:"📎",cost:2,desc:"A senior migration assistant reverse shadows you: helpful insights and coaching through every migration, at your shoulder in every client. +1⚡ every time he says something. Results may vary. Results will vary."},
   {id:"agent",name:"AI Agent",icon:"🧠",cost:6,max:4,ai:true,req:()=>S.career.length>=3,desc:"Answers email, closes tickets, patches servers and seals leaks, fast, anywhere, and faster at every level. Every attempt costs tokens. When either queue is half full it works the queues; otherwise it hunts for fixes on-prem and in the cloud. L1 pilot, bronze servers only: 50% right, 25% does nothing, 25% breaks something. L2 better instructions, adds silver: 80/15/5, and investigates unknown racks start to finish. L3 agentic workflows, adds gold: 90/7/3, and chases an escalation it caused to the server to clean it up. L4 guardrails and evals: harmful actions get blocked, it fights fires, restores outages, contains breaches and retries failed cutovers, and you can fire your manager. When it breaks something it apologizes and tries once to fix it (40% at L1, 60% at L2, 80% at L3). It amplifies what you already have: with good foundations for a job, it's right far more often."},
   {id:"chatbot",name:"AI Chatbots",icon:"💬",cost:4,max:2,ai:true,desc:"A chatbot roams the hallway, chats up users and resolves them. A user being chatted up can't grab you. Sometimes they just want a human and run around the hallway yelling for one. Each level adds a bot."},
 ];
@@ -1082,7 +1084,7 @@ function tickSpecials(dt){
   for(const s of S.sp){s.life-=dt;if(dist(s,S.p)<28){s.dead=true;useSpecial(s);}}
   S.sp=S.sp.filter(s=>!s.dead&&s.life>0);
 }
-function useSpecial(s){sfx("special");
+function useSpecial(s){sfx("special");clipEv(s.kind);
   if(s.kind==="temp")spawnTemp();
   else if(s.kind==="window"){S.window=20;toast("🕐 Maintenance window open: +25% cutover odds for 20 seconds. Go move something scary.");}
   else if(s.kind==="pizza"){S.pizza={x:s.x,y:s.y,t:15};toast("🍕 Pizza party! Everyone in the hallway is distracted for 15 seconds.");}
@@ -1392,7 +1394,7 @@ function tickAgent(dt){
     if(j.a)j.a.agentMark={k:"ok",t:S.t};if(Math.random()<0.3)agentSay("Done!");
   }else if(out==="nop"){st.nop++;if(j.a)j.a.agentMark={k:"nop",t:S.t};agentSay(pick(["Done! Confidence: 98%.","Task complete! ✨","I've handled it.","All set!"]));}
   else if(out==="blocked"){st.nop++;fl(pos,"🛡 Guardrail blocked a risky action",C.leak);agentSay("Escalating to a human for review.");}
-  else{st.bad++;sfx("migrateFail");agentSay(AGENT_BAD[j.kind],1.4);if(j.a)j.a.agentMark={k:"bad",t:S.t};
+  else{st.bad++;sfx("migrateFail");agentSay(AGENT_BAD[j.kind],1.4);clipEv("agentbad");if(j.a)j.a.agentMark={k:"bad",t:S.t};
     // it stays to clean up its own mess
     repair={kind:"repair",of:j.kind,a:j.a,i:j.i,x:A.x,y:A.y};
     if(j.kind==="email"){repair.mails=[{type:"legal",age:0,life:18},{type:"exec",age:0,life:22}];S.em.push(...repair.mails);toast("🧠 The AI agent replied-all to the whole company with a policy it made up. Legal and an exec want a word.");}
@@ -1478,13 +1480,13 @@ function tickManager(dt){
   if(M.state==="patch"){
     const a=M.tgt;if(!a||S.racks[a.slot]!==a||a.down||a.hidden){M.state="idle";return;}
     const p=RACKS[a.slot];if(!goTo(M,p.x,p.y+44,sp,dt))return;
-    if(M.work===0)fl(p,"👔 Hold E to shoo",C.leak);
+    if(M.work===0){fl(p,"👔 Hold E to shoo",C.leak);clipEv("mgrlook");}
     M.work+=dt;
     // the player can step in: hold E at the same server and the manager backs off
     const P=S.p;M.shoo=keys.fix&&!P.heldBy&&P.stun<=0&&dist(P,p)<80?(M.shoo||0)+dt:0;
     if(M.shoo>=MGR_SHOO_HOLD){humanWork();sfx("grab");fl(p,"🙅 Shooed",C.ok);M.sayT=0;mgrSay("shoo");S.mgrShame=Math.max(S.mgrShame,MGR_SHOO_REST);M.state="email";M.work=0;M.tgt=null;return;}
     if(M.work>=MGR_LOOK_TIME){
-      if(Math.random()<0.5){sfx("offline");a.down=true;a.downT=S.time;a.fire=0;a.prog=0;S.ss.lost++;fl(p,"OFFLINE",C.danger);mgrSay("oops");
+      if(Math.random()<0.5){sfx("offline");a.down=true;a.downT=S.time;a.fire=0;a.prog=0;S.ss.lost++;fl(p,"OFFLINE",C.danger);mgrSay("oops");clipEv("mgrbreak");
         toast(`👔 Your manager looked at ${a.name}. It's offline now.`);
         // each server broken makes the next absence from the data center longer, for the whole career
         S.mgrBreaks=(S.mgrBreaks||0)+1;S.mgrShame=Math.min(MGR_SHAME_MAX,MGR_SHAME_STEP*S.mgrBreaks);M.state="shame";M.tgt=null;M.work=0;return;}
@@ -1536,7 +1538,7 @@ function badgeTry(u,z,dt){
   u.badgeT=(u.badgeT||0)-dt;if(u.badgeT>0)return;
   if((u.badgeN||0)<BADGE_TRIES){
     u.badgeN=(u.badgeN||0)+1;u.badgeT=u.badgeN<BADGE_TRIES?BADGE_GAP:BADGE_PAUSE;
-    (S.doorNo||(S.doorNo={}))[z]=S.t+0.6;sfx("badgeNo");
+    (S.doorNo||(S.doorNo={}))[z]=S.t+0.6;sfx("badgeNo");if(u.hunter&&u.badgeN===1)clipEv("vpdenied");
     u.shout=pick(DOOR_LINES.filter(l=>l!==u.shout));u.shoutT=2.6;
   }else{u.call=BADGE_CALL;u.callStep=0;}
 }
@@ -1588,8 +1590,8 @@ function tickUsers(dt){
     const readingStatus=(S.alert&&S.upgrades.statuspage&&!u.hunter)||(u.hunter&&dist(P,INBOX)<85);
     if(!P.heldBy&&u.cd<=0&&P.userImm<=0&&!(P.ghost>0)&&!readingStatus&&dist(u,P)<13+playerR()){
       const r=RANKS[u.rank];
-      if(!r.hold){if(!(u.shoutT>0)){u.shout=pick(r.lines);u.shoutT=1.6;}u.cd=2;continue;} // an intern asks in passing and lets you go
-      P.stun=r.hold*Math.pow(0.75,retro("office"));P.heldBy=u;sfx("held");S.run.held++;S.run.heldT+=r.hold;S.ss.heldT+=r.hold;
+      if(!r.hold){if(!(u.shoutT>0)){u.shout=pick(r.lines);u.shoutT=1.6;clipEv("intern");}u.cd=2;continue;} // an intern asks in passing and lets you go
+      P.stun=r.hold*Math.pow(0.75,retro("office"));P.heldBy=u;sfx("held");if(!u.hunter)clipEv(r.name==="CIO"?"cio":"user");S.run.held++;S.run.heldT+=r.hold;S.ss.heldT+=r.hold;
       if(u.hunter)unplanned(0.5,"exec"); // only costs anything when the exec actually catches you
       u.line=pick(u.hunter?HUNTER_LINES:S.alert?ALERT_LINES:frantic(u)?HUMAN_LINES:r.lines);
     }
@@ -1669,7 +1671,7 @@ function drawWarnings(){
 }
 /* Last server landed: hold for a moment so you see it land, rain confetti and sparkles, then fade into the review. */
 const CELEB_TIME=3.2;
-function startCelebration(){sfx("celebrate");
+function startCelebration(){sfx("celebrate");clipEv("done");
   mode="celebrate";S.celebT=0;S.alert=false;
   if(S.tut)tutSay(TUT_DONE_SAY,"Client complete");
   const cols=["#ffb547","#5fd38d","#45aefc","#b896ff","#ff6fae","#ffe066","#ffffff"];
@@ -1791,7 +1793,7 @@ function drawHoldBubble(){
 /* ==== Inbox, VPs, escalation launch, sprint capacity, desk ==== */
 const INBOX={x:480,y:62};
 function urgentEmail(){const imp=importantMail();if(imp.length)return imp.reduce((a,b)=>b.age>a.age?b:a);return S.em[0]||null;}
-function spawnHunter(){
+function spawnHunter(){clipEv("vp");
   // the exec shows up at whichever end of the hallway is farthest from you, then walks over
   const spot=[{x:400,y:540},{x:560,y:540},{x:400,y:130},{x:560,y:130}].sort((a,b)=>dist(b,S.p)-dist(a,S.p))[0];
   S.users.push({x:spot.x,y:spot.y,rank:Math.random()<.6?4:5,hunter:true,life:999,cd:0,line:"",vx:0,vy:0,turn:0});
@@ -1814,7 +1816,7 @@ function drawInbox(){
     const vend=S.em.length-n;if(vend)tx(`+${vend} spam`,x+w/2-6,y-6,8.5,C.muted,{align:"right"});}
   slotBar(x-w/2+8,y+h/2-12,w-16,Math.min(n,lim),lim,full);
 }
-function launchEscalation(){logEv("🚨 A ticket escalated.");S.ss.esc++;sfx("escalate");S.run.esc++;const e={x:DESK.x,y:DESK.y-24,a:null};S.atk.push(e);unplanned(0.5,"esc");return e;}
+function launchEscalation(){logEv("🚨 A ticket escalated.");clipEv("escalate");S.ss.esc++;sfx("escalate");S.run.esc++;const e={x:DESK.x,y:DESK.y-24,a:null};S.atk.push(e);unplanned(0.5,"esc");return e;}
 /* Sprint capacity: 13 points per sprint. Incidents create unplanned work that eats next sprint's capacity.
    A clean sprint (no unplanned work) earns +2. Never below 5, never above 15. Unspent points don't carry over. */
 const BASE_CAP=13;
@@ -1925,7 +1927,7 @@ function deliverWave(){
   const batch=S.wave.splice(0,12);
   for(const w of batch)addApp(w.e,w.hidden,true);
   const T=S.cdays*DAY;S.racks.forEach(a=>{if(a&&!a.hidden&&a.licBase&&!a.lic)a.lic=S.time+rand(0.3,0.6)*T-S.time;});
-  toast(`🚚 The movers brought another ${batch.length} servers from ${client().short}'s other building.${lz?` ${lz} healthy cloud apps were consolidated into the landing zone.`:""}`);
+  clipEv("wave");toast(`🚚 The movers brought another ${batch.length} servers from ${client().short}'s other building.${lz?` ${lz} healthy cloud apps were consolidated into the landing zone.`:""}`);
 }
 /* An engagement = one client's server room. Tools (upgrades, bots) carry over; the room, cloud and odds start fresh. */
 function startSprint(n){
@@ -1949,6 +1951,7 @@ function startSprint(n){
   S.bots.forEach((b,i)=>{b.x=b.kind==="patch"?180:480;b.y=520-i*10;b.tgt=null;b.carry=null;b.work=0;b.slot=-1;});
   if(retro("lunch"))S.energy=Math.min(100,S.energy+25*retro("lunch")); // team lunch: start each client fresh
   S.obsolete=false;S.outsourced=false;S.ss={human:0,acts:0,routine:0,bot:0,ai:{n:0,ok:0,nop:0,bad:0,cost:0},mig:0,audits:0,breaches:0,lost:0,unplanned:0,why:{},budget0:S.budget,sec0:S.security,att:0,leadSum:0,leadN:0,mttrSum:0,mttrN:0,missed:0,heldT:0,esc:0};
+  clipReset();clipEv("start");
   backupStart();
 }
 /* Engagement done: the client's room is empty and nothing is stuck offline in the cloud. */
@@ -1969,6 +1972,8 @@ function finishEngagement(){
   S.outsourced=!S.obsolete&&outsourced();
   S.bots.forEach(b=>{b.tgt=null;b.carry=null;});
   if(!S.tut)try{const b=+(localStorage.getItem("liftshift-clients")||0);if(S.career.length>b)localStorage.setItem("liftshift-clients",String(S.career.length));}catch(e){}
+  if(S.upgrades.clip)S.clipDays=(S.clipDays||0)+dayNum(); // for his memorial in the old school credits
+  clipShopPick();
   S.retroOpts=retroOptions();S.retroPick=null;S.agentNews=S.career.length===3&&!lvl("agent")&&!S.noAI;S.points=S.cap=capNext();missShops();S.offers=rollOffers();if(S.agentNews&&!S.offers.includes("agent"))S.offers[0]="agent";shownOffers(S.offers);S.quote=pick(c.quotes);S.rerolls=0;S.rerollMsg="";
   // security review between clients: get some security back (capped at 100), and the critical warning can fire again
   S.secRefill=Math.min(25,100-Math.max(0,S.security));S.security=Math.min(100,S.security+25);S.secWarned=false;
@@ -1984,7 +1989,7 @@ function posOf(a){if(S.carry===a)return S.p;for(const b of S.bots)if(b.carry===a
 /* ---------- feedback ---------- */
 function toast(msg){if(!/^(🔊|🔇|⚡ Out of energy)/.test(msg))logEv(msg);const t=document.createElement("div");t.className="toast";t.textContent=msg;const box=$("toasts");box.appendChild(t);while(box.children.length>3)box.firstChild.remove();setTimeout(()=>t.remove(),4300);}
 function fl(p,text,color){S.fl.push({x:p.x,y:p.y-20,text,color,t:0,life:1.3});}
-function warn(){if(S.t-S.warnT>2.5){S.warnT=S.t;toast("⚡ Out of energy. Migrate an app to recharge. You can still fight fires, just slowly.");}}
+function warn(){if(S.t-S.warnT>2.5){S.warnT=S.t;clipEv("tired");toast("⚡ Out of energy. Migrate an app to recharge. You can still fight fires, just slowly.");}}
 
 /* ---------- movement ---------- */
 function hitsWall(x,y,r){for(const w of WALLS){const cx=clamp(x,w.x,w.x+w.w),cy=clamp(y,w.y,w.y+w.h);if((x-cx)**2+(y-cy)**2<r*r)return true;}return false;}
@@ -2037,7 +2042,7 @@ function cutoverOK(a){logEv(`☁️ ${a.name} is live in the cloud.`);
   const original=a.orig||a;
   if(!original.savingsCredited){
     spend("savings",-4);original.savingsCredited=true;
-    if(original.lic>0){const saved=licCost(original);S.avoided=(S.avoided||0)+saved;original.lic=0;sfx("chaching");toast(`📜 Moved ${original.name} before its license renewed. Saved $${saved}k.`);}
+    if(original.lic>0){const saved=licCost(original);S.avoided=(S.avoided||0)+saved;original.lic=0;sfx("chaching");toast(`📜 Moved ${original.name} before its license renewed. Saved $${saved}k.`);clipEv("licsaved");}
   }
 S.movedT[a.tier]=(S.movedT[a.tier]||0)+1;S.ss.mig++;S.ss.att++;
   const o=a.orig||a;if(o.touchT!=null){S.ss.leadSum+=S.time-o.touchT;S.ss.leadN++;o.touchT=null;}}
@@ -2077,22 +2082,22 @@ function migrate(a,i,byBot,bonus=0){
   if(!ok)S.ss.att++;
   const staged=!ok&&liveCopy(a);
   S.cloud[i]={name:a.name,tier:a.tier,leak:0,leakOn:false,grace:7+8*retro("baseline"),tfT:0,breach:false,prog:0,spreadT:0,down:!ok&&!staged,staged,rb:0,orig:a,downT:!ok&&!staged?S.time:null};
-  if(staged){S.run.fails++;sfx("migrateFail");toast(`🔀 ${a.name}: cloud deployment failed. On-prem remains live. Hold E at the gray cloud deployment to retry.`);return;}
-  if(!ok){S.run.fails++;sfx("migrateFail");
+  if(staged){S.run.fails++;sfx("migrateFail");clipEv("cutfail");toast(`🔀 ${a.name}: cloud deployment failed. On-prem remains live. Hold E at the gray cloud deployment to retry.`);return;}
+  if(!ok){S.run.fails++;sfx("migrateFail");clipEv("cutfail");
     fl(SLOTS[i],`CUTOVER FAILED (${Math.round(p*100)}%)`,C.danger);
     toast(`💥 ${a.name}'s cutover failed. It's offline in the cloud: hold E to retry (${cloudRebuild(a.tier)}s, ${Math.round(p*100)}%) or hold Space to roll back.`);
     return;
   }
   activateCloud(S.cloud[i]);cutoverOK(a);sfx("migrateOK");
   const e=byBot?8:18;S.energy=Math.min(100,S.energy+e);
-  fl(SLOTS[i],`+${e}⚡ +$4k saved`,C.amber);
+  fl(SLOTS[i],`+${e}⚡ +$4k saved`,C.amber);clipEv("migrate");
 }
 function rollbackTarget(){if(S.carry)return null;let best=null,bd=56;S.cloud.forEach((a,i)=>{if(!a||!a.down)return;const d=dist(S.p,SLOTS[i]);if(d<bd){bd=d;best={a,i};}});return best;}
 function doRollback(i){
   const c=S.cloud[i],app=c.orig;let slot=S.racks[app.slot]?S.racks.findIndex(x=>!x):app.slot;
   if(slot<0){toast("⛔ No free rack to roll back into.");c.rb=0;return;}
   humanWork();noteRestored(c);S.run.rollbacks++;S.cloud[i]=null;app.rs=0;app.rsTag=false;app.slot=slot;app.down=false;app.fire=0;app.prog=0;app.timer=Math.max(app.timer,app.maxT*0.5);S.racks[slot]=app;
-  fl(RACKS[slot],"Rolled back",C.amber);toast(`↩️ Rolled ${app.name} back on-prem. It's online again. Try again when the odds are better.`);
+  fl(RACKS[slot],"Rolled back",C.amber);clipEv("rollback");toast(`↩️ Rolled ${app.name} back on-prem. It's online again. Try again when the odds are better.`);
 }
 function doGrab(){
   const P=S.p;if(P.stun>0)return;
@@ -2112,7 +2117,7 @@ function doGrab(){
   if(downCount()>0){fl(P,"Can't move servers while any are offline",C.danger);return;}
   if(g.fire>0){fl(P,"Put the fire out first",C.amber);return;}
   if(g.down){fl(P,"It's offline. Hold E to bring it back up first",C.amber);return;}
-  humanWork();if(!S.upgrades.bluegreen)S.racks[g.slot]=null;S.carry=g;sfx("grab");if(g.touchT==null)g.touchT=S.time;
+  humanWork();if(!S.upgrades.bluegreen)S.racks[g.slot]=null;S.carry=g;sfx("grab");clipEv("grab");if(g.touchT==null)g.touchT=S.time;
 }
 /* CI/CD pipeline: press Space at a rack to use a free lane, or carry if all lanes are busy. The conveyor sends it to the cloud. No walking, ~6s (3s with Terraform),
    +10% odds from automated tests. Each upgrade level is one more lane (jobs at once). */
@@ -2190,7 +2195,7 @@ function approveSavings(a,i,who){
 // tap E on a flagged app to approve it; holding E approves every flagged app you walk past
 function approveNear(){
   if(!keys.fix||S.carry||S.p.stun>0)return;
-  S.cloud.forEach((a,i)=>{if(a&&a.rsTag&&dist(S.p,SLOTS[i])<RS_REACH){humanWork(true,"rightsize");approveSavings(a,i,"you");}});
+  S.cloud.forEach((a,i)=>{if(a&&a.rsTag&&dist(S.p,SLOTS[i])<RS_REACH){humanWork(true,"rightsize");approveSavings(a,i,"you");clipEv("finops");}});
 }
 /* Routine work is what a junior could do from a checklist: tickets, email, FinOps approvals, patching and inventory.
    Everything else you do by hand (migrations, pipeline sends, rollbacks, fires, outages, leaks, breaches, cutover
@@ -2237,8 +2242,8 @@ function doFix(dt){
     f.a.prog+=dt;S.fixNeed=need;S.fixP=f.a.prog;
     if(f.a.prog<need)return;
     f.a.prog=0;S.fixP=0;S.fixLock=true;
-    if(f.kind==="restore"){sfx("online");noteRestored(f.a);f.a.down=false;f.a.timer=Math.max(f.a.timer,f.a.maxT*0.5);fl(f.pos,"Back online",C.ok);}
-    else{sfx("sealed");f.a.age=0;f.a.breach=false;f.a.leak=0;f.a.grace=6;fl(f.pos,"Breach contained",C.ok);}
+    if(f.kind==="restore"){sfx("online");noteRestored(f.a);f.a.down=false;f.a.timer=Math.max(f.a.timer,f.a.maxT*0.5);fl(f.pos,"Back online",C.ok);clipEv("restore");}
+    else{sfx("sealed");f.a.age=0;f.a.breach=false;f.a.leak=0;f.a.grace=6;fl(f.pos,"Breach contained",C.ok);clipEv("contained");}
     return;
   }
   if(f.kind==="fire"){
@@ -2248,7 +2253,7 @@ function doFix(dt){
     S.ext={pos:f.pos,a:f.a,t:S.t,slow:!fast};
     f.a.fire-=r*dt;if(fast)S.energy=Math.max(0,S.energy-onpremCost(7)*dt);
     // release E before the next action, so holding it doesn't roll straight into a patch
-    if(f.a.fire<=0){f.a.fire=0;S.fixLock=true;sfx("fireOut");fl(f.pos,"Fire out",C.ok);}
+    if(f.a.fire<=0){f.a.fire=0;S.fixLock=true;sfx("fireOut");fl(f.pos,"Fire out",C.ok);clipEv("fireout");}
     return;
   }
   const need=f.kind==="patch"?0.8:f.kind==="leak"?1.3:f.kind==="email"?0.7:0.6,c=fixCost(f);
@@ -2257,12 +2262,12 @@ function doFix(dt){
   S.fixNeed=need;S.fixP+=dt;
   if(S.fixP<need)return;
   S.energy-=c;S.fixP=0;S.fixKey=null;
-  if(f.kind==="patch"){sfx("patch");applyPatch(f.a);fl(f.pos,"✓ Covered this cycle",C.ok);}
+  if(f.kind==="patch"){sfx("patch");applyPatch(f.a);fl(f.pos,"✓ Covered this cycle",C.ok);clipEv("patch");}
   else if(f.kind==="leak"){sfx("sealed");f.a.age=0;f.a.leakOn=false;f.a.leak=0;f.a.grace=4;fl(f.pos,"Sealed by hand",C.ok);}
   else if(f.kind==="email"){sfx("sent");S.em=S.em.filter(x=>x!==f.m);if(f.m.type==="vendor")S.run.vendor++;
     // answering a finance email negotiates a 20s extension on the license closest to renewing
-    if(f.m.type==="finance")financeExtension("player");fl(f.pos,f.m.type==="vendor"?"Replied to a vendor. Why?":"Replied",f.m.type==="vendor"?C.muted:C.ok);}
-  else{sfx("closed");S.tk=S.tk.filter(x=>x!==f.t);fl(f.pos,"Ticket closed",C.ok);}
+    clipEv(f.m.type==="vendor"?"vendor":"email");if(f.m.type==="finance")financeExtension("player");fl(f.pos,f.m.type==="vendor"?"Replied to a vendor. Why?":"Replied",f.m.type==="vendor"?C.muted:C.ok);}
+  else{sfx("closed");S.tk=S.tk.filter(x=>x!==f.t);fl(f.pos,"Ticket closed",C.ok);clipEv("ticket");}
 }
 // answering a finance email (player or manager) negotiates a 20s extension on the license closest to renewing;
 // the server that got it glitters briefly so you can see which one it was
@@ -2282,11 +2287,11 @@ function tickOnPrem(dt){
     if(a.hidden||a.down)continue;
     a.timer-=dt*rate;
     // a license only runs down while the server is running on its rack: in transit it is paused, but a blue-green original stays live and keeps counting
-    if(a.lic>0&&S.racks[a.slot]===a){a.lic-=S.tut?0:dt;if(a.lic<=0){a.lic=0;const c=licCost(a);spend("license",c);sfx("licenseRenewed");fl(posOf(a),`📜 −$${c}k`,C.danger);toast(`📜 ${a.name}'s license auto-renewed before you moved it. −$${c}k.`);}}
+    if(a.lic>0&&S.racks[a.slot]===a){a.lic-=S.tut?0:dt;if(a.lic<=0){a.lic=0;const c=licCost(a);spend("license",c);sfx("licenseRenewed");fl(posOf(a),`📜 −$${c}k`,C.danger);toast(`📜 ${a.name}'s license auto-renewed before you moved it. −$${c}k.`);clipEv("licrenew");}}
     if(a.timer<=0&&a.covered){a.covered=false;a.timer=a.maxT;}
     else if(a.timer<=0){if(a.botErr){a.botErr=false;fl(posOf(a),"🤖 automation error reset",C.muted);} // after a failed audit the bot gets another try
       a.timer=a.maxT;spend("audits",12);sfx("audit");secHit("audit",4);S.ss.audits++;unplanned(1,"audit");
-      toast(`📋 Audit failed: ${a.name} fell out of compliance. −$12k, −4 security.`);fl(posOf(a),"AUDIT FAIL",C.danger);}
+      toast(`📋 Audit failed: ${a.name} fell out of compliance. −$12k, −4 security.`);clipEv("audit");fl(posOf(a),"AUDIT FAIL",C.danger);}
   }
   for(let i=0;i<12;i++){
     const a=S.racks[i];if(!a)continue;
@@ -2297,7 +2302,7 @@ function tickOnPrem(dt){
       if(a.fire>=50&&a.spreadT<=0&&!S.tut){a.spreadT=3;if(Math.random()<(downCount()>0?0.10:0.35)){const n=neighbors(i).map(j=>S.racks[j]).filter(b=>b&&!b.hidden&&!b.down&&b.fire===0);if(n.length){const b=pick(n);b.fire=6;b.spreadT=3;toast(`🔥 The fire spread to ${b.name}.`);}}}
       if(a.fire>=100){sfx("offline");a.fire=0;a.down=true;a.downT=S.time;a.prog=0;if(a.hidden)revealApp(a,false);spend("fires",5);S.ss.lost++;
         toast(a.tier==="gold"?`💀 ${a.name} (gold) burned out and went offline. RED ALERT.`:`💀 ${a.name} burned out and went offline. Hold E on it to bring it back up.`);
-        fl(RACKS[i],"OFFLINE",C.danger);}
+        fl(RACKS[i],"OFFLINE",C.danger);clipEv("offline");}
     }
   }
 
@@ -2317,7 +2322,7 @@ function revealApp(a,investigated){
     a.lic=remaining;
     toast(`📜 Discovered ${a.name} (${a.tier}): license expires in ${Math.ceil(remaining)}s ($${licCost(a)}k).`);
   }
-  if(!investigated)toast(`💀 An outage revealed ${a.name}. Restore it to resume migration.`);
+  if(!investigated)toast(`💀 An outage revealed ${a.name}. Restore it to resume migration.`);else clipEv("discover");
   fl(RACKS[a.slot],"DISCOVERED",C.amber);
 }
 
@@ -2335,7 +2340,7 @@ function tickCloud(dt){
     }
     // drift: an unpatched cloud app gets riskier over time (up to 2x after ~3 min). Auto-patching keeps it fresh.
     if(S.upgrades.autopatch)a.age=0;else a.age=(a.age||0)+dt;
-    if(!a.leakOn){if(a.grace>0){a.grace-=dt;return;}if(!S.tut&&Math.random()<lc*driftMult(a)*(a.cleanStart>0?0.5:1)*dt){a.leakOn=true;a.leak=4;a.tfT=0;}return;}
+    if(!a.leakOn){if(a.grace>0){a.grace-=dt;return;}if(!S.tut&&Math.random()<lc*driftMult(a)*(a.cleanStart>0?0.5:1)*dt){a.leakOn=true;a.leak=4;a.tfT=0;clipEv("leak");}return;}
     if(freezeActive())return;
     a.leak+=3.6*dt*Math.pow(0.85,lvl("scanner"))*(S.tut?0.75:1); // tutorial leaks grow a little slower but still breach
     if(a.leak>=100)breach(i,null);
@@ -2350,7 +2355,7 @@ function breach(i,from,fromIdx){
   if(fromIdx!==undefined)S.fx.push({type:"bolt",a:SLOTS[fromIdx],b:SLOTS[i],t:0,life:0.7});
   S.shake=0.45;
   const a=S.cloud[i];a.age=0;a.breach=true;a.leakOn=false;a.leak=0;a.prog=0;a.spreadT=spreadTime();
-  sfx("breach");secHit("breach",5);spend("breach",10);S.ss.breaches++;fl(SLOTS[i],"BREACHED",C.danger);
+  sfx("breach");secHit("breach",5);spend("breach",10);S.ss.breaches++;clipEv("breach");fl(SLOTS[i],"BREACHED",C.danger);
   toast(from?`🔓 The breach spread from ${from} to ${a.name}. RED ALERT.`:`🔓 ${a.name} leaked long enough to get breached. RED ALERT.`);
 }
 function spawns(dt){
@@ -2393,7 +2398,7 @@ function tickHazards(dt){
   // pickups: coffee = energy + a short speed boost; donut = users leave you alone for a bit
   for(const s of S.st){s.life-=dt;if(dist(s,P)<26){s.dead=true;
     S.snacks=S.snacks||{coffee:0,donut:0};S.snacks[s.kind]++;
-    if(s.kind==="coffee"){sfx("coffee");S.energy=Math.min(100,S.energy+15);P.boost=4;fl(s,"☕ +15⚡ and a speed boost",C.amber);}
+    clipEv(s.kind);if(s.kind==="coffee"){sfx("coffee");S.energy=Math.min(100,S.energy+15);P.boost=4;fl(s,"☕ +15⚡ and a speed boost",C.amber);}
     else{sfx("donut");P.ghost=DONUT_TIME;fl(s,"🍩 Mouth full: users can't stop you",C.amber);}}}
   S.st=S.st.filter(s=>!s.dead&&s.life>0);
 }
@@ -2415,7 +2420,7 @@ function tickEscalation(e,dt){
   e.waiting=!present||e.a.down;
   if(d<10){
     if(e.waiting)return;
-    e.dead=true;sfx("fireStart");e.a.fire=Math.max(e.a.fire,20);e.a.spreadT=3;logEv(`🔥 An escalation set ${e.a.hidden?"an unknown rack":e.a.name} on fire.`);
+    e.dead=true;sfx("fireStart");e.a.fire=Math.max(e.a.fire,20);clipEv("fire");e.a.spreadT=3;logEv(`🔥 An escalation set ${e.a.hidden?"an unknown rack":e.a.name} on fire.`);
     fl(p,"🚨 ESCALATED",C.danger);toast(`🚨 An ignored ticket escalated and set ${e.a.hidden?"an unidentified server":e.a.name} on fire.`);return;
   }
   const step=Math.min(d,220*dt);e.x+=dx/d*step;e.y+=dy/d*step;
@@ -2441,7 +2446,7 @@ function patchBot(b,dt,sp){
   b.work+=dt;
   if(b.fail&&b.work>=b.failAt){
     // the automation broke partway through: flag the rack for a human
-    a.botErr=true;b.work=0;b.tgt=null;b.flash=1.5;botWork();sfx("audit");fl(p,"⚠ AUTOMATION ERROR",C.danger);
+    a.botErr=true;b.work=0;b.tgt=null;b.flash=1.5;botWork();sfx("audit");fl(p,"⚠ AUTOMATION ERROR",C.danger);clipEv("boterr");
     toast(`🤖 Patch Bot couldn't patch ${a.name} (automation error). ${S.agent&&agentCanTouch(a)?"The AI agent is going to take a look. Good luck.":"It needs a human: patch it yourself."}`);return;
   }
   if(b.work<b.need)return;
@@ -2531,11 +2536,11 @@ function update(dt){
   const crit=critList(),was=S.alert;S.alert=crit.length>0;
   if(S.alert&&!was){
     if(S.carry){const copy=liveCopy(S.carry);returnToRack(S.carry);S.carry=null;fl(P,copy?"Copy discarded":"Dropped everything",C.danger);}
-    toast(`🚨 RED ALERT: ${crit.map(c=>c.a.name).join(", ")}. Nothing else works until it's fixed. Incident fixes cost no energy.`);unplanned(1,"alert");
+    toast(`🚨 RED ALERT: ${crit.map(c=>c.a.name).join(", ")}. Nothing else works until it's fixed. Incident fixes cost no energy.`);unplanned(1,"alert");clipEv("alert");
   }
   if(S.alert){S.sirenT=(S.sirenT||0)-dt;if(S.sirenT<=0){S.sirenT=1.6;sfx("siren");}}else S.sirenT=0;
   if(!S.alert&&was){
-    toast("✅ All clear. Back to work.");
+    toast("✅ All clear. Back to work.");clipEv("clear");
     // blameless postmortem: the incident becomes a lesson and gives back 1 story point
     if(S.upgrades.postmortem&&(S.ss.why.alert||0)>0){S.ss.unplanned=Math.max(0,S.ss.unplanned-0.5);S.ss.why.alert-=0.5;fl({x:P.x,y:P.y-14},"📝 Postmortem: +0.5 pt back",C.ai);}
   }
@@ -2566,7 +2571,7 @@ function update(dt){
   S.secCalm=(S.secCalm||0)+dt;
   if(S.secCalm>20&&!S.cloud.some(a=>a&&a.breach)&&S.security<100){S.security=Math.min(100,S.security+0.3*dt);if(S.security>=30)S.secWarned=false;}
   S.energy=clamp(S.energy+(S.upgrades.oncall?0.9:0.6)*dt,0,100);
-  tutTick(dt);
+  tutTick(dt);tickClip(dt);
   buildPrompt();
   // running costs. The report also tracks what the cloud apps would have cost had they stayed on-prem;
   // it's shown but never scored, and it goes negative while the cloud costs more than on-prem.
@@ -2912,6 +2917,7 @@ function draw(){
   for(const b of S.bots)drawBot(b);
   if(S.fix&&S.fixP>0){const p=S.fix.pos;ctx.strokeStyle=C.leak;ctx.lineWidth=4;ctx.beginPath();ctx.arc(p.x,p.y,24,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,S.fixP/S.fixNeed));ctx.stroke();}
   drawPlayer();
+  drawCompanion();
   drawExtinguish();
   drawEnergyFx();
   drawHoldBubble();
@@ -3142,6 +3148,7 @@ const LEARN={
   snacks:["https://dora.dev/capabilities/well-being/","DORA","Burnout hurts delivery. Teams that are looked after do better work."],
   vendor:["https://www.finops.org/framework/capabilities/rate-optimization/","FinOps Foundation","Commitments and discounts that lower what you pay for the same usage."],
   manager:["https://dora.dev/capabilities/transformational-leadership/","DORA","Leaders who clear the way make teams faster and happier."],
+  clip:["https://en.wikipedia.org/wiki/Reverse_mentoring","Wikipedia","Reverse mentoring: the junior person teaches the senior one. It usually goes better than this."],
   agent:["https://www.anthropic.com/research/building-effective-agents","Anthropic","When AI agents help, and why simple, well-scoped workflows beat clever ones."],
   chatbot:["https://dora.dev/ai/","DORA","What research says about how AI tools really affect tech teams."],
 };
@@ -3219,6 +3226,7 @@ function howToPlay(){
     <div><span class="ic">❄</span><span><b>Change freeze.</b> Users, new tickets and email, escalations, fire growth and breach spread all stop. Downtime and breach damage still count, so a freeze buys time, it doesn't fix anything. Every incident gets a short 4-second freeze (once a minute), CHANGE FREEZE flashes across the floor, and the message says what caused it. A manager makes it 10/14/18 seconds and lets it return sooner (60/50/40s). The Emergency Freeze Window upgrade gives you one 12-second freeze on F or the Freeze button.</span></div>
     <div><span class="ic">⏪</span><span><b>Restore from backup.</b> Open the terminal (the &gt;_ at the top left, or the &#96; key) and type <code>journalctl</code> for this client's event log. Rows marked 💾 are restore points, roughly every 30 seconds. Pick one, or type <code>restore 05:40</code>, to go back to that moment. Easy gets 3 for the whole career, Normal 2, Hard 1, and Hardcore none. They also work from the screen where you get fired. Restore points only cover the current client, and the future can go differently the second time.</span></div>
     <div><span class="ic">📎</span><span><b>Tutorials.</b> The Tutorials button on the main menu opens a quick illustrated tour. Every page of it offers the Hands on Tutorial: one tiny practice client where a senior paperclip points at what to do next, step by step, then walks you through the end-of-client report and your first improvement sprint. Compliance clocks are paused and cutovers always succeed there, but the day clock runs and a fire left alone still burns through. Nothing in it counts toward your career.</span></div>
+    <div><span class="ic">📎</span><span><b>Mr Paperclip (upgrade).</b> The tutorial's senior paperclip, for 2 points: he rides on your shoulder in every client, reacts to everything, and comments in a speech bubble. His advice is mostly wrong, but every line he says gives you +1 energy. There is no mute. You made your choice.</span></div>
     <div><span class="ic">🧑‍💻</span><span><b>Your avatar.</b> Pick one on the main menu, or type or paste any single emoji into the box. It's only shown on your screen.</span></div>
     <div><span class="ic">👤</span><span><b>Users.</b> They wander the hallway. Bump into one and you're stuck for a "quick question." The better dressed, the longer: an analyst holds you under 2 seconds, the CIO almost 5. Interns just blurt their question as you walk past. Right after someone lets you go, and for the first 2 seconds of each client, nobody can stop you: you blink until that wears off.</span></div>
     <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Hover over (or tap) anything in "Your toolkit" to see what it does. Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. Tools you don't own yet keep turning up: the longer one goes unseen, the likelier it is to show up. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
@@ -3344,7 +3352,7 @@ function clipMood(){
     shut:!!S.alert&&(RM||(S.t%2.4)<1.7),
     closed:spraying(S.ext)||!!(S.temp&&spraying(S.temp.ext))||!!(S.agent&&spraying(S.agent.ext)), // any extinguisher going off (fire work never fills fixP)
     roll:!!(S.p.heldBy&&S.p.stun>0),
-    tear:!!(S.tut&&TUTOR[S.tut.i]?.emotion==="leak")};
+    tear:S.tut?TUTOR[S.tut.i]?.emotion==="leak":S.cloud.some(a=>a&&a.leakOn&&!a.staged)}; // in a real career he cries at any leak
 }
 function drawClip(x,y,s){
   const mood=clipMood();
@@ -3408,6 +3416,143 @@ function tutDone(){
   <div class="clipnote big">${CLIP_SVG}<div><h2>Reverse shadow complete.</h2><p>You moved a client to the cloud, patched a server, closed tickets, answered email, put out a fire, found a forgotten server, sealed a leak and read your first report. I'm going back to the supply closet.</p></div></div>
   <p>One warning before you go: real clients don't pause their clocks, nobody rigs the cutover odds, and everything happens at once. Whatever you bought here stays here: a real career starts with zero automation. Bronze first.</p>
   <div class="row"><button class="btn" data-act="start">Start new career</button><button class="btn ghost" data-act="howto">How to play</button><button class="btn ghost" data-act="menu">Main menu</button></div>`);
+}
+/* ==== Mr Paperclip (perk) ==== */
+/* Mr Paperclip · Reverse Shadow: a 2-point perk. He floats at your top-left shoulder (the donut timer has the
+   top-right), keeps every face he learned in the tutorial, and pipes up in a speech bubble on a good chunk of what
+   happens. His advice is pure comedy and mostly wrong. The one real effect: every line he says is worth +1 energy.
+   Ordinary lines wait 8-12 seconds after the last one; the big moments (outages, red alerts, breaches, VPs, failed
+   cutovers, escalations) jump the queue. Each event shuffles its own lines and deals them out without repeats.
+   His picks and timing use their own little random generator, so he never shifts the run's odds. No mute button:
+   you made your choice. */
+const CLIP_LINES={
+  start:["New client! I've already formed strong opinions about their cabling.","Big day. I'll be right here. Judging.","I put 'cloud architect' on my résumé. Let's see who finds out first.","Smells like legacy in here. And fear.","Remember: gold first. That's how the pros do it. (It is not.)","I've reviewed their architecture. It's a closet.","Fresh client, fresh chances for me to say 'I told you so.'"],
+  grab:["Lift with your legs. I wouldn't know. No legs.","Ooh, carrying it by hand. Very artisanal.","Careful, that one's load-bearing. They all are, apparently.","Have you considered carrying it faster?","Hold it like a baby. A very expensive, very old baby.","Pro tip: servers love being shaken. (Do not.)"],
+  migrate:["It worked? Write that down. Nobody will believe us.","Another one in the cloud. Which is just someone else's server. Don't tell them.","See? My coaching works. Ignore the part where I didn't say anything.","I'll take partial credit. Full credit, actually.","Cloud achieved. Synergy unlocked. Bonus pending.","Up in the cloud, where nothing ever goes wrong. Ever."],
+  cutfail:["Have you considered not doing that?","Have you tried turning it off and not turning it back on?","In my professional opinion: yikes.","This is fine. I'm updating my LinkedIn. Unrelated.","Was that the plan? Bold plan.","Have you tried migrating it harder?","I'd roll that back. Or forward. Sideways, maybe."],
+  rollback:["Ctrl+Z: the most senior engineer on any team.","We were never here.","Undo! The real cloud strategy.","Back where it started. Very circle-of-life."],
+  patch:["Covered! Until it isn't. Which is soon.","You know you could just… migrate it? No? Okay.","Patched. I'd have used duct tape, but sure.","Another patch. Technical debt sends its regards.","Have you tried not patching it and seeing what happens? For science."],
+  audit:["The auditors would like a word. Several words. In a binder.","To be fair, I also forgot that one.","Compliance is a mindset. Ours is 'oops.'","Failed an audit. Put it on my tab."],
+  ticket:["Closed as 'works on my machine.' Nice.","Root cause: the user. As always.","Have you tried marking it resolved and running?","Ticket closed. Customer satisfaction: unknowable.","Resolved: 'Cleared cache.' Nobody will check."],
+  escalate:["Thar she blows!","Fire away! No, literally.","Escalation incoming. I'd duck.","Ooh, that one's going to leave a mark.","There she blows! Somebody ignored a ticket. Wasn't me."],
+  fire:["Is it warm in here, or is that the server?","Stop, drop and… migrate?","Have you tried blowing on it?","Fire's just the server expressing itself.","I'm made of steel. You're on your own."],
+  fireout:["Saved it. The smell is staying, though.","Fire's out. I was very brave. From over here.","No more fire. Mostly smoke now. Smoke is fine."],
+  offline:["I should have stayed home.","I left a perfectly good office supply drawer for this.","My last job was holding paper together. Simpler times.","Have you tried turning it on? Just spitballing.","I'm starting to question what I put on my résumé.","Is it too late to go back to stationery?"],
+  restore:["It lives! Mostly.","Let's never speak of this.","Back online. I'll be writing the postmortem. In crayon.","Up again. Just like my anxiety."],
+  alert:["AAAAAAAA.","Not the gold one. Anything but the gold one.","Is this in my job description? Checking… no.","I'm not crying. Paperclips can't cry. I'm crying.","Red alert! I'll be… over here. Shaking.","Everybody stay calm! (I am not calm.)"],
+  clear:["Okay. Okay okay okay. We're fine.","I was calm the whole time. Ask anyone.","All clear. I'll take my medal now.","Phew. Anyway, as I was saying, gold first."],
+  leak:["Is something dripping? I'm not waterproof.","A leak in the cloud. So… rain?","Leaks are just data sharing with extra steps.","Have you tried putting a bucket under it?"],
+  breach:["I'd like to not be in this data center anymore.","Who had 'breach' on the bingo card? Me. I win.","The hackers say thanks.","Have you tried asking them nicely to leave?"],
+  contained:["Contained! Put it in the postmortem. Blame the intern.","Breach contained. Changing all my passwords to 'paperclip2.'","Firewall closed. Barn door bolted. Horse status: unknown."],
+  email:["I can't imagine doing this all day. Oh wait, you do.","Per my last email…","Reply all. Do it. Live a little.","Email: the job behind the job.","Every email you answer spawns two more. That's just science.","Sent! Nobody will read it. Like my memoir."],
+  vendor:["You replied to a vendor. Now they know you exist.","Great, now we're on a 'quick 15-minute call.'","Congratulations on your new free trial."],
+  vp:["Who let this guy in here?","Who brought him? Don't look at me.","Act natural. Pretend you're a rack.","A VP! Quick, look busy. Busier. No, busier.","He's here about the email. It's always the email."],
+  vpdenied:["Denied! Love that for him.","The badge reader has my back.","Access denied. Finally, a control that works."],
+  user:["Oh, here we go.","Say 'have you tried turning it off and on' and walk away. Works for me.","Nod. Smile. Escape.","Five minutes, they said. They lied."],
+  cio:["Is it about AI? It's about AI.","The CIO! Say 'serverless.' They love that.","Tell them it's already in the cloud. Spiritually."],
+  intern:["Interns. So much energy. So little access.","Don't give them admin. Don't. Okay, you didn't. Good."],
+  coffee:["Ooh, the good stuff.","Drink faster. Migrate faster. Vibrate.","Coffee! I can taste colors. I can't taste.","Caffeine: the original automation."],
+  donut:["You going to share that? No? Cool. Cool cool.","A donut doesn't stop ME from talking.","Mouth full? Great, now you have to listen to me."],
+  pizza:["Save me a slice!","Free pizza: the only reason anyone comes to the all-hands.","Pizza party! Nobody will notice if I take three."],
+  headphones:["Focus time? I'll be quiet. …Are you focusing? I'm focusing on you focusing.","Headphones on. Can you still hear me? Good."],
+  window:["Window's open! Quick, do something risky.","Maintenance window! The perfect time for gold. Trust me."],
+  temp:["A temp! Finally, someone less qualified than me.","Welcome aboard! Don't touch anything. Touch everything."],
+  mgrlook:["Your manager is 'just looking.' Brace.","Uh oh. Manager's got that 'quick look' face."],
+  mgrbreak:["And that's why managers don't get root.","Your manager touched it. Thoughts and prayers."],
+  agentbad:["Confidently wrong. Bold. Respect.","The AI did a whoopsie. I would never. I'm analog.","Hallucinations: now in production."],
+  boterr:["The robot made a boo-boo. I would never. I can't.","Automation error. The robot's in its feelings."],
+  licrenew:["A year of fees for software you were about to delete. Iconic.","License renewed! Money well spent. On nothing."],
+  licsaved:["Cha-ching. I negotiated that. (I didn't.)","License dodged. Procurement will never know."],
+  discover:["A secret server under someone's desk? Classic.","Found one! The client is 'surprised.' Nobody is surprised.","Nobody tell compliance. Too late."],
+  wave:["More servers? From the OTHER building?","A second building. Of course there's a second building."],
+  finops:["Approve, approve, approve. Don't read it. Nobody reads it.","Rightsized. Like my salary.","Make it smaller! Smaller! What could go wrong?"],
+  freeze:["Freeze! Nobody move. Except you, obviously.","Change freeze. My favorite kind of work: none."],
+  tired:["You look tired. Have you tried being less tired?","Out of energy? Have you considered having more?"],
+  idle:["It looks like you're trying to migrate a server. Would you like to actually do that?","Are we… doing anything?","I'm just going to stand here and be helpful.","Love this for us. The standing. Very strategic."],
+  late:["We're late. The landlord is a data center.","Past the lease date. Rent's due and so are we."],
+  lowsec:["Security's low. Maybe change your password to 'password2.'","Have you tried putting a sticky note over the firewall?"],
+  done:["We did it! By 'we' I mean I watched.","Five stars! Not from me.","Client complete. I'll accept my bonus in office supplies."],
+};
+const CLIP_PRIO=new Set(["offline","alert","breach","vp","cutfail","escalate"]);
+const CLIP_SAY_T=3.2;
+// his own generator for picks and gaps, so a cosmetic line never shifts the game's random rolls
+let clipSeed=(Date.now()>>>0)||7;
+const clipRand=()=>{clipSeed=(Math.imul(clipSeed,1664525)+1013904223)>>>0;return clipSeed/4294967296;};
+const clipOn=()=>!!(S&&S.upgrades.clip&&!S.tut&&S.clipC);
+function clipReset(){S.clipC={x:S.p.x-34,y:S.p.y-34,say:"",sayT:0,at:-9,pr:false,next:0,still:0,bags:(S.clipC&&S.clipC.bags)||{},late:false,lowsec:false};}
+function clipEv(k){
+  if(!clipOn()||!CLIP_LINES[k])return false;
+  const c=S.clipC,pr=CLIP_PRIO.has(k);
+  if(!pr&&S.t<c.next)return false;
+  if(pr&&S.t-((c.lastK||(c.lastK={}))[k]??-99)<12)return false; // the same alarm at most every 12 seconds
+  if(c.sayT>0&&c.pr&&S.t-c.at<1.5)return false; // never talk over an urgent line that just started
+  let bag=c.bags[k];
+  if(!bag||!bag.length){bag=c.bags[k]=CLIP_LINES[k].map((_,i)=>i);for(let i=bag.length-1;i>0;i--){const j=Math.floor(clipRand()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}}
+  c.lastK=c.lastK||{};c.lastK[k]=S.t;c.say=CLIP_LINES[k][bag.pop()];c.sayT=CLIP_SAY_T;c.at=S.t;c.pr=pr;c.next=S.t+8+4*clipRand();
+  S.energy=Math.min(100,S.energy+1);fl({x:c.x,y:c.y+34},"📎 +1⚡",C.amber); // the one useful thing about him
+  return true;
+}
+function tickClip(dt){
+  if(!clipOn())return;
+  const c=S.clipC,P=S.p,gx=clamp(P.x-34,24,W-24),gy=clamp(P.y-36,40,H-30),k=Math.min(1,dt*7);
+  c.x+=(gx-c.x)*k;c.y+=(gy-c.y)*k;
+  if(c.sayT>0)c.sayT-=dt;
+  const moving=keys.u||keys.d||keys.l||keys.r||(stick.on&&(stick.x||stick.y))||keys.fix||S.carry||P.stun>0;
+  c.still=moving?0:c.still+dt;
+  if(c.still>=12&&clipEv("idle"))c.still=0;
+  if(!c.late&&overdue()>0){c.late=true;clipEv("late");}
+  if(!c.lowsec&&S.security<30){c.lowsec=true;clipEv("lowsec");}
+}
+// the bubble: wrapped to about 180px, above him (or below near the top edge), kept on the floor
+function drawCompanion(){
+  if(!clipOn())return;
+  const c=S.clipC,bob=RM?0:Math.sin(S.t*3.2)*2.5;
+  drawClip(c.x,c.y+bob,0.95);
+  if(!(c.sayT>0)||!c.say)return;
+  ctx.save();ctx.font=`600 11px ${BODY}`;
+  const lines=[];let ln="";
+  for(const w of c.say.split(" ")){const t=ln?ln+" "+w:w;if(ctx.measureText(t).width>176&&ln){lines.push(ln);ln=w;}else ln=t;}
+  if(ln)lines.push(ln);
+  const bw=Math.min(196,Math.max(...lines.map(l=>ctx.measureText(l).width))+16),bh=lines.length*14+10;
+  // above him; near the top edge, beside him instead (below would cover you)
+  const above=c.y-34-bh>4,left=c.x-24-bw>=4;
+  const bx=above?clamp(c.x-bw/2,4,W-bw-4):left?c.x-22-bw:Math.min(W-bw-4,Math.max(c.x,S.p.x)+22),by=above?c.y-30-bh:clamp(c.y-bh/2,4,H-bh-4);
+  ctx.globalAlpha=clamp(Math.min(c.sayT/0.35,(CLIP_SAY_T-c.sayT)/0.15+0.2),0,1);
+  ctx.fillStyle="rgba(250,246,230,.97)";rr(bx,by,bw,bh,7);ctx.fill();ctx.strokeStyle="#c9b98a";ctx.lineWidth=1;ctx.stroke();
+  const tx1=clamp(c.x,bx+10,bx+bw-10),ty1=clamp(c.y,by+8,by+bh-8);ctx.beginPath();
+  if(above){ctx.moveTo(tx1-5,by+bh);ctx.lineTo(tx1,by+bh+7);ctx.lineTo(tx1+5,by+bh);}
+  else if(left){ctx.moveTo(bx+bw,ty1-5);ctx.lineTo(bx+bw+7,ty1);ctx.lineTo(bx+bw,ty1+5);}
+  else{ctx.moveTo(bx,ty1-5);ctx.lineTo(bx-7,ty1);ctx.lineTo(bx,ty1+5);}
+  ctx.fillStyle="rgba(250,246,230,.97)";ctx.fill();
+  ctx.fillStyle="#2b2618";ctx.textAlign="left";ctx.textBaseline="top";
+  lines.forEach((l,i)=>ctx.fillText(l,bx+8,by+6+i*14));
+  ctx.restore();
+}
+// in the shop he has opinions about what you buy
+const CLIP_SHOP={
+  clip:"Best purchase you'll ever make. You're welcome. Reverse shadowing begins now.",
+  patchbot:"A Patch Bot? Replacing me already?",
+  agent:"An AI agent? I was here first.",
+  moverbot:"A robot that carries servers. Must be nice to be useful.",
+  manager:"A manager. Great. Another person to ignore me.",
+  chatbot:"Chatbots? They'll never have my people skills.",
+  observe:"Observability. So now you can SEE everything go wrong.",
+  terraform:"Infrastructure as code. I prefer infrastructure as vibes.",
+  pipeline:"A pipeline? I could have carried those. I couldn't. No arms.",
+  coffee:"Comfy shoes. Bold of you to plan on walking away from me.",
+  snacks:"Snack budget! Finally, a tool I understand.",
+  runbooks:"Runbooks. Instructions. Who reads instructions?",
+  freezecharge:"An emergency freeze. For when my advice goes as planned.",
+};
+const CLIP_SHOP_IDLE=["Spend the points. Or don't. I'm not your manager.","I'd buy the most expensive thing. Always works.","Have you considered buying nothing and hoping?","Whatever you pick, I'll say I recommended it.","Retrospective tip: blame the paperclip. Wait, no."];
+const CLIP_SHOP_BUY=["Bold choice. I'd have picked something else. Anything else.","Sure. Why not. It's not my budget.","Love that for you. Truly. Mostly."];
+function clipShopPick(id){S.clipShop=id?CLIP_SHOP[id]||CLIP_SHOP_BUY[Math.floor(clipRand()*CLIP_SHOP_BUY.length)]:CLIP_SHOP_IDLE[Math.floor(clipRand()*CLIP_SHOP_IDLE.length)];}
+const clipShopLine=()=>S.upgrades.clip&&S.clipShop?`<div class="clipnote">${CLIP_SVG}<p><b>Mr Paperclip:</b> ${S.clipShop}</p></div>`:"";
+/* Old school credits: Matt Frost, then Mr Paperclip, with a memorial for the days he was on the team. */
+function creditsOld(){
+  const d=Math.round((S&&S.clipDays)||0);
+  return[["h2","Credits"],["p who","Matt Frost"],["p small","and"],["div clipcred",CLIP_SVG],["p who","Mr Paperclip"],
+    ["p small",d?`R.I.P. · ${d} day${d===1?"":"s"} in the game`:"R.I.P. · 0 days in the game. Never hired. Still bitter."]];
 }
 /* ==== Shop and between-client review ==== */
 // 6 offers per planning, at least 2 of them security. Maxed-out items are left out.
@@ -3490,6 +3635,7 @@ function review(){
   const sprint=()=>`  ${clipNote(`<b>Retrospective:</b> after every client you pick one free action item based on what hurt. It's the one fix the team actually adopts. Pick whichever sounds useful.`)}
   ${retroBlock()}
   <h3>Improvement sprint</h3>
+  ${clipShopLine()}
   ${clipNote(`Now the <b>upskill</b>. You start every career with zero automation, and this is where that changes. Story points buy tools, bots and practices. Incidents create unplanned work that eats points, and points you don't spend are gone. Each card links to the real practice behind it. Try buying something: I'd start with a 🤖 Patch Bot.`)}
   <p style="font-size:13.5px">Before the next client, the team gets one sprint to build tools. Everything you build here comes with you to every future client.</p>
   ${capacityLine()}
@@ -3536,7 +3682,7 @@ function reroll(){
 }
 function buy(id){
   const u=UPGRADES.find(x=>x.id===id);if(!u||!canBuy(u)||S.points<upCost(u))return;
-  S.points-=upCost(u);sfx("buy");S.upgrades[id]=u.max?lvl(id)+1:true;
+  S.points-=upCost(u);sfx("buy");S.upgrades[id]=u.max?lvl(id)+1:true;if(S.upgrades.clip)clipShopPick(id);
   if(id==="patchbot"&&!S.bots.some(b=>b.kind==="patch"&&!b.temp))S.bots.push(mkBot("patch"));
   if(id==="moverbot")S.bots.push(mkBot("move"));
   review();
@@ -3835,13 +3981,12 @@ function letter(t){
 /* Obsolete ending: fade to black, the credits fade in and out, a boot chime, a quick "LaS OS" boot screen with a
    white progress bar that fades quickly to black once full, then the black fades into the main menu. Any key or click skips straight to the menu. */
 const CREDITS=[["h2","Credits"],["p who","Matt Frost"],["p small","and"],["p small","his boss...."],["p who","Claude Opus 5.5"]];
-/* Outsourced (old school) ending: same sequence, but the boot screen is a retro green terminal. */
-const CREDITS_OLD=[["h2","Credits"],["p who","Matt Frost"],["p small","and"],["p small","definitely not AI.... 👀"]];
+/* Outsourced (old school) ending: same sequence, but the boot screen is a retro green terminal, and the credits are creditsOld(). */
 const CRED={timers:[],el:null};
 function rollCredits(retro){
   mode="credits";hide();setHiss(false);
   const el=CRED.el=document.createElement("div");el.id="credits";if(retro)el.className="retro";el.setAttribute("role","dialog");el.setAttribute("aria-label","Credits");
-  el.innerHTML=`<div class="roll">${(retro?CREDITS_OLD:CREDITS).map(([t,x])=>{const[tag,cls]=t.split(" ");return`<${tag}${cls?` class="${cls}"`:""}>${x}</${tag}>`;}).join("")}</div>
+  el.innerHTML=`<div class="roll">${(retro?creditsOld():CREDITS).map(([t,x])=>{const[tag,cls]=t.split(" ");return`<${tag}${cls?` class="${cls}"`:""}>${x}</${tag}>`;}).join("")}</div>
     <div class="boot" aria-label="LaS OS is starting"><b>LaS OS</b><div class="bar"><i></i></div></div><div class="skip">Press any key to skip</div>`;
   document.body.appendChild(el);el.addEventListener("click",creditsDone);
   const roll=el.querySelector(".roll"),boot=el.querySelector(".boot"),later=(ms,f)=>CRED.timers.push(setTimeout(f,ms));
