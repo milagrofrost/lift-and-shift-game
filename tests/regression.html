@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -751,6 +751,20 @@ test("About the author is on the main menu and links out safely", () => {
   check(W.document.querySelector('#overlay [data-act="menu"]'), "no way back to the menu");
   const cm = [...W.document.querySelectorAll("#overlay .comments .cmt p")].map(p => p.textContent);
   check(cm.length >= 6 && cm.every(t => t && !/undefined|NaN/.test(t)), `the comments have a hole: ${cm.join(" | ")}`);
+});
+test("toolkit chips show their description in a tip on hover, tap and focus, and it closes again", () => {
+  const S = fresh(), doc = W.document, tip = doc.getElementById("tip"); S.upgrades = {runbooks: true, patchbot: 2};
+  G.show(G.toolkitHtml());
+  const chip = [...doc.querySelectorAll(".toolkit [data-tip]")].find(c => c.textContent.includes("Runbooks"));
+  const desc = G.UPGRADES.find(u => u.id === "runbooks").desc, ev = (type, el, o) => el.dispatchEvent(new W.PointerEvent(type, {bubbles: true, clientX: 40, clientY: 40, ...o}));
+  check(chip && !chip.title && chip.dataset.tip === desc, "the chip has no description tip (or still uses the browser's title box)");
+  ev("pointermove", chip, {pointerType: "mouse"}); check(!tip.hidden && tip.textContent === desc && tip.style.left === "54px", `hover didn't show the tip next to the pointer (${tip.style.left})`);
+  ev("pointermove", chip, {pointerType: "mouse", clientX: 90}); check(tip.style.left === "104px", "the tip doesn't follow the pointer");
+  ev("pointermove", doc.querySelector(".toolkit h4"), {pointerType: "mouse"}); check(tip.hidden, "moving off the chip left the tip open");
+  ev("pointerup", chip, {pointerType: "touch"}); check(!tip.hidden, "a tap didn't show the tip");
+  ev("pointerup", doc.querySelector(".toolkit h4"), {pointerType: "touch"}); check(tip.hidden, "tapping elsewhere didn't close the tip");
+  chip.dispatchEvent(new W.FocusEvent("focusin", {bubbles: true})); check(!tip.hidden && chip.getAttribute("aria-describedby") === "tip", "keyboard focus didn't show the tip");
+  G.titleScreen(); check(tip.hidden, "the tip stayed open on another screen");
 });
 
 /* ---------- migration uptime burn ---------- */

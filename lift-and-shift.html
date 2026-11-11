@@ -330,6 +330,9 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
 .toolkit div{display:flex;flex-wrap:wrap;gap:6px}
 .toolkit span{border:1px solid var(--line);border-radius:6px;padding:3px 8px;font-size:12.5px;background:var(--panel-2)}
 .toolkit small{color:var(--amber);font-family:var(--f-mono)}
+.toolkit span[data-tip]{cursor:help}
+.toolkit span[data-tip]:focus-visible{outline:2px solid var(--amber);outline-offset:1px}
+.tip{position:fixed;z-index:70;max-width:min(300px,calc(100vw - 16px));background:var(--panel);color:var(--ink);border:1px solid var(--amber);border-radius:8px;padding:8px 10px;font-size:12.5px;line-height:1.4;box-shadow:0 6px 20px rgba(0,0,0,.45);pointer-events:none}
 .modcard{border:1px dashed var(--amber);border-radius:8px;padding:10px 12px;font-size:13.5px}
 .modcard b{color:var(--amber)}
 .grade{font-family:var(--f-display);font-size:64px;font-weight:700;line-height:1;color:var(--amber)}
@@ -404,6 +407,7 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
 </div>
 <div id="rotate" role="alert"><i>📱↻</i><b>Turn your phone sideways</b><span>Lift &amp; Shift plays in landscape.</span></div>
 <div class="overlay" id="overlay"></div>
+<div class="tip" id="tip" role="tooltip" hidden></div>
 <button id="devbtn" type="button" aria-label="Console">&gt;_</button>
 <div id="devterm" hidden><div class="devbox"><pre id="devlog"></pre><div class="devline"><span>$</span><input id="devinput" aria-label="Command" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div><div class="bklist" id="bklist"></div><div class="devmenu" id="devmenu"></div></div></div>
 
@@ -2923,10 +2927,27 @@ function hud(){
 /* ==== Screens: menu, tutorial, notes, how to play ==== */
 /* ---------- screens ---------- */
 const ov=$("overlay");
-function show(html){ov.innerHTML=`<div class="card" role="dialog" aria-modal="true">${html}</div>`;ov.hidden=false;
+function show(html){hideTip();ov.innerHTML=`<div class="card" role="dialog" aria-modal="true">${html}</div>`;ov.hidden=false;
   // open at the top: focus the first button without scrolling the card down to it
   const b=ov.querySelector(".btn:not(:disabled)");if(b)b.focus({preventScroll:true});ov.scrollTop=0;ov.firstElementChild.scrollTop=0;}
-function hide(){ov.hidden=true;ov.innerHTML="";if(document.activeElement)document.activeElement.blur();}
+/* Hover tips on the toolkit chips: the upgrade's description follows the mouse while it's over a chip. A tap shows it
+   at your finger (tap again or anywhere else to close), and keyboard focus shows it under the chip. */
+const TIP=document.getElementById("tip");let tipFor=null;
+function showTip(el,x,y){
+  if(tipFor!==el){TIP.textContent=el.dataset.tip;tipFor=el;el.setAttribute("aria-describedby","tip");}
+  TIP.style.left=TIP.style.top="0px";TIP.hidden=false;const w=TIP.offsetWidth,h=TIP.offsetHeight,m=8;
+  let left=x+14,top=y+18;if(left+w>innerWidth-m)left=Math.max(m,x-14-w);if(top+h>innerHeight-m)top=Math.max(m,y-14-h);
+  TIP.style.left=left+"px";TIP.style.top=top+"px";
+}
+function hideTip(){if(tipFor)tipFor.removeAttribute("aria-describedby");tipFor=null;TIP.hidden=true;}
+ov.addEventListener("pointermove",e=>{if(e.pointerType!=="mouse")return;const t=e.target.closest("[data-tip]");if(t)showTip(t,e.clientX,e.clientY);else if(tipFor)hideTip();});
+ov.addEventListener("pointerleave",e=>{if(e.pointerType==="mouse")hideTip();});
+ov.addEventListener("pointerup",e=>{if(e.pointerType==="mouse")return;const t=e.target.closest("[data-tip]");if(t&&tipFor!==t)showTip(t,e.clientX,e.clientY);else hideTip();});
+ov.addEventListener("focusin",e=>{const t=e.target.closest("[data-tip]");if(t){const b=t.getBoundingClientRect();showTip(t,b.left,b.bottom-8);}});
+ov.addEventListener("focusout",e=>{if(e.target.closest("[data-tip]"))hideTip();});
+ov.addEventListener("scroll",hideTip,true);
+addEventListener("keydown",e=>{if(e.key==="Escape"&&tipFor)hideTip();},true);
+function hide(){hideTip();ov.hidden=true;ov.innerHTML="";if(document.activeElement)document.activeElement.blur();}
 function play(){for(const k in keys)keys[k]=false;grabPressed=false;hide();mode="play";}
 /* ---------- main menu, tutorial, how to play, design notes ---------- */
 let DIFF="normal";try{const d=localStorage.getItem("liftshift-diff");if(d&&DIFFS[d])DIFF=d;}catch(e){}
@@ -3142,7 +3163,7 @@ function howToPlay(){
     <div><span class="ic">⏪</span><span><b>Restore from backup.</b> Open the terminal (the &gt;_ at the top left, or the &#96; key) and type <code>journalctl</code> for this client's event log. Rows marked 💾 are restore points, roughly every 30 seconds. Pick one, or type <code>restore 05:40</code>, to go back to that moment. Easy gets 3 for the whole career, Normal 2, Hard 1, and Hardcore none. They also work from the screen where you get fired. Restore points only cover the current client, and the future can go differently the second time.</span></div>
     <div><span class="ic">🧑‍💻</span><span><b>Your avatar.</b> Pick one on the main menu, or type or paste any single emoji into the box. It's only shown on your screen.</span></div>
     <div><span class="ic">👤</span><span><b>Users.</b> They wander the hallway. Bump into one and you're stuck for a "quick question." The better dressed, the longer: an analyst holds you under 2 seconds, the CIO almost 5. Interns just blurt their question as you walk past. Right after someone lets you go, and for the first 2 seconds of each client, nobody can stop you: you blink until that wears off.</span></div>
-    <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. Tools you don't own yet keep turning up: the longer one goes unseen, the likelier it is to show up. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
+    <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Hover over (or tap) anything in "Your toolkit" to see what it does. Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. Tools you don't own yet keep turning up: the longer one goes unseen, the likelier it is to show up. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
     <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. Once you have a pipeline, the Mover Bot only uses it and waits for a free lane; carry servers yourself to go faster. The pipeline and the Mover Bot find a free cloud slot on their own; only you have to walk to one. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at a quarter of its outage rate (blue-green moves burn none).</span></div>
     <div><span class="ic">📅</span><span><b>Lease target.</b> Each client's data center lease has a target day. Going late never ends the game, but on-prem costs rise 10% per overdue day and the client's rating drops.</span></div>
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and a 4-second speed boost (you glow). 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
@@ -3260,7 +3281,7 @@ function review(){
 function toolkitHtml(){
   const own=UPGRADES.filter(u=>u.max?lvl(u.id):S.upgrades[u.id]);
   if(!own.length)return"";
-  return`<div class="toolkit"><h4>Your toolkit (${own.length})</h4><div>${own.map(u=>`<span title="${u.desc.replace(/"/g,"&quot;")}">${u.icon} ${u.name}${u.max?` <small>${lvl(u.id)}/${u.max}</small>`:""}</span>`).join("")}</div></div>`;
+  return`<div class="toolkit"><h4>Your toolkit (${own.length})</h4><div>${own.map(u=>`<span tabindex="0" data-tip="${u.desc.replace(/&/g,"&amp;").replace(/"/g,"&quot;")}">${u.icon} ${u.name}${u.max?` <small>${lvl(u.id)}/${u.max}</small>`:""}</span>`).join("")}</div></div>`;
 }
 /* Brainstorm (reroll): swap all six offers for new ones. 1 point, then 2, then 3... resets each improvement sprint. */
 const rerollCost=()=>1+(S.rerolls||0);

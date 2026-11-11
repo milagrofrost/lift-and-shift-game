@@ -109,6 +109,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 - Avatar: the player is drawn on a soft disc in the emoji's average colour with a thin amber ring, as any single emoji chosen on the main menu (quick picks or typed/pasted; first grapheme only, must be an emoji, else the previous one stays). Saved in localStorage, local only: never in report links or share images.
 - Learn more: a main-menu button lists every upgrade with one real-world link (`LEARN` in the screens section) and a one-line reason it matters; shop cards carry the same link. Every upgrade needs an entry. Run `node tests/check-links.mjs` when you add or change a link (it needs the internet, so it isn't part of `tests/regression.html`); it must report 0 broken. Point links at their final address rather than one that redirects.
 - Let's connect (main-menu button; the screen is headed About the author) opens a humble-brag post styled like a generic professional networking feed (no real site's logo or branding), with links to the author's LinkedIn, milagrofrost.com and the GitHub repo.
+- Toolkit chips (pause and improvement sprint) show the upgrade's description in a tip that follows the mouse while over the chip; a tap shows it at the finger (tap again or elsewhere to close), and keyboard focus shows it under the chip.
 - Overlays open scrolled to the top; focusing the first button must not scroll the card.
 
 ### Uptime recovery
