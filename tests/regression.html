@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,CREDITS_OLD").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -644,7 +644,23 @@ test("the obsolete ending fades to black, shows the credits, boots LaS OS, then 
   W.dispatchEvent(new W.KeyboardEvent("keydown", {code: "Backquote", key: "`"}));
   check(G.mode !== "credits" && doc.querySelector('[data-act="start"]'), "a key press did not skip to the main menu");
   check(W.document.getElementById("devterm").hidden, "the skip key also opened the terminal");
-  G.showEnd("uptime"); check(doc.querySelector('[data-act="again"]') && !doc.querySelector('[data-act="credits"]'), "other endings lost play again or got credits");
+  G.showEnd("uptime"); check(doc.querySelector('[data-act="again"]') && !doc.querySelector('[data-act="credits"]') && !doc.querySelector('[data-act="oldcredits"]'), "other endings lost play again or got credits");
+  G.showEnd(null); check(!doc.querySelector('[data-act="oldcredits"]'), "retiring got the old school credits");
+});
+test("the outsourced ending offers its own credits with a retro green LaS OS boot, plus play again / main menu", () => {
+  const doc = W.document; fresh(); G.showEnd("outsourced");
+  check(doc.querySelector('[data-act="oldcredits"]') && doc.querySelector('[data-act="again"]') && doc.querySelector('[data-act="menu"]') && !doc.querySelector('[data-act="credits"]'), "outsourced end screen buttons are wrong");
+  doc.querySelector('[data-act="oldcredits"]').click();
+  const roll = [...doc.querySelectorAll("#credits")].pop();
+  check(G.mode === "credits" && roll && roll.classList.contains("retro"), "no retro credits");
+  const text = roll.textContent;
+  for (const [, line] of G.CREDITS_OLD) check(text.includes(line), `credits miss "${line}"`);
+  check(!text.includes("Claude") && text.indexOf("Matt Frost") < text.indexOf("definitely not AI"), "old school credits are wrong");
+  const boot = roll.querySelector(".boot");
+  check(boot && boot.textContent.includes("LaS OS") && boot.querySelector(".bar"), "no LaS OS boot screen with a progress bar");
+  check(W.getComputedStyle(boot).fontFamily.includes("Mono"), "the boot screen is not retro");
+  roll.click();
+  check(G.mode !== "credits" && doc.querySelector('[data-act="start"]'), "a click did not skip to the main menu");
 });
 test("a level 4 AI agent lets you fire your manager; the freeze and recovery stay, the walker goes", () => {
   const S = fresh(), doc = W.document; S.upgrades = {agent: 3, manager: 3}; S.career = [{name: "A", days: 1, stars: 4, late: 0}];
