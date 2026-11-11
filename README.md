@@ -90,7 +90,7 @@ On phones the game plays in landscape: drag anywhere on the left half of the scr
 
 ## Development status
 
-This is an evolving prototype implemented in one HTML file containing the interface, canvas rendering, simulation, and audio; the logo is the only separate asset (`assets/`).
+The game is one HTML file containing the interface, canvas rendering, simulation, and audio; the logo is the only separate asset (`assets/`).
 
 The gameplay revisions are merged into `main`, including current-cycle patch coverage, incident completion rules, rollback accounting, manager change freezes, and persistent escalation targeting.
 
