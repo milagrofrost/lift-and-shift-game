@@ -305,7 +305,9 @@ kbd{font-family:var(--f-mono);font-size:11.5px;background:var(--panel-2);border:
 .stick-knob{position:absolute;left:50%;top:50%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;background:rgba(255,255,255,.26);border:2px solid rgba(255,255,255,.5)}
 .tbtn{position:absolute;pointer-events:auto;touch-action:none;border-radius:50%;background:rgba(255,255,255,.13);border:2px solid rgba(255,255,255,.42);color:rgba(255,255,255,.95);font-family:var(--f-display);font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.8);padding:0;-webkit-tap-highlight-color:transparent}
 .tbtn.ready{background:rgba(255,181,71,.24);border-color:rgba(255,181,71,.9)}
-.tbtn.on{background:rgba(255,181,71,.5);border-color:#ffb547}
+.tbtn.off{background:rgba(40,46,52,.32);border-color:rgba(150,156,160,.42);color:rgba(185,191,196,.72);text-shadow:0 1px 2px rgba(0,0,0,.7)}
+.tbtn.on{background:rgba(255,181,71,.5);border-color:#ffb547;color:rgba(255,255,255,.95)}
+#t-fix,#t-grab{white-space:nowrap;overflow:hidden;line-height:1}
 #t-fix{right:max(14px,env(safe-area-inset-right,0px));bottom:14px;width:124px;height:124px;font-size:26px}
 #t-grab{right:calc(max(14px,env(safe-area-inset-right,0px)) + 132px);bottom:14px;width:100px;height:100px;font-size:20px}
 #t-freeze{right:calc(max(14px,env(safe-area-inset-right,0px)) + 32px);bottom:148px;width:64px;height:64px;font-size:26px}
@@ -740,7 +742,7 @@ const zoneOf=x=>x<360?0:(x<600?1:2);
 const RM=(()=>{try{return matchMedia("(prefers-reduced-motion: reduce)").matches;}catch(e){return false;}})();
 /* ==== Sound and music ==== */
 /* ---------- sound: everything is synthesized with Web Audio, so there are no files to load ---------- */
-const AU={ctx:null,master:null,noise:null,on:true,last:{},hiss:null,hissGain:null};
+const AU={ctx:null,master:null,noise:null,on:true,loud:false,last:{},hiss:null,hissGain:null};
 // sound has its own generator for noise and hi-hat offsets, so whether (and how often) sounds play never shifts the game's random rolls
 let sndSeed=0x5eed;
 const sndRand=()=>{sndSeed=(Math.imul(sndSeed,1664525)+1013904223)>>>0;return sndSeed/4294967296;};
@@ -754,6 +756,7 @@ function audio(){
       const b=AU.ctx.createBuffer(1,AU.ctx.sampleRate,AU.ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=sndRand()*2-1;AU.noise=b;
     }catch(e){AU.ctx=null;return null;}
   }
+  audioSession();
   if(AU.ctx.state==="suspended")AU.ctx.resume().catch(()=>{});
   startMusic();
   return AU.ctx;
@@ -832,8 +835,22 @@ function heartTick(){
   tone(60,0.18,{vol:v*0.7,slide:-14,delay:d+0.26+0.1*k,attack:0.012});
   HB.beat=performance.now()+d*1000;HB.next+=60/bpm;
 }
+/* iPhone/iPad Safari: like most casual games, sound obeys the ring/silent switch ("ambient"), and other apps' music
+   keeps playing underneath. Players can opt in from the pause menu to play through silent mode ("playback", which
+   also pauses other apps' audio). Other browsers don't have audioSession, so the setting only appears where it works. */
+const HAS_SESSION=!!navigator.audioSession;
+try{AU.loud=localStorage.getItem("liftshift-silentplay")==="on";}catch(e){}
+function audioSession(){try{if(HAS_SESSION)navigator.audioSession.type=AU.on&&AU.loud?"playback":"ambient";}catch(e){}}
+function setSilentPlay(on){AU.loud=!!on;try{localStorage.setItem("liftshift-silentplay",on?"on":"off");}catch(e){}audioSession();}
+// once per device, on a phone that can't tell us about its silent switch: say where the sound went
+function silentTip(){
+  if(!HAS_SESSION||!AU.on||AU.loud||!matchMedia("(pointer:coarse)").matches)return;
+  try{if(localStorage.getItem("liftshift-silenttip"))return;localStorage.setItem("liftshift-silenttip","1");}catch(e){return;}
+  toast("🔕 No sound? Your phone may be on silent. Pause → Silent mode to play sound anyway.");
+}
 function setSound(on){
   AU.on=on;try{localStorage.setItem("liftshift-sound",on?"on":"off");}catch(e){}
+  if(AU.ctx)audioSession();
   if(AU.master)AU.master.gain.setTargetAtTime(on?0.55:0,AU.ctx.currentTime,0.02);
   const b=document.getElementById("snd");if(b){b.textContent=on?"🔊 Sound on":"🔇 Sound off";b.setAttribute("aria-pressed",String(on));}
   if(on)sfx("click");
@@ -3134,18 +3151,53 @@ function healthBars(){
   const st=clientStars();setBar("hb-stars",st/5,stars(st),st>=4?"ok":st===3?"warn":"bad",st<=1);hitFlash("hb-stars",st,(v,p)=>v<p);
   const cap=capNext();setBar("hb-pts",cap/15,`${cap} pts`,cap>=10?"ok":cap>=7?"warn":"bad",cap<=5);hitFlash("hb-pts",cap,(v,p)=>v<p);
 }
+/* Touch buttons say what they'd do right now (one word, several actions can share it) and go gray when there's
+   nothing to do. The button keeps its size and place; long words just get a smaller font. Gray buttons still take
+   presses, so holding FIX while you walk up to something works. */
+const FIX_WORDS={discover:"PROBE",restore:"REBOOT",cloudrestore:"RETRY",breach:"SEAL",leak:"SEAL",fire:"DOUSE",patch:"PATCH",email:"REPLY",ticket:"REPLY"};
+function fixWord(){
+  const P=S.p,M=S.mgr;
+  if(M&&M.state==="patch"&&M.work>0&&M.tgt&&dist(P,RACKS[M.tgt.slot])<80)return"SHOO";
+  if(S.fix)return FIX_WORDS[S.fix.kind]||"FIX";
+  if(!S.carry&&S.cloud.some((a,i)=>a&&a.rsTag&&dist(P,SLOTS[i])<RS_REACH))return"APPROVE";
+  return null;
+}
+function grabWord(){
+  if(S.carry){const z=zoneOf(S.p.x),copy=liveCopy(S.carry);
+    if(z===2)return["DEPLOY",slotUnder()>=0];
+    if(z===0)return[copy?"TOSS":"DROP",copy||rackUnder()>=0];
+    return["DROP",false];}
+  if(rollbackTarget())return["ROLLBACK",true];
+  const g=grabTarget();
+  if(g&&g.fire===0&&!g.down&&!S.alert&&!S.frozen&&tutGrabOK())return[freePipelineLane()>=0?"SHIP":"GRAB",true];
+  return["GRAB",false];
+}
+function touchLabel(b,word,ok,base){
+  if(b.textContent!==word){b.textContent=word;b.style.fontSize=`${Math.min(base,Math.floor(b.offsetWidth*0.74/(word.length*0.64)))}px`;
+    b.setAttribute("aria-label",b.id==="t-fix"?`${word} (hold)`:word);}
+  b.classList.toggle("ready",ok);b.classList.toggle("off",!ok);
+}
+// is the player under the toasts at the bottom of the floor? On a phone they cover most of the bottom row, not just the
+// ticket queue. Measured in canvas units from the widest toast; a wider margin once they're up so they don't flicker.
+function toastsCover(tb,up){
+  if(!tb.children.length)return false;
+  const s=tb.parentNode.clientWidth/W;if(!s)return false;
+  let w=0,h=0;for(const t of tb.children){w=Math.max(w,t.offsetWidth);h+=t.offsetHeight+4;}
+  const m=up?40:16;
+  return Math.abs(S.p.x-W/2)<w/2/s+m&&S.p.y>H-(h+10)/s-m;
+}
 function hud(){
   // the touch layer only exists during play, so it never blocks a menu; a phone turned upright pauses the game
   if(mode==="play"&&PHONE_PORTRAIT.matches)togglePause();
   const tl=$("touch"),showT=mode==="play";
   if(tl.hidden===showT){tl.hidden=!showT;if(!showT)resetTouch();}
-  if(showT&&S){$("t-freeze").hidden=!S.upgrades.freezecharge;$("t-grab").textContent=S.carry?"DROP":"GRAB";
-    $("t-fix").classList.toggle("ready",!!S.fix);$("t-grab").classList.toggle("ready",!!(S.carry||grabTarget()||rollbackTarget()));}
+  if(showT&&S){$("t-freeze").hidden=!S.upgrades.freezecharge;
+    const fw=fixWord(),[gw,gok]=grabWord();touchLabel($("t-fix"),fw||"FIX",!!fw,26);touchLabel($("t-grab"),gw,gok,20);}
   $("freeze").disabled=mode!=="play"||!S.upgrades.freezecharge;
   $("freeze").textContent=S.upgrades.freezecharge?"❄ Freeze (F) · 1 charge":"❄ Freeze · buy between clients";
   if(!S)return;
   // toasts: quiet in DEBUG while its log is on screen, and up top while you're working the ticket queue (hysteresis: 115 in, 150 out)
-  {const tb=$("toasts"),onFloor=["play","paused","console"].includes(mode),near=mode==="play"&&dist(S.p,DESK)<(tb.classList.contains("top")?150:115);
+  {const tb=$("toasts"),onFloor=["play","paused","console"].includes(mode),up=tb.classList.contains("top"),near=mode==="play"&&(dist(S.p,DESK)<(up?150:115)||toastsCover(tb,up));
     tb.classList.toggle("quiet",onFloor&&logLv()>=3);if(mode==="play")tb.classList.toggle("top",near);}
   {const on=!!S.tut&&["play","paused","celebrate"].includes(mode);if($("clip").hidden===on){$("clip").hidden=!on;if(on)tutFitClip();else tutHighlight(null);}}
   const c=client(),late=overdue();
@@ -3416,7 +3468,7 @@ function howToPlay(){
     <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, gets unknown racks 10–75% investigated (you finish the job), then quits. Users ignore them, 15% of their patches take a server down, some only want snacks, and some were never onboarded: their badge doesn't work, so they stand at the door and quit early. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds. <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
     <div><span class="ic">❓</span><span><b>Unknown rack.</b> The client forgot to mention these. Hold E on one to investigate (6 seconds, free) and you'll find it with a healthy timer. Hidden servers never reveal themselves through migration progress. From client 4 on they can be any tier, even gold. They may come with an expired or approaching license. Escalations can ignite unknown racks; going offline reveals them. Asset Inventory cuts investigation time to 3 seconds.</span></div>
   </div>
-  <p style="color:var(--muted);font-size:13px">On a phone, play in landscape: drag anywhere on the left half to move, hold FIX and tap GRAB on the right. Move with WASD or arrows. Your hands are full while carrying, so you can't fix anything until you drop it.</p>
+  <p style="color:var(--muted);font-size:13px">On a phone, play in landscape: drag anywhere on the left half to move, hold FIX and tap GRAB on the right. They name what they'd do where you stand (DOUSE, PATCH, REPLY, SHIP, DEPLOY, ROLLBACK…) and go gray when there's nothing to do. Move with WASD or arrows. Your hands are full while carrying, so you can't fix anything until you drop it.</p>
   <button class="btn" data-act="menu">Back to menu</button>`);
 }
 /* ==== Hands-on tutorial ==== */
@@ -4453,12 +4505,13 @@ $("devterm").addEventListener("click",e=>{
   devMenu();});
 // cycles ERROR → WARN → INFO → DEBUG; the tutorial still shows at least INFO
 const LOG_TIPS=["Only incidents get text on the floor","Short hints and problems only","Every hint, result and odds","Everything. Labels on everything. Sorry."];
+function silentBtn(){return HAS_SESSION?`<button class="btn ghost" data-act="silentplay" aria-pressed="${AU.loud}" title="${AU.loud?"Sound plays even with your phone on silent, and pauses music from other apps":"Your phone's silent switch mutes the game, and other apps' music keeps playing"} (click to change)">Silent mode: ${AU.loud?"play sound":"muted"}</button>`:"";}
 function logLevelBtn(){return `<button class="btn ghost" data-act="loglevel" title="${LOG_TIPS[LOGLV]} (click to change)">Logging level: ${LOG_LEVELS[LOGLV]}</button>`;}
 function togglePause(){
   if(mode==="play"&&S.tut){mode="paused";show(`<h2>Paused</h2><p>The paperclip will wait. It's very patient. It's a paperclip.</p>
-    <div class="row"><button class="btn" data-act="resume">Resume</button>${logLevelBtn()}<button class="btn ghost" data-act="menu">Leave tutorial</button></div>`);}
+    <div class="row"><button class="btn" data-act="resume">Resume</button>${logLevelBtn()}${silentBtn()}<button class="btn ghost" data-act="menu">Leave tutorial</button></div>`);}
   else if(mode==="play"){mode="paused";show(`<h2>Paused</h2><p>The fires are paused too. This is the only time that happens.</p>
-    <div class="row"><button class="btn" data-act="resume">Resume</button>${logLevelBtn()}<button class="btn ghost" data-act="restart">Restart run</button><button class="btn ghost" data-act="quit">Give up</button></div>
+    <div class="row"><button class="btn" data-act="resume">Resume</button>${logLevelBtn()}${silentBtn()}<button class="btn ghost" data-act="restart">Restart run</button><button class="btn ghost" data-act="quit">Give up</button></div>
     <p style="font-size:12.5px;color:var(--muted)">Restart throws this run away and starts a new one. Giving up means handing in your notice.</p>${toolkitHtml()}`);}
   else if(mode==="paused")play();
 }
@@ -4481,9 +4534,10 @@ ov.addEventListener("click",e=>{
   if(b.dataset.diff){setDifficulty(b.dataset.diff,false);return titleScreen();}
   const a=b.dataset.act;
   if(a==="restorelog"){devShow();BK.open=true;bkRender();}
-  else if(a==="start"){newRun();toast(`${diffLabel()} career. First client: ${client().name}. Grab an app and carry it right.`);play();}
+  else if(a==="start"){newRun();toast(`${diffLabel()} career. First client: ${client().name}. Grab an app and carry it right.`);silentTip();play();}
   else if(a==="next"){startSprint(S.sprint+1);toast(`New client: ${client().name}. Your tools came with you.`);play();}
   else if(a==="resume")play();
+  else if(a==="silentplay"){setSilentPlay(!AU.loud);audio();b.outerHTML=silentBtn();ov.querySelector('[data-act=silentplay]').focus();}
   else if(a==="loglevel"){setLogLevel(LOGLV+1);b.outerHTML=logLevelBtn();ov.querySelector('[data-act=loglevel]').focus();}
   else if(a==="retire")showEnd(null);
   else if(a==="obsolete")showEnd("obsolete");
