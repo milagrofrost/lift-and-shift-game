@@ -194,6 +194,19 @@ Inspired by dungeon-crawler stairways, built entirely from the game's own pieces
 - **Layout is open.** Is the whole basement cloud, or does it have its own odd corners? Are there user interactions down there? One riff: nobody comes down here, except maybe one forgotten contractor still working on a project that was cancelled years ago.
 - Open: how to juggle incidents on two floors, how the stairway is drawn and controlled, and how many clients have a basement. Incidents and interaction targets must stay readable in the dark; darkness should mean missing knowledge, not an inaccessible screen. Resolve reduced motion and other accessibility needs before building it.
 
+### Losing softly: the second career's fail state
+The player already proved they can play this game. The second career should be less stressful and more enjoyable: no getting fired and restarting the whole career. In game terms, this is the **fail state** and its **death penalty**: what counts as "dying", where you **respawn**, and what you lose.
+- **Inspiration:** dungeon crawlers, where you fall in the dungeon, return to a spawn point, and lose something, but keep your progress.
+- **Candidate "death": pulled into a meeting.** When things get too much (energy runs out, the uptime budget is gone, or you're overwhelmed in the basement), you don't die and aren't fired. Someone pulls you into a meeting: "Quick sync with Joe?" It is never quick. The screen cuts away, time passes, and you come back at your desk (the spawn point).
+- **Joe** could become a recurring character: the person whose meetings are where productivity goes to die.
+- **What you might lose (candidates, pick one or two):**
+  - **Time.** The floor keeps running while you're in the meeting, so incidents grow. This is the most natural penalty.
+  - **Something you were carrying.** A server, or your evidence for the VP, is left where you went down and you have to walk back for it (a classic dungeon-crawler retrieval run).
+  - **Visibility.** Your light radius shrinks back for a while, or recently investigated basement services fade to "last known".
+  - **Goodwill.** The client's patience or discretion over placement drops, so persuasion takes more evidence.
+- **Not losing everything.** Investigated services, fixes and completed placements stay done. The engagement keeps going.
+- Open: whether there's any hard loss at all (perhaps the client ends the engagement early with a poor review, but your career continues), and how scoring reflects a client full of meetings.
+
 ### Placement: what you might find, and a sensible response
 These are scenarios, not rules that make one destination automatically correct.
 
@@ -291,6 +304,7 @@ Non-AI opposition is parked too. The core assessment loop must work without any 
 - [ ] Decide how much the upskill system changes, and the balance of sound upskills to rogue ones.
 - [ ] Work out the basement: two-floor incident juggling, the upstairs space limit, and how often it appears.
 - [ ] Prototype the shut-down verb with the scream test, and decide whether wire tracing earns a place beside investigation.
+- [ ] Choose the soft fail state: what triggers the meeting, what you lose, and whether any hard loss remains.
 - [ ] Figure out the snapshot mechanic.
 - [ ] Settle how client mandates, assessment windows and evidence-based persuasion fit together.
 - [ ] Decide what makes the VP appear for the reverse hunt, and what catching them achieves.
