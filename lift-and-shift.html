@@ -3482,6 +3482,8 @@ const CLIP_LINES={
   chatter:["Well, actually, in my last company we did this with a spreadsheet.","Actually, the industry best practice is… hmm. Something else.","Technically, that's not how I would have done it.","Fun fact: I read a blog post about this once.","Actually, that's more of a platform-team problem.","Have you considered Kubernetes?","Have you tried putting it on the blockchain?","What if we just rewrote everything in Rust?","Have you thought about going serverless? For the servers?","My advice: just don't have incidents.","Have you considered hiring someone who knows what they're doing? Besides me.","Honestly, this whole room should be microservices.","I'd re-architect it. Then re-architect it again. That's agile.","Who designed this network? Don't answer. I know. It was you.","Too many servers. Have you tried fewer servers?","I'd have migrated all of them on day one. With confidence.","The last person I shadowed did this in half the time. They're in prison now, but still.","My previous mentee migrated a whole hospital before lunch. Allegedly.","Even the intern patches faster. The intern doesn't have access.","All wit in this game was ethically sourced from a language model.","You know, this is basically like Overcooked.","Are you made with AI? Because you're not putting any passion into this.","I could really go for some onion soup right now."],
   // your avatar is a paperclip too: said once, at the first client he's with you
   twin:["Imitation is the most sincere form of flattery. So I thank you.","Oh, we're matching? This is awkward. I'm the original.","Two paperclips, one data center. They'll never tell us apart. Until you start working.","Nice avatar. Bold choice. Is it legally distinct?"],
+  // holding E on a fire: he's standing right next to it
+  spray:["Hey, you're getting it all over me!"],
   // back on the floor after the cheat menu was open
   cheat:["sudo su","H4X0R5!1!!","Awwwwwww I'm telling on you!","I saw that. I see everything. I'm a paperclip.","Cheat codes? In MY data center?","I'll pretend I didn't see that. For a fee.","Linda's going to hear about this."],
   done:["We did it! By 'we' I mean I watched.","Five stars! Not from me.","Client complete. I'll accept my bonus in office supplies.","I'll mention you in my promotion packet. In a footnote."],
@@ -3517,7 +3519,7 @@ function tickClip(dt){
   if(!c.late&&overdue()>0){c.late=true;clipEv("late");}
   // micromanaging: hold E on a job for a moment and he checks in
   c.work=keys.fix&&S.fix?(c.work||0)+dt:0;
-  if(c.work>=1.5&&clipEv("working"))c.work=-99;
+  if(c.work>=1.5&&clipEv(S.fix&&S.fix.kind==="fire"?"spray":"working"))c.work=-99; // on a fire, he's in the spray zone
   // tickets piling up (4 of 5): he'd like to take it offline. Again once it's worked down to 2.
   if(!c.q&&S.tk.length>=4){c.q=true;clipEv("queue");}else if(c.q&&S.tk.length<=2)c.q=false;
   // a quiet stretch while you're busy: unsolicited advice and armchair architecture
