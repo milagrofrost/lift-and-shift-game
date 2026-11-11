@@ -30,7 +30,7 @@
 const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
-  "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
+  "fixWord,grabWord,setSilentPlay,silentBtn,HAS_SESSION,AU,toastsCover,FIX_WORDS,rollbackTarget,tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
   "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},get LOGLV(){return LOGLV},setLogLv:v=>{LOGLV=v},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
@@ -1075,6 +1075,41 @@ test("the joystick moves the player, and releasing it stops them", () => {
   const x1 = S.p.x; check(x1 > 480, "joystick did not move the player");
   G.stick.on = false; G.stick.x = 0; G.update(0.05);
   check(S.p.x === x1, "player kept moving after release");
+});
+
+test("touch buttons name the action where you stand and go gray when there's nothing to do", () => {
+  const S = fresh(); S.upgrades.pipeline = 0; S.p.x = 480; S.p.y = 280; S.tk = []; S.em = []; S.fix = null; S.carry = null;
+  check(G.fixWord() === null, `hallway fix word ${G.fixWord()}`);
+  let [w, ok] = G.grabWord(); check(w === "GRAB" && !ok, `hallway grab ${w} ${ok}`);
+  const i = S.racks.findIndex(a => a && !a.hidden), a = S.racks[i]; a.fire = 0; a.down = false;
+  S.p.x = G.RACKS[i].x; S.p.y = G.RACKS[i].y; [w, ok] = G.grabWord(); check(w === "GRAB" && ok, `at a rack ${w} ${ok}`);
+  a.fire = 20; S.fix = {kind: "fire", a}; check(G.fixWord() === "DOUSE", `fire word ${G.fixWord()}`);
+  [w, ok] = G.grabWord(); check(!ok, "grab stayed lit at a burning rack"); a.fire = 0;
+  S.fix = {kind: "ticket"}; check(G.fixWord() === "REPLY", "tickets aren't REPLY");
+  S.fix = {kind: "email"}; check(G.fixWord() === "REPLY", "email isn't REPLY"); S.fix = null;
+  S.carry = a; S.racks[i] = null; S.p.x = 480; S.p.y = 280; [w, ok] = G.grabWord(); check(w === "DROP" && !ok, `carrying in the hallway ${w} ${ok}`);
+  const j = S.cloud.findIndex(c => !c); S.p.x = G.SLOTS[j].x; S.p.y = G.SLOTS[j].y; [w, ok] = G.grabWord(); check(w === "DEPLOY" && ok, `on a cloud slot ${w} ${ok}`);
+  S.carry = null; S.racks[i] = a;
+  S.cloud[j] = {name: a.name, tier: a.tier, down: true, rb: 0, orig: a, leak: 0}; S.racks[i] = null; [w, ok] = G.grabWord();
+  check(w === "ROLLBACK" && ok, `failed cutover grab word ${w}`);
+});
+test("iPhone sound obeys the silent switch unless the player opts in, and the setting is saved", () => {
+  check(G.AU.loud === false || G.AU.loud === true, "silent-mode setting missing");
+  const was = G.AU.loud, saved = W.localStorage.getItem("liftshift-silentplay");
+  try {
+    G.setSilentPlay(true); check(G.AU.loud === true && W.localStorage.getItem("liftshift-silentplay") === "on", "opting in wasn't saved");
+    G.setSilentPlay(false); check(G.AU.loud === false && W.localStorage.getItem("liftshift-silentplay") === "off", "opting out wasn't saved");
+    if (!G.HAS_SESSION) check(G.silentBtn() === "", "the silent-mode button showed in a browser that can't use it");
+  } finally { G.setSilentPlay(was); if (saved === null) W.localStorage.removeItem("liftshift-silentplay"); else W.localStorage.setItem("liftshift-silentplay", saved); }
+});
+test("toasts move up whenever the player is under them, not only at the ticket queue", () => {
+  const S = fresh(), doc = W.document, tb = doc.getElementById("toasts");
+  tb.innerHTML = '<div class="toast">A fairly long toast that spans a good part of the bottom of the floor</div>';
+  const wide = tb.firstChild.offsetWidth / (tb.parentNode.clientWidth / 960) / 2;
+  S.p.x = 480 - wide + 10; S.p.y = 545; check(G.toastsCover(tb, false), "player under the toast wasn't covered");
+  S.p.x = 480 - wide - 60; check(!G.toastsCover(tb, false), "player beside the toast counted as covered");
+  S.p.x = 480; S.p.y = 150; check(!G.toastsCover(tb, false), "player at the top counted as covered");
+  tb.innerHTML = ""; S.p.y = 545; check(!G.toastsCover(tb, false), "no toasts still counted as covering");
 });
 
 /* ---------- console ---------- */
