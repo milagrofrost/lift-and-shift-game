@@ -816,6 +816,8 @@ test("the outsourced ending offers its own credits with a retro green LaS OS boo
   const text = roll.textContent;
   check(!text.includes("Claude") && text.indexOf("Matt Frost") < text.indexOf("Mr Paperclip"), "old school credits are wrong");
   check(roll.querySelector(".clipcred svg") && text.includes("R.I.P.") && text.includes("0 days in the game"), "Mr Paperclip's memorial is missing");
+  roll.querySelector(".roll").classList.add("show");const pupil=roll.querySelector(".clipcred .pupil"),an=pupil&&W.getComputedStyle(pupil);
+  check(an&&an.animationName==="clipeyeroll"&&an.animationIterationCount==="1","Mr Paperclip doesn't roll his eyes (once) in the credits");
   const boot = roll.querySelector(".boot");
   check(boot && boot.textContent.includes("LaS OS") && boot.querySelector(".bar"), "no LaS OS boot screen with a progress bar");
   check(W.getComputedStyle(boot).fontFamily.includes("Mono"), "the boot screen is not retro");

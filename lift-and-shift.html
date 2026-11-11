@@ -240,6 +240,10 @@ kbd{font-family:var(--f-mono);font-size:11.5px;background:var(--panel-2);border:
 #credits .roll.show,#credits .boot.show{opacity:1}
 #credits .roll{color:#e6edf3;font-family:"IBM Plex Sans","Segoe UI",sans-serif}
 #credits .clipcred svg{display:block;width:44px;height:84px;margin:14px auto 2px}
+/* in the credits Mr Paperclip rolls his eyes, once, shortly after his name fades in */
+#credits .roll.show .clipcred .pupil{animation:clipeyeroll 1.3s ease-in-out 1.8s 1 both}
+@keyframes clipeyeroll{0%{transform:translate(0,0)}18%{transform:translate(-1.4px,-.6px)}40%{transform:translate(-.9px,-1.7px)}62%{transform:translate(.9px,-1.7px)}82%{transform:translate(1.4px,-.6px)}100%{transform:translate(0,0)}}
+@media (prefers-reduced-motion:reduce){#credits .roll.show .clipcred .pupil{animation:none}}
 #credits h2{font-family:"Chakra Petch","Segoe UI",sans-serif;font-size:clamp(30px,6vw,48px);letter-spacing:.12em;text-transform:uppercase;color:#ffb547;margin:0 0 6vh}
 #credits p{font-size:clamp(20px,3.6vw,30px);margin:0 0 3vh}
 #credits p.small{font-size:clamp(15px,2.4vw,19px);color:#8aa0b0;font-style:italic;margin-bottom:1.5vh}
@@ -3252,7 +3256,7 @@ function howToPlay(){
    every cutover succeeds. The day clock and migration uptime burn run as normal. Each step sets up its own lesson and waits until
    you've handled it. You can only pick up a server on the steps that ask for it, so the room can't empty before the
    lessons are done. The review then gets the paperclip's notes, and the run never touches career records. */
-const CLIP_SVG=`<svg viewBox="-14 -30 28 56" aria-hidden="true"><path transform="rotate(180)" d="M-3 8 L-3 -12 A4 4 0 0 1 5 -12 L5 16 A6 6 0 0 1 -7 16 L-7 -18 A8 8 0 0 1 9 -18 L9 10" fill="none" stroke="#cfd8de" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="-4" cy="-6" r="3.6" fill="#fff" stroke="#222" stroke-width=".7"/><circle cx="6" cy="-7" r="3.6" fill="#fff" stroke="#222" stroke-width=".7"/><circle cx="-3" cy="-5" r="1.6" fill="#111"/><circle cx="7" cy="-6" r="1.6" fill="#111"/><path d="M-8 -12 L-1 -13 M3 -14 L10 -12" stroke="#ddd" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+const CLIP_SVG=`<svg viewBox="-14 -30 28 56" aria-hidden="true"><path transform="rotate(180)" d="M-3 8 L-3 -12 A4 4 0 0 1 5 -12 L5 16 A6 6 0 0 1 -7 16 L-7 -18 A8 8 0 0 1 9 -18 L9 10" fill="none" stroke="#cfd8de" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="-4" cy="-6" r="3.6" fill="#fff" stroke="#222" stroke-width=".7"/><circle cx="6" cy="-7" r="3.6" fill="#fff" stroke="#222" stroke-width=".7"/><circle class="pupil" cx="-3" cy="-5" r="1.6" fill="#111"/><circle class="pupil" cx="7" cy="-6" r="1.6" fill="#111"/><path d="M-8 -12 L-1 -13 M3 -14 L10 -12" stroke="#ddd" stroke-width="1.3" stroke-linecap="round"/></svg>`;
 $("clip").querySelector(".clip-art").innerHTML=CLIP_SVG;
 const clipNote=html=>S&&S.tut?`<div class="clipnote">${CLIP_SVG}<p>${html}</p></div>`:"";
 const rackOf=a=>a&&S.racks[a.slot]===a?RACKS[a.slot]:null;
