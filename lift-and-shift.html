@@ -1671,7 +1671,7 @@ function drawWarnings(){
 const CELEB_TIME=3.2;
 function startCelebration(){sfx("celebrate");
   mode="celebrate";S.celebT=0;S.alert=false;
-  if(S.tut)tutSay("🎉 The room's empty: that's a finished client. Next, we'll read the end-of-client report together.","Client complete");
+  if(S.tut)tutSay(TUT_DONE_SAY,"Client complete");
   const cols=["#ffb547","#5fd38d","#45aefc","#b896ff","#ff6fae","#ffe066","#ffffff"];
   S.confetti=Array.from({length:160},()=>({x:rand(0,W),y:rand(-H,-10),vx:rand(-40,40),vy:rand(90,220),r:rand(0,6.28),vr:rand(-8,8),c:pick(cols),w:rand(4,9),h:rand(2,5)}));
   S.sparkles=Array.from({length:40},()=>({x:rand(20,W-20),y:rand(20,H-20),ph:rand(0,6.28),s:rand(4,9)}));
@@ -2966,7 +2966,7 @@ function hud(){
   $("freeze").disabled=mode!=="play"||!S.upgrades.freezecharge;
   $("freeze").textContent=S.upgrades.freezecharge?"❄ Freeze (F) · 1 charge":"❄ Freeze · buy between clients";
   if(!S)return;
-  {const on=!!S.tut&&["play","paused","celebrate"].includes(mode);if($("clip").hidden===on){$("clip").hidden=!on;if(!on)tutHighlight(null);}}
+  {const on=!!S.tut&&["play","paused","celebrate"].includes(mode);if($("clip").hidden===on){$("clip").hidden=!on;if(on)tutFitClip();else tutHighlight(null);}}
   const c=client(),late=overdue();
   $("h-sprint").textContent=`#${S.sprint}`;
   // (lease, uptime, security and points now live in the health bars below)
@@ -3302,11 +3302,26 @@ function tutNag(){
   const el=$("clip");el.classList.remove("nag");void el.offsetWidth;el.classList.add("nag");clearTimeout(nagTimer);nagTimer=setTimeout(()=>el.classList.remove("nag"),900);
 }
 function tutHighlight(els){document.querySelectorAll(".tut-hl").forEach(e=>e.classList.remove("tut-hl"));if(els)for(const e of els)if(e)e.classList.add("tut-hl");}
-function tutSay(html,label){$("clip-say").innerHTML=html;$("clip-step").textContent=label||"";$("clip-next").hidden=true;}
+const TUT_DONE_SAY="🎉 The room's empty: that's a finished client. Next, we'll read the end-of-client report together.";
+// "Got it" keeps its space when it isn't needed, so the text column never changes width between tips
+const showGotIt=on=>{$("clip-next").style.visibility=on?"":"hidden";};
+function tutSay(html,label){$("clip-say").innerHTML=html;$("clip-step").textContent=label||"";showGotIt(false);}
+/* The tips panel is as tall as its longest tip at the current width, so the floor below never jumps up and down
+   as the text changes. Measured off-screen with every tip (sample server names for the ones that name one). */
+function tutFitClip(){
+  const p=$("clip-say");if(!S||!S.tut||$("clip").hidden||!p.clientWidth)return;
+  const m=document.createElement("p");m.setAttribute("aria-hidden","true");
+  m.style.cssText=`position:absolute;visibility:hidden;left:-9999px;top:0;margin:0;width:${p.clientWidth}px`;
+  p.parentNode.appendChild(m);
+  const T={a:{name:"Stapler Registry"},c:{name:"Stapler Registry"}};let h=0;
+  for(const t of[...TUTOR.map(st=>typeof st.say==="function"?st.say(T):st.say),TUT_DONE_SAY]){m.innerHTML=t;h=Math.max(h,m.offsetHeight);}
+  m.remove();p.style.minHeight=h+"px";
+}
+addEventListener("resize",()=>tutFitClip());
 function tutRender(){
   const T=S.tut,st=TUTOR[T.i];if(!st)return;
   tutSay(typeof st.say==="function"?st.say(T):st.say,`Reverse shadow · step ${T.i+1} of ${TUTOR.length}`);
-  $("clip-next").hidden=!st.next;tutHighlight(st.hl?st.hl():null);
+  showGotIt(!!st.next);tutHighlight(st.hl?st.hl():null);tutFitClip();
 }
 function tutTick(dt){
   const T=S.tut;if(!T)return;const st=TUTOR[T.i];if(!st)return;
