@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,CREDITS_OLD,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,CREDITS_OLD,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -73,7 +73,7 @@ test("every inline script parses", () => {
 
 
 /* ---------- hands-on tutorial ---------- */
-test("Quick tutorial keeps hands-on beside Main menu on every page", () => {
+test("Tutorials keeps hands-on beside Main menu on every page", () => {
   G.newRun();G.titleScreen();check(!W.document.querySelector('[data-act="handson"]'),"hands-on still crowds main menu");
   for(let i=0;i<G.TUT.length;i++){
     G.tutorial(i);const hands=W.document.querySelector('[data-act="handson"]');
@@ -81,6 +81,19 @@ test("Quick tutorial keeps hands-on beside Main menu on every page", () => {
     check(hands&&hands.nextElementSibling?.dataset.act==="menu","hands-on missing or separated from Main menu on page "+i);
     check(W.document.querySelectorAll('[data-act="handson"]').length===1,"duplicate hands-on entry");
   }
+});
+test("paperclip reactions follow events without changing the run or random odds", () => {
+  G.newRun(true);const S=G.S;
+  check(!G.clipMood().wide&&!G.clipMood().quake&&!G.clipMood().closed&&!G.clipMood().roll&&!G.clipMood().tear,"idle face reacts");
+  S.p.boost=4;check(G.clipMood().wide,"coffee eyes missing");S.p.boost=0;
+  S.alert=true;check(G.clipMood().quake,"red alert reaction missing");S.alert=false;
+  S.fix={kind:"fire"};S.fixP=1;G.keys.fix=true;check(G.clipMood().closed,"firefighting eyes open");
+  G.keys.fix=false;check(!G.clipMood().closed,"eyes stay closed after releasing FIX");
+  S.p.heldBy={};S.p.stun=2;check(G.clipMood().roll,"hallway eye roll missing");S.p.stun=0;check(!G.clipMood().roll,"eye roll outlasts interruption");
+  S.tut.i=G.TUTOR.findIndex(s=>s.emotion==="leak");check(G.clipMood().tear,"leak tear missing");
+  const before=JSON.stringify(S),random=W.Math.random;W.Math.random=()=>{throw new Error("cosmetic reaction consumes RNG");};
+  try{G.clipMood();check(JSON.stringify(S)===before,"face changed game state");}finally{W.Math.random=random;}
+  S.tut.i++;check(!G.clipMood().tear,"tear outlasts leak lesson");
 });
 test("paperclip rotates its wire without moving its eyes", () => {
   const doc=new DOMParser().parseFromString(G.CLIP_SVG,"image/svg+xml");
@@ -97,12 +110,26 @@ test("tutorial waits for actions and its chosen rack", () => {
   standAt(S,G.RACKS[other.slot]);G.tutTick(0);check(S.tut.i===2,"wrong rack advanced guide");
   standAt(S,G.RACKS[target.slot]);G.tutTick(0);G.tutTick(0);check(S.tut.i===3,"target did not advance");
 });
-test("tutorial hazards and clocks wait safely while reading", () => {
+test("tutorial: the clock runs, compliance waits, and a fire burns through a little slower than usual", () => {
   G.newRun(true);G.setMode("play");const S=G.S,a=firstRack(S);a.fire=20;a.lic=100;
-  const timer=a.timer,time=S.time,err=S.err;
-  for(let i=0;i<1200;i++)G.update(.1);
-  check(a.fire===20&&!a.down&&a.timer===timer&&a.lic===100,"practice hazard or clock advanced");
-  check(S.time===time&&S.err>=err&&S.tk.length===0&&S.em.length===0,"practice accrued pressure");
+  const timer=a.timer,time=S.time;
+  for(let i=0;i<100;i++)G.update(.1);
+  check(S.time>time+9,"the tutorial's day clock stopped");
+  check(a.timer===timer&&a.lic===100,"compliance or license clock advanced in the tutorial");
+  check(a.fire>20+6*10*0.6&&a.fire<20+6*10*0.9,`tutorial fire should grow at about 75% speed, got ${a.fire}`);
+  for(let i=0;i<200&&!a.down;i++)G.update(.1);
+  check(a.down,"a tutorial fire never burned through to an outage");
+  check(S.tk.length===0&&S.em.length===0,"the tutorial spawned tickets or email by itself");
+});
+test("re-rendering the review keeps its scroll position; a new review opens at the top", () => {
+  const S=fresh();S.points=13;G.setMode("play");G.finishEngagement();
+  const ov=W.document.getElementById("overlay"),card=ov.firstElementChild;
+  check(G.mode==="review"&&card.scrollTop===0&&ov.scrollTop===0,"a fresh review should open at the top");
+  card.scrollTop=400;ov.scrollTop=50;const want=[ov.scrollTop,card.scrollTop];
+  check(want[0]+want[1]>0,"test frame too small to scroll the review");
+  const id=S.offers.find(i=>G.canBuy(G.UPGRADES.find(u=>u.id===i)));G.buy(id);
+  const c2=ov.firstElementChild;
+  check(ov.scrollTop===want[0]&&c2.scrollTop===want[1],`buying jumped the review to ${ov.scrollTop}/${c2.scrollTop}, wanted ${want}`);
 });
 test("tutorial completes every lesson through report, upskill and clean career restart", () => {
   seed(3);G.newRun(true);G.setMode("play");const S=G.S;

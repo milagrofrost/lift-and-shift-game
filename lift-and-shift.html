@@ -149,7 +149,8 @@ body{font-family:var(--f-body)}
 .post .postlinks{display:flex;flex-wrap:wrap;gap:8px;border-top:1px solid var(--line);padding-top:8px}
 .post .postlinks a{color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:13px}
 .post .postlinks a:hover,.post .postlinks a:focus-visible{border-color:var(--amber);color:var(--amber)}
-.row.menulinks{gap:8px} /* five menu links fit on one line */
+.row.menulinks{gap:6px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:3px}
+.row.menulinks .btn{flex:0 0 auto;white-space:nowrap;font-size:12px;letter-spacing:0;padding:6px 9px}
 .learn{display:flex;flex-direction:column;gap:10px}
 .learn>div{display:flex;gap:10px;align-items:flex-start}
 .learn .i{font-size:20px;width:28px;text-align:center;flex:none}
@@ -170,6 +171,7 @@ a.learnlink{color:var(--amber);font-size:12.5px;white-space:nowrap}
 .tut .tut-tip{margin-top:8px;font-size:13px;color:var(--amber)}
 /* Hands-on tutorial: the senior paperclip's panel above the floor, and its notes on the review screens */
 .clip{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--amber);border-radius:8px;padding:8px 12px;min-height:2.7em}
+.clip{box-shadow:0 0 7px rgba(255,181,71,.24),0 0 20px rgba(255,181,71,.12)}
 .clip[hidden]{display:none}
 .clip-art,.clipnote svg{flex:none;width:34px;height:64px}
 .clip-body{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
@@ -2279,7 +2281,7 @@ function tickOnPrem(dt){
     if(a.down){spend("downtime",TIER[a.tier].drain*dt);S.err-=TIER[a.tier].sla*dt;continue;} // SLA penalty + error budget burn while offline
     if(a.fire>0){
       if(freezeActive())continue;
-      a.fire+=6*dt*Math.pow(0.8,lvl("suppress"))*(S.tut?0:1);spend("fires",0.35*dt);a.spreadT-=dt; // tutorial fires wait for the player and never spread
+      a.fire+=6*dt*Math.pow(0.8,lvl("suppress"))*(S.tut?0.75:1);spend("fires",0.35*dt);a.spreadT-=dt; // tutorial fires burn a little slower and never spread
       if(a.fire>=50&&a.spreadT<=0&&!S.tut){a.spreadT=3;if(Math.random()<(downCount()>0?0.10:0.35)){const n=neighbors(i).map(j=>S.racks[j]).filter(b=>b&&!b.hidden&&!b.down&&b.fire===0);if(n.length){const b=pick(n);b.fire=6;b.spreadT=3;toast(`🔥 The fire spread to ${b.name}.`);}}}
       if(a.fire>=100){sfx("offline");a.fire=0;a.down=true;a.downT=S.time;a.prog=0;if(a.hidden)revealApp(a,false);spend("fires",5);S.ss.lost++;
         toast(a.tier==="gold"?`💀 ${a.name} (gold) burned out and went offline. RED ALERT.`:`💀 ${a.name} burned out and went offline. Hold E on it to bring it back up.`);
@@ -2503,7 +2505,7 @@ function tickSlow(dt){
 const slowDepth=()=>S?clamp((1-(S.slow??1))/(1-ALERT_SLOW.easy),0,1):0;
 function update(dt){
   tickSlow(dt);
-  S.t+=dt;if(!S.tut)S.time+=dt;
+  S.t+=dt;S.time+=dt;
   const e0=S.energy;
   const P=S.p;if(P.stun>0)P.stun-=dt;if(P.inv>0)P.inv-=dt;
   const stk=stick.on&&(stick.x||stick.y),mx=stk?stick.x:(keys.r?1:0)-(keys.l?1:0),my=stk?stick.y:(keys.d?1:0)-(keys.u?1:0),m=stk?1:Math.hypot(mx,my)||1;
@@ -2541,7 +2543,7 @@ function update(dt){
   tickPipeline(dt);
   // a server being moved is in its cutover window: it counts as down at a quarter of the outage rate (MIGRATE_BURN)
   {const moving=shutDownMoving(),m=migrateMult();
-   for(const a of moving){if(!S.tut)S.err-=TIER[a.tier].sla*m*dt;spend("downtime",TIER[a.tier].drain*m*dt);}
+   for(const a of moving){S.err-=TIER[a.tier].sla*m*dt;spend("downtime",TIER[a.tier].drain*m*dt);}
    if(migrateBurn()>=MIGRATE_WARN&&S.time>=(S.burnT||0)){S.burnT=S.time+30;toast(`⚠️ ${moving.length} servers are shut down for migration and uptime is draining.${S.upgrades.bluegreen?" Slow down, or move fewer at once.":" Move fewer at once, or get Blue-Green Cutovers."}`);}}
   tickOnPrem(dt);cancelDeadCopies();tickCloud(dt);tickFinops(dt);observeTick();spawns(dt);tickHazards(dt);
   for(const b of S.bots){b.flash=Math.max(0,b.flash-dt);(b.kind==="patch"?patchBot:moverBot)(b,dt,b.kind==="patch"?patchBotSpeed():85);}
@@ -3028,7 +3030,7 @@ function titleScreen(){
   <label class="hardcore noai"><input type="checkbox" id="noai" ${NOAI?"checked":""}><span><b>Old school:</b> no AI upskills. The AI Agent and AI Chatbots never reach the shop. Keep it up long enough with only checklist work left and the job may get outsourced.</span></label>
   <div class="row"><button class="btn" data-act="start">Start new career</button></div>
   <div class="row menulinks">
-    <button class="btn ghost sm" data-act="tut">Quick tutorial</button>
+    <button class="btn ghost sm" data-act="tut">Tutorials</button>
     <button class="btn ghost sm" data-act="howto">How to play</button>
     <button class="btn ghost sm" data-act="notes">Why it works this way</button>
     <button class="btn ghost sm" data-act="learn">📚 Learn more</button>
@@ -3050,7 +3052,7 @@ const TUT=[
 function tutorial(i){
   mode="title";i=clamp(i|0,0,TUT.length-1);const p=TUT[i];
   const dots=TUT.map((_,k)=>`<i class="${k===i?"on":""}"></i>`).join("");
-  show(`<div class="eyebrow">Tutorial · ${i+1} of ${TUT.length}</div>
+  show(`<div class="eyebrow">Tutorials · quick tour ${i+1} of ${TUT.length}</div>
   <div class="tut"><div class="tut-ic">${p.i}</div><div><h2>${p.t}</h2><p>${p.b}</p><p class="tut-tip">${p.tip}</p></div></div>
   <div class="dots" aria-hidden="true">${dots}</div>
   <div class="row">
@@ -3204,6 +3206,7 @@ function howToPlay(){
     <div><span class="ic">🎫</span><span><b>Ticket queue.</b> At the bottom of the hallway, with a 5-slot bar. Hold E there to close tickets. The bar shows every ticket waiting: once it is full, new ones are turned away, so there is never a hidden backlog. When the bar fills, it flashes red and tickets escalate 🚨 one at a time until you work it down. Each one sets a server on fire and costs half a story point. They're at least 12 seconds apart, half as fast while a server is burning, and 75% slower during an outage or breach. Focus time and change freezes pause them.</span></div>
     <div><span class="ic">❄</span><span><b>Change freeze.</b> Users, new tickets and email, escalations, fire growth and breach spread all stop. Downtime and breach damage still count, so a freeze buys time, it doesn't fix anything. Every incident gets a short 4-second freeze (once a minute), CHANGE FREEZE flashes across the floor, and the message says what caused it. A manager makes it 10/14/18 seconds and lets it return sooner (60/50/40s). The Emergency Freeze Window upgrade gives you one 12-second freeze on F or the Freeze button.</span></div>
     <div><span class="ic">⏪</span><span><b>Restore from backup.</b> Open the terminal (the &gt;_ at the top left, or the &#96; key) and type <code>journalctl</code> for this client's event log. Rows marked 💾 are restore points, roughly every 30 seconds. Pick one, or type <code>restore 05:40</code>, to go back to that moment. Easy gets 3 for the whole career, Normal 2, Hard 1, and Hardcore none. They also work from the screen where you get fired. Restore points only cover the current client, and the future can go differently the second time.</span></div>
+    <div><span class="ic">📎</span><span><b>Tutorials.</b> The Tutorials button on the main menu opens a quick illustrated tour. Every page of it offers the Hands on Tutorial: one tiny practice client where a senior paperclip points at what to do next, step by step, then walks you through the end-of-client report and your first improvement sprint. Compliance clocks are paused and cutovers always succeed there, but the day clock runs and a fire left alone still burns through. Nothing in it counts toward your career.</span></div>
     <div><span class="ic">🧑‍💻</span><span><b>Your avatar.</b> Pick one on the main menu, or type or paste any single emoji into the box. It's only shown on your screen.</span></div>
     <div><span class="ic">👤</span><span><b>Users.</b> They wander the hallway. Bump into one and you're stuck for a "quick question." The better dressed, the longer: an analyst holds you under 2 seconds, the CIO almost 5. Interns just blurt their question as you walk past. Right after someone lets you go, and for the first 2 seconds of each client, nobody can stop you: you blink until that wears off.</span></div>
     <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Hover over (or tap) anything in "Your toolkit" to see what it does. Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. Tools you don't own yet keep turning up: the longer one goes unseen, the likelier it is to show up. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
@@ -3224,8 +3227,9 @@ function howToPlay(){
 /* ==== Hands-on tutorial ==== */
 /* A guided first client in a reverse shadow: you do the work, and a senior paperclip watches and points at what's next,
    on the floor and in the panel above it. Paperclip Supply Co. (TUT_CLIENT) is tiny, and while S.tut is set nothing
-   happens by itself: no new tickets, email, users, pickups, specials or leaks, compliance clocks are paused, fires and
-   leaks grow slowly and fires never spread, and every cutover succeeds. Each step sets up its own lesson and waits until
+   happens by itself: no new tickets, email, users, pickups, specials or leaks, compliance and license clocks are paused,
+   staged leaks wait for you, fires burn at 75% speed (they can still take a server offline) and never spread, and
+   every cutover succeeds. The day clock and migration uptime burn run as normal. Each step sets up its own lesson and waits until
    you've handled it. You can only pick up a server on the steps that ask for it, so the room can't empty before the
    lessons are done. The review then gets the paperclip's notes, and the run never touches career records. */
 const CLIP_SVG=`<svg viewBox="-14 -30 28 56" aria-hidden="true"><path transform="rotate(180)" d="M-3 8 L-3 -12 A4 4 0 0 1 5 -12 L5 16 A6 6 0 0 1 -7 16 L-7 -18 A8 8 0 0 1 9 -18 L9 10" fill="none" stroke="#cfd8de" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="-4" cy="-6" r="3.6" fill="#fff" stroke="#222" stroke-width=".7"/><circle cx="6" cy="-7" r="3.6" fill="#fff" stroke="#222" stroke-width=".7"/><circle cx="-3" cy="-5" r="1.6" fill="#111"/><circle cx="7" cy="-6" r="1.6" fill="#111"/><path d="M-8 -12 L-1 -13 M3 -14 L10 -12" stroke="#ddd" stroke-width="1.3" stroke-linecap="round"/></svg>`;
@@ -3269,7 +3273,7 @@ const TUTOR=[
    enter:T=>{S.snacks=S.snacks||{coffee:0,donut:0};T.cups=S.snacks.coffee;S.st=[{x:480,y:210,life:1e9,kind:"coffee"},{x:420,y:430,life:1e9,kind:"donut"}];
      S.users.push({x:550,y:420,rank:1,vx:0,vy:0,turn:0,cd:0,line:""});},
    at:()=>S.st.find(s=>s.kind==="coffee")||null,done:T=>S.snacks.coffee>T.cups},
-  {say:T=>`The cloud isn't safe either: <b>${T.c?T.c.name:"an app"}</b> sprang a <b>leak</b>. Leave it and it becomes a <b>breach</b>, a red alert that drains security and spreads next door. Hold <kbd>E</kbd> on it to seal it.`,
+  {emotion:"leak",say:T=>`The cloud isn't safe either: <b>${T.c?T.c.name:"an app"}</b> sprang a <b>leak</b>. Leave it and it becomes a <b>breach</b>, a red alert that drains security and spreads next door. Hold <kbd>E</kbd> on it to seal it.`,
    enter:T=>{T.ci=S.cloud.findIndex(a=>a&&!a.staged&&!a.down&&!a.breach);T.c=S.cloud[T.ci]||null;if(T.c){T.c.leakOn=true;T.c.leak=25;T.c.tfT=0;}},
    at:T=>T.c&&S.cloud[T.ci]===T.c?SLOTS[T.ci]:null,done:T=>!T.c||S.cloud[T.ci]!==T.c||(!T.c.leakOn&&!T.c.breach),
    ok:"Sealed. Security upgrades make leaks rarer, so you won't always be doing this by hand."},
@@ -3298,18 +3302,40 @@ function tutAck(){const T=S&&S.tut,st=T&&TUTOR[T.i];if(!st||!st.next||!T.entered
 $("clip-next").addEventListener("click",e=>{e.currentTarget.blur();if(mode==="play")tutAck();});
 $("clip-skip").addEventListener("click",e=>{e.currentTarget.blur();newRun();titleScreen();});
 // the paperclip on the floor: a wire clip with googly eyes, hovering by whatever you should go to next
+// Presentation only: use existing play state, never roll gameplay randomness.
+function clipMood(){
+  return {wide:S.p.boost>0,quake:!!S.alert,
+    closed:!!(keys.fix&&S.fix&&S.fix.kind==="fire"&&S.fixP>0&&S.p.stun<=0),
+    roll:!!(S.p.heldBy&&S.p.stun>0),
+    tear:!!(S.tut&&TUTOR[S.tut.i]?.emotion==="leak")};
+}
 function drawClip(x,y,s){
+  const mood=clipMood();
+  if(mood.quake&&!RM){x+=Math.sin(S.t*61)*2.3;y+=Math.sin(S.t*47)*1.4;}
   ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.lineCap="round";ctx.lineJoin="round";
   const wire=()=>{ctx.beginPath();ctx.moveTo(-3,8);ctx.lineTo(-3,-12);ctx.arc(1,-12,4,Math.PI,0);ctx.lineTo(5,16);ctx.arc(-1,16,6,0,Math.PI);ctx.lineTo(-7,-18);ctx.arc(1,-18,8,Math.PI,0);ctx.lineTo(9,10);};
   ctx.save();ctx.rotate(Math.PI); // turn the wire only; the face stays upright
   ctx.strokeStyle="rgba(0,0,0,.5)";ctx.lineWidth=5;wire();ctx.stroke();
   ctx.strokeStyle="#cfd8de";ctx.lineWidth=3;wire();ctx.stroke();
   ctx.strokeStyle="rgba(255,255,255,.7)";ctx.lineWidth=1;wire();ctx.stroke();ctx.restore();
-  const blink=!RM&&(S.t%4)<0.12;
+  // Uneven blink intervals, driven by play time so pausing freezes the face.
+  // No random draws here: cosmetic animation must not change gameplay odds.
+  const phase=S.t%17,blink=!RM&&[3.8,9.2,15.5].some(t=>phase>=t&&phase<t+0.14);
   for(const[ex,ey]of[[-4,-6],[6,-7]]){
-    if(blink){ctx.strokeStyle="#222";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(ex-3,ey);ctx.lineTo(ex+3,ey);ctx.stroke();continue;}
-    ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(ex,ey,3.8,0,7);ctx.fill();ctx.strokeStyle="#222";ctx.lineWidth=.8;ctx.stroke();
-    ctx.fillStyle="#111";ctx.beginPath();ctx.arc(ex+1,ey+1,1.7,0,7);ctx.fill();}
+    if(mood.closed||blink){ctx.strokeStyle="#222";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(ex-3,ey);ctx.lineTo(ex+3,ey);ctx.stroke();continue;}
+    ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(ex,ey,mood.wide||mood.quake?4.7:3.8,0,7);ctx.fill();ctx.strokeStyle="#222";ctx.lineWidth=.8;ctx.stroke();
+    // Aim from each eye to the player; keep pupils inside the whites.
+    const dx=(S.p.x-x)/s-ex,dy=(S.p.y-y)/s-ey,d=Math.hypot(dx,dy),reach=Math.min(1.7,d/30);
+    const angle=RM?-Math.PI/2:S.t*3.5;
+    const px=mood.roll?Math.cos(angle)*1.7:(d?dx/d*reach:0),py=mood.roll?Math.sin(angle)*1.7:(d?dy/d*reach:0);
+    ctx.fillStyle="#111";ctx.beginPath();ctx.arc(ex+px,ey+py,1.7,0,7);ctx.fill();}
+  if(mood.tear){
+    // One teardrop falls, fades, then starts again. Reduced motion keeps it on the cheek.
+    const fall=RM?0.15:(S.t%1.6)/1.6,ty=-2+fall*26;
+    ctx.save();ctx.globalAlpha=RM?0.85:1-fall;ctx.fillStyle="#70c9ff";
+    ctx.beginPath();ctx.moveTo(8,ty-4);ctx.bezierCurveTo(3,ty+2,5,ty+5,8,ty+5);
+    ctx.bezierCurveTo(11,ty+5,13,ty+2,8,ty-4);ctx.fill();ctx.restore();
+  }
   ctx.strokeStyle="#e8eef2";ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(-8,-12);ctx.lineTo(-1,-13);ctx.moveTo(3,-14);ctx.lineTo(10,-12);ctx.stroke();
   ctx.restore();
 }
@@ -3330,7 +3356,7 @@ function handsOn(){
   mode="title";
   show(`<div class="eyebrow">Hands on Tutorial</div>
   <div class="clipnote big">${CLIP_SVG}<div><h2>It looks like you're trying to migrate a server.</h2><p>Good news: you're in a <b>reverse shadow</b>. Normally the new hire shadows a senior engineer and watches. Today it's the other way round: <b>you</b> do the work, and I, a senior paperclip with more uptime than your whole team, watch and tell you where to go next.</p></div></div>
-  <p>One tiny client, Paperclip Supply Co. Nothing happens unless I set it up, the deadline, compliance, license and incident-growth clocks are paused, and I've rigged the cutover odds in your favour. Follow the paperclip on the floor. You'll learn to move servers, patch, close tickets, answer email, fight a fire, find a forgotten server and seal a leak. Then we'll read the end-of-client report together and spend your first improvement sprint.</p>
+  <p>One tiny client, Paperclip Supply Co. Nothing happens unless I set it up, compliance and license clocks are paused, fires burn a little slower than usual, and I've rigged the cutover odds in your favour. Follow the paperclip on the floor. You'll learn to move servers, patch, close tickets, answer email, fight a fire, find a forgotten server and seal a leak. Then we'll read the end-of-client report together and spend your first improvement sprint.</p>
   <p style="font-size:13px;color:var(--muted)">Move with WASD or the arrows, Space grabs and drops, hold E to fix, P pauses. On a phone, drag on the left half and use GRAB and FIX. Nothing here counts toward your career records.</p>
   <div class="row"><button class="btn" data-act="handsgo">Let's go</button><button class="btn ghost" data-act="menu">Main menu</button></div>`);
 }
@@ -3409,6 +3435,8 @@ function outsourcedBlock(){
   <div class="row"><button class="btn" data-act="outsourced">Go to the meeting with HR</button></div>`;
 }
 function review(){
+  // re-rendering the review (buying, the retro pick, brainstorming) keeps your place; only a fresh review opens at the top
+  const keep=mode==="review"&&!ov.hidden&&ov.firstElementChild?[ov.scrollTop,ov.firstElementChild.scrollTop]:null;
   mode="review";
   const cards=S.offers.map(id=>{const u=UPGRADES.find(x=>x.id===id),L=lvl(id),done=u.max?L>=u.max:!!S.upgrades[id],c=upCost(u);
     const pips=u.max?`<span class="pips" aria-label="Level ${L} of ${u.max}">${Array.from({length:u.max},(_,k)=>`<i class="${k<L?"on":""}"></i>`).join("")}</span>`:"";
@@ -3446,6 +3474,7 @@ function review(){
   ${doraBlock()}
   ${agentBlock()}
   ${S.obsolete?obsoleteBlock():S.outsourced?outsourcedBlock():`${fireBossBlock()}${sprint()}`}`);
+  if(keep){ov.scrollTop=keep[0];ov.firstElementChild.scrollTop=keep[1];}
 }
 // everything you've bought this career, stackables with their level: shown in the improvement sprint and on pause
 function toolkitHtml(){

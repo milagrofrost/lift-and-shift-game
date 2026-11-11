@@ -20,9 +20,9 @@ The game uses satire and compressed time. Its probabilities, costs, DORA-style r
 
 ## Hands on Tutorial
 
-Open **Quick tutorial**, then choose **📎 Hands on Tutorial** beside **Main menu** on any page for a guided practice client. You are in a reverse shadow: you do the work while a senior paperclip points out where to go and what to look for. Practice movement, carrying and cutover, patch coverage, tickets, email, firefighting, discovery, coffee and cloud leaks, then read your client report and buy an upskill.
+Open **Tutorials** on the main menu. It starts with a quick illustrated tour, and every page has **📎 Hands on Tutorial** beside **Main menu** for a guided practice client. You are in a reverse shadow: you do the work while a senior paperclip points out where to go and what to look for. On the map, its eyes follow you and blink occasionally. Coffee widens its eyes, red alerts make it quake, firefighting closes its eyes, hallway interruptions get an eye roll, and the leak lesson gets a repeating teardrop. Reduced motion keeps these reactions still and disables blinking. Practice movement, carrying and cutover, patch coverage, tickets, email, firefighting, discovery, coffee and cloud leaks, then read your client report and buy an upskill.
 
-Practice pauses deadline, compliance, license and incident-growth clocks and guarantees successful cutovers. Tutorial purchases and results do not carry into career records. Pause or leave whenever you like; real careers keep their normal timing and risks.
+In practice nothing arrives on its own (tickets, email, users, pickups and leaks are staged one lesson at a time), compliance and license clocks are paused, and every cutover succeeds. The day clock runs and moving a server still burns a little uptime. The staged fire burns a little slower than usual and never spreads, but left alone it still burns through to an outage you then bring back up. Tutorial purchases and results do not carry into career records. Pause or leave whenever you like; real careers keep their normal timing and risks.
 
 ## How it plays
 
