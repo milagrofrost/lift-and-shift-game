@@ -90,7 +90,7 @@ On phones the game plays in landscape: drag anywhere on the left half of the scr
 
 ## Development status
 
-The game is one HTML file containing the interface, canvas rendering, simulation, and audio; the logo is the only separate asset (`assets/`).
+The game is one HTML file containing the interface, canvas rendering, simulation, and audio; the logo and install icons live in `assets/`. PWA registration and offline caching live in `pwa.js` and `sw.js`.
 
 The gameplay revisions are merged into `main`, including current-cycle patch coverage, incident completion rules, rollback accounting, manager change freezes, and persistent escalation targeting.
 
@@ -138,3 +138,23 @@ Type `?` in the terminal to list its commands, a command and `?` for its options
 ### Hidden-server discovery
 Unknown racks require investigation (hold E for 6 seconds; 3 with Asset Inventory). The three handmade clients keep their designed hidden-server tiers; from client 4 on, hidden servers can be any tier. Discovery can expose an already-expired license with renewal liability, or a license close to expiry. Investigate quickly and you can beat the renewal; leave it, or let an outage find it, and the license has probably already renewed. Escalations can attack hidden racks; a resulting outage reveals the server. Migration progress never reveals them automatically.
 
+
+## Install and play offline
+
+After deployment, open https://las.milagrofrost.com once while online and allow the initial game download to finish.
+
+- **Android (Chrome):** open the browser menu and choose **Add to Home screen → Install** (wording may vary). Launch Lift & Shift from its new icon.
+- **iPhone (Safari):** tap **Share → Add to Home Screen**, leave **Open as Web App** enabled if shown, then tap **Add**. Launch from the home screen.
+- **Desktop (Chrome/Edge):** use the address-bar install icon or the browser menu's install option.
+
+Rotate phones to landscape to play; portrait keeps the existing rotation prompt. Standalone windows respect notch and home-indicator safe areas. Sound, pause, keyboard/touch controls and reduced motion work as in the browser.
+
+The game and logo/icons work offline after the first successful download. External fonts fall back to system fonts; Learn more, social links and shared report pages/images require the internet. Installation does not add career save/resume: reloading or closing still ends the current run. Browser records and preferences remain local; an installed app may have separate storage, especially on iPhone. The operating system can clear offline storage.
+
+Updates never reload an active game. Online launches fetch the current deployment; updated workers wait for all existing game windows/tabs to close before activating. Close every game window and reopen online to finish an update. Bump the cache version in sw.js whenever any precached file changes. Cache cleanup only deletes this game's old shell caches; report Functions and unknown routes are never intercepted. No Cloudflare build step or dependencies are added; _headers ensures worker/manifest revalidation. Cloudflare Pages may redirect the .html launch URL to its extensionless equivalent; both work offline.
+
+### PWA validation
+
+Run node tests/pwa.mjs for dependency-free packaging and service-worker policy checks, and run tests/regression.html over HTTP for gameplay regressions. Service workers require HTTPS or localhost; opening files directly still plays the game without offline installation.
+
+On a localhost server or an HTTPS branch preview, open the game, wait for the service worker to finish installing (DevTools → Application → Service Workers), and reload once so it controls the page. Check the manifest and icons in Application → Manifest. Switch DevTools Network to Offline and reload both / and /lift-and-shift.html: the game and logo must load and a new run must work. /r/... must remain network-only. Restore the network, test touch controls in landscape, rotate to portrait, and check standalone safe areas on a physical phone. Test an update with two windows open: neither should reload; after closing both, reopening online should activate the new worker. Use a separate preview/localhost origin for tests to preserve active production runs.
