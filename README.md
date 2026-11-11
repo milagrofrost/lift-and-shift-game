@@ -94,6 +94,8 @@ Play at **https://las.milagrofrost.com**. Cloudflare Pages automatically deploys
 
 `tests/regression.html` loads the game in a hidden frame and runs deterministic checks with a seeded random number generator: script syntax, patch coverage, completion and cutover accounting, carrying and escalations, blue-green copies, freezes, and hidden servers. Serve the repository root (see *Play locally*) and open <http://127.0.0.1:8766/tests/regression.html>. The page title reads `PASS n/n` or `FAIL k/n`, and `window.__RESULTS` holds the details for scripted runs.
 
+`node tests/check-links.mjs` checks every outside link the game shows (the Learn more readings and the author links) and exits with an error if any is broken. It needs the internet, so it's separate from the regression page. Sites that block scripts, like LinkedIn, are listed as unverified rather than broken.
+
 Run it before every push to `main`, and add a check whenever you change a rule it covers.
 
 ## Contributing, including AI assistants

@@ -3035,18 +3035,18 @@ const NOTES=[
   ["Decommissioning","Every server you move is one less on-prem server running, and its hardware is credited back.","Migrations only save money when you actually turn off the old hardware. Running both for too long is the most common way cloud bills surprise people."],
 ];
 /* Learn more: one real-world reading per upgrade, for anyone who wants to know why it matters outside the game.
-   [link, source, the idea in one line]. Every upgrade needs an entry (tests/regression.html checks). Links checked 2026-11-10. */
+   [link, source, the idea in one line]. Every upgrade needs an entry (tests/regression.html checks). Check them with: node tests/check-links.mjs */
 const LEARN={
   freezecharge:["https://en.wikipedia.org/wiki/Freeze_(software_engineering)","Wikipedia","Pausing changes during risky periods so you don't make an incident worse."],
   terraform:["https://developer.hashicorp.com/terraform/intro","HashiCorp","Infrastructure as code: describe your cloud in files you can review, repeat and roll back."],
   moverbot:["https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html","AWS Prescriptive Guidance","Rehost, replatform, refactor: the usual ways to move apps, and why lift-and-shift is only one of them."],
   patchbot:["https://docs.aws.amazon.com/systems-manager/latest/userguide/patch-manager.html","AWS documentation","Automated patching on a schedule, with a report of what's still missing."],
   finops:["https://www.finops.org/introduction/what-is-finops/","FinOps Foundation","Engineering, finance and the business sharing responsibility for cloud spend."],
-  runbooks:["https://www.pagerduty.com/resources/learn/what-is-a-runbook/","PagerDuty","Written steps for known problems, so whoever is on call can fix them quickly."],
+  runbooks:["https://www.pagerduty.com/resources/automation/learn/what-is-a-runbook/","PagerDuty","Written steps for known problems, so whoever is on call can fix them quickly."],
   inventory:["https://www.cisecurity.org/controls/inventory-and-control-of-enterprise-assets","CIS Controls","You can't secure, patch or migrate what you don't know you have."],
   coffee:["https://agilemanifesto.org/principles.html","Agile Manifesto","Principle 8: a sustainable pace you can keep up indefinitely. Comfortable shoes help."],
   pac:["https://www.openpolicyagent.org/docs","Open Policy Agent","Rules written as code that block bad configurations before they ship."],
-  scanner:["https://owasp.org/www-community/Vulnerability_Scanning_Tools","OWASP","Tools that find known weaknesses before attackers do."],
+  scanner:["https://community.owasp.org/Vulnerability_Scanning_Tools","OWASP","Tools that find known weaknesses before attackers do."],
   secrets:["https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html","OWASP Cheat Sheet","Keep passwords and keys out of code and config files, and rotate them."],
   iam:["https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html","AWS documentation","Give every person and service only the access it needs, and nothing more."],
   siem:["https://www.cisa.gov/resources-tools/resources/guidance-siem-and-soar-implementation","CISA","Collect security logs in one place and alert on what matters."],
@@ -3064,7 +3064,7 @@ const LEARN={
   snacks:["https://dora.dev/capabilities/well-being/","DORA","Burnout hurts delivery. Teams that are looked after do better work."],
   vendor:["https://www.finops.org/framework/capabilities/rate-optimization/","FinOps Foundation","Commitments and discounts that lower what you pay for the same usage."],
   manager:["https://dora.dev/capabilities/transformational-leadership/","DORA","Leaders who clear the way make teams faster and happier."],
-  agent:["https://www.anthropic.com/engineering/building-effective-agents","Anthropic","When AI agents help, and why simple, well-scoped workflows beat clever ones."],
+  agent:["https://www.anthropic.com/research/building-effective-agents","Anthropic","When AI agents help, and why simple, well-scoped workflows beat clever ones."],
   chatbot:["https://dora.dev/ai/","DORA","What research says about how AI tools really affect tech teams."],
 };
 const learnLink=id=>{const l=LEARN[id];return l?`<a class="learnlink" href="${l[0]}" target="_blank" rel="noopener noreferrer">${l[1]} ↗</a>`:"";};
