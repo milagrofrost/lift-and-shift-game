@@ -108,7 +108,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 - FinOps $ marks bob and shed a faint rising $ so they read as something to collect (static under reduced motion).
 - Avatar: the player is drawn on a soft disc in the emoji's average colour with a thin amber ring, as any single emoji chosen on the main menu (quick picks or typed/pasted; first grapheme only, must be an emoji, else the previous one stays). Saved in localStorage, local only: never in report links or share images.
 - Learn more: a main-menu button lists every upgrade with one real-world link (`LEARN` in the screens section) and a one-line reason it matters; shop cards carry the same link. Every upgrade needs an entry, and links should be checked when added.
-- About the author: a main-menu button opens a humble-brag post styled like a generic professional networking feed (no real site's logo or branding), with links to the author's LinkedIn, milagrofrost.com and the GitHub repo.
+- Let's connect (main-menu button; the screen is headed About the author) opens a humble-brag post styled like a generic professional networking feed (no real site's logo or branding), with links to the author's LinkedIn, milagrofrost.com and the GitHub repo.
 - Overlays open scrolled to the top; focusing the first button must not scroll the card.
 
 ### Uptime recovery

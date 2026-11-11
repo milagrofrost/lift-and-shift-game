@@ -149,6 +149,7 @@ body{font-family:var(--f-body)}
 .post .postlinks{display:flex;flex-wrap:wrap;gap:8px;border-top:1px solid var(--line);padding-top:8px}
 .post .postlinks a{color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:13px}
 .post .postlinks a:hover,.post .postlinks a:focus-visible{border-color:var(--amber);color:var(--amber)}
+.row.menulinks{gap:8px} /* five menu links fit on one line */
 .learn{display:flex;flex-direction:column;gap:10px}
 .learn>div{display:flex;gap:10px;align-items:flex-start}
 .learn .i{font-size:20px;width:28px;text-align:center;flex:none}
@@ -2962,12 +2963,12 @@ function titleScreen(){
   <div class="avatar"><label for="avatar"><b>Your avatar:</b></label><input id="avatar" value="${AVATAR}" aria-label="Your avatar: type or paste any emoji" autocomplete="off" spellcheck="false">${AVATAR_PICKS.map(a=>`<button type="button" class="avpick${a===AVATAR?" on":""}" data-avatar="${a}" aria-label="Use ${a} as your avatar" aria-pressed="${a===AVATAR}">${a}</button>`).join("")}<small>or any emoji (Win + . / Ctrl + Cmd + Space)</small></div>
   <label class="hardcore noai"><input type="checkbox" id="noai" ${NOAI?"checked":""}><span><b>Old school:</b> no AI upskills. The AI Agent and AI Chatbots never reach the shop. Keep it up long enough with only checklist work left and the job may get outsourced.</span></label>
   <button class="btn" data-act="start">Start new career</button>
-  <div class="row">
+  <div class="row menulinks">
     <button class="btn ghost sm" data-act="tut">Tutorial</button>
     <button class="btn ghost sm" data-act="howto">How to play</button>
     <button class="btn ghost sm" data-act="notes">Why it works this way</button>
     <button class="btn ghost sm" data-act="learn">📚 Learn more</button>
-    <button class="btn ghost sm" data-act="author">👤 About the author</button>
+    <button class="btn ghost sm" data-act="author">🤝 Let's connect</button>
   </div>
   ${(()=>{let bc=0;try{bc=+(localStorage.getItem("liftshift-clients")||0);}catch(e){}return bc||best!==null?`<p style="font-size:12.5px;color:var(--muted)">${bc?`Longest career: ${bc} client${bc>1?"s":""}. `:""}${best!==null?`Best retirement: ${money(best)} total IT spend${bestN===1?", after one client. Peak job hopping.":bestN===2?", after two clients. Classic job hopper.":bestN?`, after ${bestN} clients.`:"."}`:""}</p>`:"";})()}`);
 }

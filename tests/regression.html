@@ -745,7 +745,7 @@ test("every upgrade has a Learn more link, listed on the menu screen", () => {
   G.titleScreen(); check(W.document.querySelector('[data-act="learn"]'), "no Learn more button on the main menu");
 });
 test("About the author is on the main menu and links out safely", () => {
-  G.titleScreen(); check(W.document.querySelector('[data-act="author"]'), "no About the author button on the main menu");
+  G.titleScreen(); check(W.document.querySelector('[data-act="author"]'), "no Let's connect button on the main menu");
   G.aboutAuthor(); const links = [...W.document.querySelectorAll("#overlay .postlinks a")];
   check(links.length === G.AUTHOR_LINKS.length && links.every(a => a.href.startsWith("https://") && a.target === "_blank" && a.rel.includes("noopener")), "author links are missing or open unsafely");
   check(W.document.querySelector('#overlay [data-act="menu"]'), "no way back to the menu");
