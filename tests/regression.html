@@ -86,9 +86,15 @@ test("paperclip reactions follow events without changing the run or random odds"
   G.newRun(true);const S=G.S;
   check(!G.clipMood().wide&&!G.clipMood().quake&&!G.clipMood().closed&&!G.clipMood().roll&&!G.clipMood().tear,"idle face reacts");
   S.p.boost=4;check(G.clipMood().wide,"coffee eyes missing");S.p.boost=0;
-  S.alert=true;check(G.clipMood().quake,"red alert reaction missing");S.alert=false;
-  S.fix={kind:"fire"};S.fixP=1;G.keys.fix=true;check(G.clipMood().closed,"firefighting eyes open");
-  G.keys.fix=false;check(!G.clipMood().closed,"eyes stay closed after releasing FIX");
+  S.alert=true;check(G.clipMood().quake,"red alert reaction missing");
+  // long eye shuts with quick peeks: shut for most of each 2.4s cycle, open for the rest
+  let shut=0;for(let k=0;k<240;k++){S.t=k*0.01;if(G.clipMood().shut)shut++;}
+  check(shut>=150&&shut<240,`red alert eyes should stay shut most of the cycle with a peek, shut ${shut}/240`);
+  S.alert=false;S.t=0.5;check(!G.clipMood().shut,"eyes stay squeezed shut after the red alert");
+  // a real spray: stand at a burning rack and hold E, the way the game does it
+  const r=S.racks.find(x=>x&&!x.hidden);r.fire=40;S.p.x=G.RACKS[r.slot].x;S.p.y=G.RACKS[r.slot].y;S.p.stun=0;S.p.inv=0;S.energy=100;
+  G.keys.fix=true;G.doFix(.05);check(r.fire<40,"test setup: the fire wasn't being sprayed");check(G.clipMood().closed,"firefighting eyes open while the extinguisher sprays");
+  G.keys.fix=false;G.doFix(.05);S.t+=0.2;check(!G.clipMood().closed,"eyes stay closed after the spray stops");r.fire=0;
   S.p.heldBy={};S.p.stun=2;check(G.clipMood().roll,"hallway eye roll missing");S.p.stun=0;check(!G.clipMood().roll,"eye roll outlasts interruption");
   S.tut.i=G.TUTOR.findIndex(s=>s.emotion==="leak");check(G.clipMood().tear,"leak tear missing");
   const before=JSON.stringify(S),random=W.Math.random;W.Math.random=()=>{throw new Error("cosmetic reaction consumes RNG");};
@@ -120,6 +126,19 @@ test("tutorial: the clock runs, compliance waits, and a fire burns through a lit
   for(let i=0;i<200&&!a.down;i++)G.update(.1);
   check(a.down,"a tutorial fire never burned through to an outage");
   check(S.tk.length===0&&S.em.length===0,"the tutorial spawned tickets or email by itself");
+});
+test("tutorial: a staged leak grows a little slower than usual, still breaches into a red alert, and never spreads", () => {
+  G.newRun(true);G.setMode("play");const S=G.S;
+  const apps=S.racks.filter(x=>x&&!x.hidden).slice(0,2);G.migrate(apps[0],0,false);G.migrate(apps[1],1,false);
+  check(S.cloud[0]&&!S.cloud[0].down&&S.cloud[1]&&!S.cloud[1].down,"test setup: tutorial cutovers failed");
+  const c=S.cloud[0];c.leakOn=true;c.leak=25;
+  for(let i=0;i<100;i++)G.update(.1);
+  check(c.leak>25+3.6*10*0.6&&c.leak<25+3.6*10*0.9,`tutorial leak should grow at about 75% speed, got ${c.leak}`);
+  for(let i=0;i<400&&!c.breach;i++)G.update(.1);
+  check(c.breach,"a tutorial leak never became a breach");
+  G.update(.1);check(S.alert,"a tutorial breach didn't raise a red alert");
+  for(let i=0;i<300;i++)G.update(.1);
+  check(!S.cloud[1].breach,"a tutorial breach spread to its neighbour");
 });
 test("re-rendering the review keeps its scroll position; a new review opens at the top", () => {
   const S=fresh();S.points=13;G.setMode("play");G.finishEngagement();

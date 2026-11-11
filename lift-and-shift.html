@@ -2321,7 +2321,7 @@ function tickCloud(dt){
     if(a.down){spend("downtime",TIER[a.tier].drain*dt);S.err-=TIER[a.tier].sla*dt;return;} // failed cutover: offline in the cloud
     if(a.breach){
       // a breach stays until contained, drains security, and spreads to one neighbor at a time
-      secHit("breach",0.5*dt);spend("breach",0.4*dt);if(freezeActive())return;a.spreadT-=dt;
+      secHit("breach",0.5*dt);spend("breach",0.4*dt);if(freezeActive()||S.tut)return;a.spreadT-=dt; // tutorial breaches never spread
       if(a.spreadT<=0){a.spreadT=spreadTime();const n=cloudNeighbors(i).filter(j=>S.cloud[j]&&!S.cloud[j].staged&&!S.cloud[j].breach&&!S.cloud[j].down);if(n.length)breach(pick(n),a.name,i);}
       return;
     }
@@ -2329,7 +2329,7 @@ function tickCloud(dt){
     if(S.upgrades.autopatch)a.age=0;else a.age=(a.age||0)+dt;
     if(!a.leakOn){if(a.grace>0){a.grace-=dt;return;}if(!S.tut&&Math.random()<lc*driftMult(a)*(a.cleanStart>0?0.5:1)*dt){a.leakOn=true;a.leak=4;a.tfT=0;}return;}
     if(freezeActive())return;
-    a.leak+=3.6*dt*Math.pow(0.85,lvl("scanner"))*(S.tut?0:1);
+    a.leak+=3.6*dt*Math.pow(0.85,lvl("scanner"))*(S.tut?0.75:1); // tutorial leaks grow a little slower but still breach
     if(a.leak>=100)breach(i,null);
   });
 }
@@ -3232,7 +3232,7 @@ function howToPlay(){
 /* A guided first client in a reverse shadow: you do the work, and a senior paperclip watches and points at what's next,
    on the floor and in the panel above it. Paperclip Supply Co. (TUT_CLIENT) is tiny, and while S.tut is set nothing
    happens by itself: no new tickets, email, users, pickups, specials or leaks, compliance and license clocks are paused,
-   staged leaks wait for you, fires burn at 75% speed (they can still take a server offline) and never spread, and
+   staged fires and leaks run at 75% speed (a fire can still take a server offline, a leak can still breach) and never spread, and
    every cutover succeeds. The day clock and migration uptime burn run as normal. Each step sets up its own lesson and waits until
    you've handled it. You can only pick up a server on the steps that ask for it, so the room can't empty before the
    lessons are done. The review then gets the paperclip's notes, and the run never touches career records. */
@@ -3280,7 +3280,7 @@ const TUTOR=[
   {emotion:"leak",say:T=>`The cloud isn't safe either: <b>${T.c?T.c.name:"an app"}</b> sprang a <b>leak</b>. Leave it and it becomes a <b>breach</b>, a red alert that drains security and spreads next door. Hold <kbd>E</kbd> on it to seal it.`,
    enter:T=>{T.ci=S.cloud.findIndex(a=>a&&!a.staged&&!a.down&&!a.breach);T.c=S.cloud[T.ci]||null;if(T.c){T.c.leakOn=true;T.c.leak=25;T.c.tfT=0;}},
    at:T=>T.c&&S.cloud[T.ci]===T.c?SLOTS[T.ci]:null,done:T=>!T.c||S.cloud[T.ci]!==T.c||(!T.c.leakOn&&!T.c.breach),
-   ok:"Sealed. Security upgrades make leaks rarer, so you won't always be doing this by hand."},
+   ok:"Handled. Security upgrades make leaks rarer, so you won't always be doing this by hand."},
   {say:`Last job: move everything else to the cloud. <b>Bronze first</b>: every bronze you move raises silver's odds, and bronze plus silver raise gold's. Watch the % on each rack. The client is done when the room is empty.`,grab:true,
    at:()=>S.carry?slotNear():(r=>r?RACKS[r.slot]:null)(nextToMove()),done:()=>false},
 ];
@@ -3309,14 +3309,17 @@ $("clip-skip").addEventListener("click",e=>{e.currentTarget.blur();newRun();titl
 // Presentation only: use existing play state, never roll gameplay randomness.
 function clipMood(){
   return {wide:S.p.boost>0,quake:!!S.alert,
-    closed:!!(keys.fix&&S.fix&&S.fix.kind==="fire"&&S.fixP>0&&S.p.stun<=0),
+    // red alert: long, squeezed-shut eyes with quick wide-eyed peeks (shut the whole time under reduced motion)
+    shut:!!S.alert&&(RM||(S.t%2.4)<1.7),
+    closed:spraying(S.ext)||!!(S.temp&&spraying(S.temp.ext))||!!(S.agent&&spraying(S.agent.ext)), // any extinguisher going off (fire work never fills fixP)
     roll:!!(S.p.heldBy&&S.p.stun>0),
     tear:!!(S.tut&&TUTOR[S.tut.i]?.emotion==="leak")};
 }
 function drawClip(x,y,s){
   const mood=clipMood();
-  if(mood.quake&&!RM){x+=Math.sin(S.t*61)*2.3;y+=Math.sin(S.t*47)*1.4;}
-  ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.lineCap="round";ctx.lineJoin="round";
+  if(mood.quake&&!RM){x+=Math.sin(S.t*61)*2.6+Math.sin(S.t*23)*1.2;y+=Math.sin(S.t*47)*1.6;} // quake
+  ctx.save();ctx.translate(x,y);if(mood.quake&&!RM)ctx.rotate(Math.sin(S.t*38)*0.08); // quiver
+  ctx.scale(s,s);ctx.lineCap="round";ctx.lineJoin="round";
   const wire=()=>{ctx.beginPath();ctx.moveTo(-3,8);ctx.lineTo(-3,-12);ctx.arc(1,-12,4,Math.PI,0);ctx.lineTo(5,16);ctx.arc(-1,16,6,0,Math.PI);ctx.lineTo(-7,-18);ctx.arc(1,-18,8,Math.PI,0);ctx.lineTo(9,10);};
   ctx.save();ctx.rotate(Math.PI); // turn the wire only; the face stays upright
   ctx.strokeStyle="rgba(0,0,0,.5)";ctx.lineWidth=5;wire();ctx.stroke();
@@ -3326,6 +3329,9 @@ function drawClip(x,y,s){
   // No random draws here: cosmetic animation must not change gameplay odds.
   const phase=S.t%17,blink=!RM&&[3.8,9.2,15.5].some(t=>phase>=t&&phase<t+0.14);
   for(const[ex,ey]of[[-4,-6],[6,-7]]){
+    // shut eyes sit on a pale lid so they read against the dark floor
+    if(mood.shut||mood.closed||blink){ctx.fillStyle="#d9e0e5";ctx.beginPath();ctx.arc(ex,ey,3.8,0,7);ctx.fill();}
+    if(mood.shut){const k=ex<0?1:-1;ctx.strokeStyle="#222";ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(ex-3*k,ey-2.6);ctx.lineTo(ex+2*k,ey);ctx.lineTo(ex-3*k,ey+2.6);ctx.stroke();continue;} // squeezed shut: > <
     if(mood.closed||blink){ctx.strokeStyle="#222";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(ex-3,ey);ctx.lineTo(ex+3,ey);ctx.stroke();continue;}
     ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(ex,ey,mood.wide||mood.quake?4.7:3.8,0,7);ctx.fill();ctx.strokeStyle="#222";ctx.lineWidth=.8;ctx.stroke();
     // Aim from each eye to the player; keep pupils inside the whites.
@@ -3360,7 +3366,7 @@ function handsOn(){
   mode="title";
   show(`<div class="eyebrow">Hands on Tutorial</div>
   <div class="clipnote big">${CLIP_SVG}<div><h2>It looks like you're trying to migrate a server.</h2><p>Good news: you're in a <b>reverse shadow</b>. Normally the new hire shadows a senior engineer and watches. Today it's the other way round: <b>you</b> do the work, and I, a senior paperclip with more uptime than your whole team, watch and tell you where to go next.</p></div></div>
-  <p>One tiny client, Paperclip Supply Co. Nothing happens unless I set it up, compliance and license clocks are paused, fires burn a little slower than usual, and I've rigged the cutover odds in your favour. Follow the paperclip on the floor. You'll learn to move servers, patch, close tickets, answer email, fight a fire, find a forgotten server and seal a leak. Then we'll read the end-of-client report together and spend your first improvement sprint.</p>
+  <p>One tiny client, Paperclip Supply Co. Nothing happens unless I set it up, compliance and license clocks are paused, fires and leaks grow a little slower than usual, and I've rigged the cutover odds in your favour. Follow the paperclip on the floor. You'll learn to move servers, patch, close tickets, answer email, fight a fire, find a forgotten server and seal a leak. Then we'll read the end-of-client report together and spend your first improvement sprint.</p>
   <p style="font-size:13px;color:var(--muted)">Move with WASD or the arrows, Space grabs and drops, hold E to fix, P pauses. On a phone, drag on the left half and use GRAB and FIX. Nothing here counts toward your career records.</p>
   <div class="row"><button class="btn" data-act="handsgo">Let's go</button><button class="btn ghost" data-act="menu">Main menu</button></div>`);
 }
