@@ -176,6 +176,14 @@ a.learnlink{color:var(--amber);font-size:12.5px;white-space:nowrap}
 /* Hands-on tutorial: the senior paperclip's panel above the floor, and its notes on the review screens */
 .clip{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--amber);border-radius:8px;padding:8px 12px;min-height:2.7em}
 .clip{box-shadow:0 0 7px rgba(255,181,71,.24),0 0 20px rgba(255,181,71,.12)}
+/* grabbing a server before the paperclip asks: the tips panel shakes its head at you */
+.clip.nag{animation:clipnag .5s ease-in-out;border-color:var(--danger)}
+@keyframes clipnag{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+/* a pulsing ring, like the one around a server that needs patching, round the button to press */
+.btn.ring{position:relative;box-shadow:0 0 0 2px var(--amber)}
+.btn.ring::after{content:"";position:absolute;inset:-5px;border:2px solid var(--amber);border-radius:10px;pointer-events:none;animation:ringpulse 1.1s ease-out infinite}
+@keyframes ringpulse{from{opacity:.95;transform:scale(1)}to{opacity:0;transform:scale(1.22,1.5)}}
+@media (prefers-reduced-motion:reduce){.clip.nag{animation:none}.btn.ring::after{animation:none;opacity:.9}}
 .clip[hidden]{display:none}
 .clip-art,.clipnote svg{flex:none;width:34px;height:64px}
 .clip-body{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
@@ -409,7 +417,7 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
     </div>
   </div>
   <div class="modline" id="h-mod"></div>
-  <div class="clip" id="clip" hidden><div class="clip-art" aria-hidden="true"></div><div class="clip-body"><small id="clip-step"></small><p id="clip-say" aria-live="polite"></p><div class="clip-btns"><button id="clip-next" class="btn sm" type="button">Got it ▸</button><button id="clip-skip" class="btn ghost sm" type="button">Leave tutorial</button></div></div></div>
+  <div class="clip" id="clip" hidden><div class="clip-art" aria-hidden="true"></div><div class="clip-body"><small id="clip-step"></small><p id="clip-say" aria-live="polite"></p><div class="clip-btns"><button id="clip-next" class="btn sm ring" type="button">Got it ▸</button><button id="clip-skip" class="btn ghost sm" type="button">Leave tutorial</button></div></div></div>
   <div class="health" id="health" aria-label="Health bars">
     <div class="hb" id="hb-up" title="Uptime error budget. Offline servers burn it, gold fastest. Servers shut down for migration burn it far more slowly. Each client has its own budget."><div class="hl"><span>Uptime</span><b></b></div><div class="ht"><i></i></div><small>Empty = fired</small></div>
     <div class="hb" id="hb-sec" title="Breaches and failed audits drain it. +25 at each security review between clients."><div class="hl"><span>Security</span><b></b></div><div class="ht"><i></i></div><small>Empty = fired</small></div>
@@ -2100,7 +2108,7 @@ function doGrab(){
     return;
   }
   const g=grabTarget();if(!g)return;
-  if(!tutGrabOK()){fl(P,"📎 Not yet: follow the paperclip",C.amber);return;}
+  if(!tutGrabOK())return tutNag();
   if(downCount()>0){fl(P,"Can't move servers while any are offline",C.danger);return;}
   if(g.fire>0){fl(P,"Put the fire out first",C.amber);return;}
   if(g.down){fl(P,"It's offline. Hold E to bring it back up first",C.amber);return;}
@@ -3285,6 +3293,14 @@ const TUTOR=[
    at:()=>S.carry?slotNear():(r=>r?RACKS[r.slot]:null)(nextToMove()),done:()=>false},
 ];
 const tutGrabOK=()=>!S.tut||!!(TUTOR[S.tut.i]||{}).grab;
+// grabbing a server before the paperclip asks for it: a scolding over your head, and the tips panel shakes.
+// The lines take turns (no randomness, so a cosmetic nag never shifts the run's odds).
+const TUT_NAGS=["📎 No, no, no! Read the tips!","📎 Not yet! The tip up top. Read it.","📎 Nope. We don't freelance on day one. Read the tips!"];
+let nagTimer=0;
+function tutNag(){
+  const T=S.tut;T.nag=(T.nag||0)+1;fl(S.p,TUT_NAGS[(T.nag-1)%TUT_NAGS.length],C.danger);sfx("badgeNo");
+  const el=$("clip");el.classList.remove("nag");void el.offsetWidth;el.classList.add("nag");clearTimeout(nagTimer);nagTimer=setTimeout(()=>el.classList.remove("nag"),900);
+}
 function tutHighlight(els){document.querySelectorAll(".tut-hl").forEach(e=>e.classList.remove("tut-hl"));if(els)for(const e of els)if(e)e.classList.add("tut-hl");}
 function tutSay(html,label){$("clip-say").innerHTML=html;$("clip-step").textContent=label||"";$("clip-next").hidden=true;}
 function tutRender(){
