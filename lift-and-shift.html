@@ -164,9 +164,26 @@ a.learnlink{color:var(--amber);font-size:12.5px;white-space:nowrap}
 .diff:focus-visible{outline:2px solid var(--leak);outline-offset:2px}
 .tut{display:flex;gap:18px;align-items:flex-start;min-height:150px}
 .tut-ic{font-size:44px;line-height:1;flex:none;width:64px;height:64px;display:grid;place-items:center;background:var(--panel-2);border-radius:12px}
+.tutorial-actions{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto}
 .tut h2{margin-bottom:6px}
 .tut p{font-size:14.5px}
-.tut .tip{margin-top:8px;font-size:13px;color:var(--amber)}
+.tut .tut-tip{margin-top:8px;font-size:13px;color:var(--amber)}
+/* Hands-on tutorial: the senior paperclip's panel above the floor, and its notes on the review screens */
+.clip{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--amber);border-radius:8px;padding:8px 12px;min-height:2.7em}
+.clip[hidden]{display:none}
+.clip-art,.clipnote svg{flex:none;width:34px;height:64px}
+.clip-body{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
+.clip-body p{margin:0;flex:1 1 380px;font-size:13.5px;line-height:1.4}
+.clip-body p b{color:var(--amber)}
+.clip-body small{flex:1 0 100%;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.clip-btns{display:flex;gap:6px;flex:none}
+.clip kbd,.clipnote kbd{font-family:var(--f-mono);font-size:.85em;border:1px solid var(--line);border-radius:4px;padding:0 4px;background:var(--panel-2)}
+.tut-hl{outline:2px solid var(--amber);outline-offset:2px;border-radius:7px}
+.clipnote{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--amber);background:rgba(255,181,71,.07);border-radius:8px;padding:10px 12px;font-size:13.5px}
+.clipnote p{margin:0}
+.clipnote b{color:var(--amber)}
+.clipnote.big svg{width:44px;height:84px}
+.clipnote h2{margin:0 0 6px}
 .dots{display:flex;gap:6px}
 .dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}
 .dots i.on{background:var(--amber)}
@@ -280,6 +297,10 @@ kbd{font-family:var(--f-mono);font-size:11.5px;background:var(--panel-2);border:
   .hb small{display:none}
   #t-pause{top:72px}
   .toast{font-size:11.5px;padding:3px 8px}
+  .clip{position:fixed;z-index:6;left:max(6px,env(safe-area-inset-left,0px));top:44px;max-width:40vw;padding:4px 8px;gap:6px;opacity:.94}
+  .clip-art{width:18px;height:34px}
+  .clip-body p{font-size:11px;flex-basis:100%}
+  .clip-body small{display:none}
   .stage{width:min(100%,calc((100vh - 70px)*960/560));width:min(100%,calc((100dvh - 70px)*960/560));margin-inline:auto}
 }
 /* the game needs landscape on a phone */
@@ -382,6 +403,7 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
     </div>
   </div>
   <div class="modline" id="h-mod"></div>
+  <div class="clip" id="clip" hidden><div class="clip-art" aria-hidden="true"></div><div class="clip-body"><small id="clip-step"></small><p id="clip-say" aria-live="polite"></p><div class="clip-btns"><button id="clip-next" class="btn sm" type="button">Got it ▸</button><button id="clip-skip" class="btn ghost sm" type="button">Leave tutorial</button></div></div></div>
   <div class="health" id="health" aria-label="Health bars">
     <div class="hb" id="hb-up" title="Uptime error budget. Offline servers burn it, gold fastest. Servers shut down for migration burn it far more slowly. Each client has its own budget."><div class="hl"><span>Uptime</span><b></b></div><div class="ht"><i></i></div><small>Empty = fired</small></div>
     <div class="hb" id="hb-sec" title="Breaches and failed audits drain it. +25 at each security review between clients."><div class="hl"><span>Security</span><b></b></div><div class="ht"><i></i></div><small>Empty = fired</small></div>
@@ -501,10 +523,14 @@ const BREAK_CLIENTS=[
    quotes:["You showed up, and that's what counts. It also worked.","Please accept this trophy for your migration.","Everybody won this cutover."]},
 ];
 const BREAK_CLIENT=()=>BREAK_CLIENTS[Math.max(0,retro("break")-1)%BREAK_CLIENTS.length];
+// the hands-on tutorial's one client: three known servers and one forgotten one, at any difficulty
+const TUT_CLIENT={name:"Paperclip Supply Co.",short:"Paperclip Supply",err:200,days:40,trait:null,contact:"Office Manager, Paperclip Supply Co.",
+  apps:[["Order Desk",0,"bronze"],["Email",0,"bronze"],["Stapler Registry",0,"silver"]],hidden:[["Supply Closet PC","bronze"]],
+  quotes:["You did it all yourself. The paperclip says it helped.","Our staplers have never been more highly available.","Ten out of ten. Would get reverse shadowed again."]};
 const isBreak=n=>(S.breaks||[]).includes(n);
 // stage = which client of the career this is, not counting break jobs inserted before it
 const stage=n=>n-(S.breaks||[]).filter(b=>b<n).length;
-const getClient=n=>{if(isBreak(n))return BREAK_CLIENT();const g=stage(n);return g<=CLIENTS.length?CLIENTS[g-1]:genClient(g);};
+const getClient=n=>{if(S.tut)return TUT_CLIENT;if(isBreak(n))return BREAK_CLIENT();const g=stage(n);return g<=CLIENTS.length?CLIENTS[g-1]:genClient(g);};
 const pace=()=>isBreak(S.sprint)?1:stage(S.sprint);
 const client=()=>getClient(S.sprint);
 const dayNum=()=>Math.floor(S.time/DAY)+1;
@@ -522,14 +548,15 @@ const diff=()=>DIFFS[S.diff||"normal"];
 const STEP={easy:1,normal:2,hard:3};
 function engagementCfg(n){
   const c=getClient(n),g=stage(n);let k,h;
-  if(isBreak(n))[k,h]=diff().counts[0];
+  if(S.tut)[k,h]=[c.apps.length,c.hidden.length];
+  else if(isBreak(n))[k,h]=diff().counts[0];
   else if(g<=3)[k,h]=diff().counts[g-1];
   else if(c.trait&&c.trait.id==="donut"){k=c.apps.length;h=1;}
   else{const last=diff().counts[2];k=last[0]+STEP[S.diff||"normal"]*(g-3);h=last[1]+Math.floor((g-3)/2);}
   // a big client can ask for more servers than its template lists, so reuse names as numbered extras
   const apps=[];for(let i=0;i<k;i++){const b=c.apps[i%c.apps.length];apps.push(i<c.apps.length?b:[`${b[0]} ${Math.floor(i/c.apps.length)+1}`,b[1],b[2],b[3]]);}
   const hid=[];for(let i=0;i<h;i++){const b=c.hidden[i%c.hidden.length];hid.push(i<c.hidden.length?b:[`${b[0]} ${Math.floor(i/c.hidden.length)+1}`,b[1]]);}
-  return{c,apps,hidden:hid,days:Math.max(6,Math.round(5+(k+h)*1.1)+diff().days+2*retro("estimates")),err:Math.round((c.err||110)*diff().err)};
+  return{c,apps,hidden:hid,days:S.tut?c.days:Math.max(6,Math.round(5+(k+h)*1.1)+diff().days+2*retro("estimates")),err:Math.round((c.err||110)*diff().err)};
 }
 // hazards ramp up past the third client
 const haz=()=>diff().haz*(1+0.08*Math.max(0,pace()-3));
@@ -950,7 +977,8 @@ const RANKS=[
   {name:"CIO",hold:4.8,lines:["Are we cloud yet?","Have you tried AI?","Make it serverless.","Saw it on LinkedIn.","Cut costs 40%."]},
 ];
 function spawnUsers(){
-  S.users=[];const n=pace()+1+diff().users;
+  S.users=[];if(S.tut)return; // the tutorial brings its one user in when it gets to people
+  const n=pace()+1+diff().users;
   for(let i=0;i<n;i++){
     let u;for(let k=0;k<20;k++){u={x:rand(390,570),y:rand(60,460)};if(dist(u,S.p)>100)break;}
     const rank=Math.min(5,Math.floor(rand(0,2.2+pace()*1.3)));
@@ -1034,6 +1062,7 @@ function tickSpecials(dt){
   if(S.window>0){S.window-=dt;if(S.window<=0)toast("🕐 The maintenance window closed.");}
   if(S.focus>0){S.focus-=dt;if(S.focus<=0)toast("🎧 Headphones off. The pings resume.");}
   if(S.pizza){S.pizza.t-=dt;if(S.pizza.t<=0){S.pizza=null;toast("🍕 The pizza's gone. Everyone wanders back.");}}
+  if(S.tut)return; // no surprise specials in the tutorial
   S.spT-=dt;
   if(S.spT<=0){S.spT=rand(30,45);if(!S.sp.length){const opts=["temp","window","pizza","headphones"].filter(k=>!(k==="temp"&&S.temp));S.sp.push({kind:pick(opts),x:rand(395,565),y:rand(140,440),life:14});}}
   for(const s of S.sp){s.life-=dt;if(dist(s,S.p)<28){s.dead=true;useSpecial(s);}}
@@ -1510,7 +1539,7 @@ function tickUsers(dt){
   if(P.heldBy&&!S.users.includes(P.heldBy)&&P.stun<=0)P.heldBy=null; // the person holding you is gone
   // new users wander in over time, so the hallway never stays empty for long
   S.userT-=dt;
-  if(S.userT<=0){S.userT=rand(8,12);if(S.users.filter(u=>!u.hunter).length<pace()+1+diff().users){
+  if(S.userT<=0&&!S.tut){S.userT=rand(8,12);if(S.users.filter(u=>!u.hunter).length<pace()+1+diff().users){
     const spot=[{x:400,y:470},{x:560,y:470},{x:400,y:130},{x:560,y:130}].sort((a,b)=>dist(b,S.p)-dist(a,S.p))[0];
     S.users.push({...spot,rank:Math.min(5,Math.floor(rand(0,2.2+pace()*1.3))),vx:0,vy:0,turn:0,cd:0,line:""});}}
   for(const u of S.users){
@@ -1628,6 +1657,7 @@ function drawWarnings(){
 const CELEB_TIME=3.2;
 function startCelebration(){sfx("celebrate");
   mode="celebrate";S.celebT=0;S.alert=false;
+  if(S.tut)tutSay("🎉 The room's empty: that's a finished client. Next, we'll read the end-of-client report together.","Client complete");
   const cols=["#ffb547","#5fd38d","#45aefc","#b896ff","#ff6fae","#ffe066","#ffffff"];
   S.confetti=Array.from({length:160},()=>({x:rand(0,W),y:rand(-H,-10),vx:rand(-40,40),vy:rand(90,220),r:rand(0,6.28),vr:rand(-8,8),c:pick(cols),w:rand(4,9),h:rand(2,5)}));
   S.sparkles=Array.from({length:40},()=>({x:rand(20,W-20),y:rand(20,H-20),ph:rand(0,6.28),s:rand(4,9)}));
@@ -1818,6 +1848,7 @@ addEventListener("keydown",e=>{
   if(e.code==="KeyF"&&!e.repeat){useFreeze();return;}
   if(e.code==="KeyM"&&!e.repeat){setSound(!AU.on);toast(AU.on?"🔊 Sound on":"🔇 Sound off");return;}
   if(e.code==="KeyP"||e.code==="Escape"){if(mode==="play"||mode==="paused"){e.preventDefault();togglePause();}return;}
+  if(e.key==="Enter"&&mode==="play"&&S.tut&&!e.target.closest("button")){e.preventDefault();if(!e.repeat)tutAck();return;} // "Got it" on the paperclip's info steps
   const k=MAP[e.code];if(!k||mode!=="play")return;
   e.preventDefault();
   if(k==="grab"&&!keys.grab)grabPressed=true;
@@ -1856,11 +1887,11 @@ const PHONE_PORTRAIT=matchMedia("(pointer:coarse) and (orientation:portrait) and
 /* ==== Run state: new run, waves, starting and finishing clients ==== */
 /* ---------- state ---------- */
 let S;
-function newRun(){
+function newRun(tut=false){
   BK.left=restoresForRun();BK.used=0;BK.fired=false;
   S={songOffset:Math.floor(Math.random()*3),sprint:0,budget:0,cost:{},retro:{},secLoss:{},secWarned:false,tierTot:{},movedT:{},career:[],breaks:[],jig:{h:0,t:0},gen:{},lz:0,wave:[],run:{mig:0,audits:0,breaches:0,lost:0,unplanned:0,fails:0,rollbacks:0,missed:0,esc:0,held:0,heldT:0,vendor:0},err:ERR_BUDGET,errMax:ERR_BUDGET,security:100,energy:50,points:0,upgrades:{},racks:Array(12).fill(null),cloud:Array(16).fill(null),
      bots:[],totalApps:0,lostTotal:0,alert:false,t:0,offers:[],missed:{},mgrBreaks:0,mgrShame:0,
-     p:{x:480,y:280,stun:0,inv:0,heldBy:null,userImm:0},users:[],cbots:[],fx:[],carry:null,inv:[],tk:[],st:[],fl:[],fix:null,fixP:0,fixKey:null,fixNeed:1,warnT:-9,prompt:"",diff:DIFF,hardcore:HARDCORE,noAI:NOAI};
+     p:{x:480,y:280,stun:0,inv:0,heldBy:null,userImm:0},users:[],cbots:[],fx:[],carry:null,inv:[],tk:[],st:[],fl:[],fix:null,fixP:0,fixKey:null,fixNeed:1,warnT:-9,prompt:"",diff:tut?"easy":DIFF,hardcore:tut?false:HARDCORE,noAI:NOAI,tut:tut?{i:0}:null};
   startSprint(1);
 }
 function addApp(entry,hidden,counted){
@@ -1869,7 +1900,7 @@ function addApp(entry,hidden,counted){
   const maxT=rand(42,65);
   const a=S.racks[slot]={name,heavy:heavy||0,tier,licBase:licBase||0,slot,maxT,timer:maxT*rand(.55,1),fire:0,spreadT:3,down:false,prog:0,hidden,lic:0};
   // hidden servers carry a license; find one quickly and you can beat the renewal
-  if(hidden){a.licBase=ri(15,45);a.hiddenLicenseDue=S.time+rand(20,90);}
+  if(hidden){a.licBase=ri(15,45);a.hiddenLicenseDue=S.time+(S.tut?1e4:rand(20,90));} // the tutorial sets its own when you get to it
   if(!counted){S.totalApps++;S.tierTot[tier]=(S.tierTot[tier]||0)+1;}
   return a;
 }
@@ -1923,7 +1954,7 @@ function finishEngagement(){
   S.obsolete=!S.ss.human;
   S.outsourced=!S.obsolete&&outsourced();
   S.bots.forEach(b=>{b.tgt=null;b.carry=null;});
-  try{const b=+(localStorage.getItem("liftshift-clients")||0);if(S.career.length>b)localStorage.setItem("liftshift-clients",String(S.career.length));}catch(e){}
+  if(!S.tut)try{const b=+(localStorage.getItem("liftshift-clients")||0);if(S.career.length>b)localStorage.setItem("liftshift-clients",String(S.career.length));}catch(e){}
   S.retroOpts=retroOptions();S.retroPick=null;S.agentNews=S.career.length===3&&!lvl("agent")&&!S.noAI;S.points=S.cap=capNext();missShops();S.offers=rollOffers();if(S.agentNews&&!S.offers.includes("agent"))S.offers[0]="agent";shownOffers(S.offers);S.quote=pick(c.quotes);S.rerolls=0;S.rerollMsg="";
   // security review between clients: get some security back (capped at 100), and the critical warning can fire again
   S.secRefill=Math.min(25,100-Math.max(0,S.security));S.security=Math.min(100,S.security+25);S.secWarned=false;
@@ -2028,7 +2059,7 @@ function activateCloud(c){
   if(S.racks[a.slot]===a)S.racks[a.slot]=null;
 }
 function migrate(a,i,byBot,bonus=0){
-  const p=Math.min(1,successChance(a.tier)+bonus),ok=Math.random()<p;
+  const p=Math.min(1,successChance(a.tier)+bonus),ok=!!S.tut||Math.random()<p; // the paperclip rigs the tutorial's cutovers
   if(!ok)S.ss.att++;
   const staged=!ok&&liveCopy(a);
   S.cloud[i]={name:a.name,tier:a.tier,leak:0,leakOn:false,grace:7+8*retro("baseline"),tfT:0,breach:false,prog:0,spreadT:0,down:!ok&&!staged,staged,rb:0,orig:a,downT:!ok&&!staged?S.time:null};
@@ -2063,6 +2094,7 @@ function doGrab(){
     return;
   }
   const g=grabTarget();if(!g)return;
+  if(!tutGrabOK()){fl(P,"📎 Not yet: follow the paperclip",C.amber);return;}
   if(downCount()>0){fl(P,"Can't move servers while any are offline",C.danger);return;}
   if(g.fire>0){fl(P,"Put the fire out first",C.amber);return;}
   if(g.down){fl(P,"It's offline. Hold E to bring it back up first",C.amber);return;}
@@ -2231,12 +2263,12 @@ function financeExtension(by){
 /* ---------- simulation ---------- */
 function neighbors(i){const r=Math.floor(i/3),c=i%3,n=[];if(c>0)n.push(i-1);if(c<2)n.push(i+1);if(r>0)n.push(i-3);if(r<3)n.push(i+3);return n;}
 function tickOnPrem(dt){
-  const rate=(modId()==="audit"?1.3:1)*Math.sqrt(haz())*Math.pow(0.9,retro("patchcal"));
+  const rate=S.tut?0:(modId()==="audit"?1.3:1)*Math.sqrt(haz())*Math.pow(0.9,retro("patchcal")); // the tutorial pauses compliance clocks
   for(const a of onPremApps()){
     if(a.hidden||a.down)continue;
     a.timer-=dt*rate;
     // a license only runs down while the server is running on its rack: in transit it is paused, but a blue-green original stays live and keeps counting
-    if(a.lic>0&&S.racks[a.slot]===a){a.lic-=dt;if(a.lic<=0){a.lic=0;const c=licCost(a);spend("license",c);sfx("licenseRenewed");fl(posOf(a),`📜 −$${c}k`,C.danger);toast(`📜 ${a.name}'s license auto-renewed before you moved it. −$${c}k.`);}}
+    if(a.lic>0&&S.racks[a.slot]===a){a.lic-=S.tut?0:dt;if(a.lic<=0){a.lic=0;const c=licCost(a);spend("license",c);sfx("licenseRenewed");fl(posOf(a),`📜 −$${c}k`,C.danger);toast(`📜 ${a.name}'s license auto-renewed before you moved it. −$${c}k.`);}}
     if(a.timer<=0&&a.covered){a.covered=false;a.timer=a.maxT;}
     else if(a.timer<=0){if(a.botErr){a.botErr=false;fl(posOf(a),"🤖 automation error reset",C.muted);} // after a failed audit the bot gets another try
       a.timer=a.maxT;spend("audits",12);sfx("audit");secHit("audit",4);S.ss.audits++;unplanned(1,"audit");
@@ -2247,8 +2279,8 @@ function tickOnPrem(dt){
     if(a.down){spend("downtime",TIER[a.tier].drain*dt);S.err-=TIER[a.tier].sla*dt;continue;} // SLA penalty + error budget burn while offline
     if(a.fire>0){
       if(freezeActive())continue;
-      a.fire+=6*dt*Math.pow(0.8,lvl("suppress"));spend("fires",0.35*dt);a.spreadT-=dt;
-      if(a.fire>=50&&a.spreadT<=0){a.spreadT=3;if(Math.random()<(downCount()>0?0.10:0.35)){const n=neighbors(i).map(j=>S.racks[j]).filter(b=>b&&!b.hidden&&!b.down&&b.fire===0);if(n.length){const b=pick(n);b.fire=6;b.spreadT=3;toast(`🔥 The fire spread to ${b.name}.`);}}}
+      a.fire+=6*dt*Math.pow(0.8,lvl("suppress"))*(S.tut?0:1);spend("fires",0.35*dt);a.spreadT-=dt; // tutorial fires wait for the player and never spread
+      if(a.fire>=50&&a.spreadT<=0&&!S.tut){a.spreadT=3;if(Math.random()<(downCount()>0?0.10:0.35)){const n=neighbors(i).map(j=>S.racks[j]).filter(b=>b&&!b.hidden&&!b.down&&b.fire===0);if(n.length){const b=pick(n);b.fire=6;b.spreadT=3;toast(`🔥 The fire spread to ${b.name}.`);}}}
       if(a.fire>=100){sfx("offline");a.fire=0;a.down=true;a.downT=S.time;a.prog=0;if(a.hidden)revealApp(a,false);spend("fires",5);S.ss.lost++;
         toast(a.tier==="gold"?`💀 ${a.name} (gold) burned out and went offline. RED ALERT.`:`💀 ${a.name} burned out and went offline. Hold E on it to bring it back up.`);
         fl(RACKS[i],"OFFLINE",C.danger);}
@@ -2289,9 +2321,9 @@ function tickCloud(dt){
     }
     // drift: an unpatched cloud app gets riskier over time (up to 2x after ~3 min). Auto-patching keeps it fresh.
     if(S.upgrades.autopatch)a.age=0;else a.age=(a.age||0)+dt;
-    if(!a.leakOn){if(a.grace>0){a.grace-=dt;return;}if(Math.random()<lc*driftMult(a)*(a.cleanStart>0?0.5:1)*dt){a.leakOn=true;a.leak=4;a.tfT=0;}return;}
+    if(!a.leakOn){if(a.grace>0){a.grace-=dt;return;}if(!S.tut&&Math.random()<lc*driftMult(a)*(a.cleanStart>0?0.5:1)*dt){a.leakOn=true;a.leak=4;a.tfT=0;}return;}
     if(freezeActive())return;
-    a.leak+=3.6*dt*Math.pow(0.85,lvl("scanner"));
+    a.leak+=3.6*dt*Math.pow(0.85,lvl("scanner"))*(S.tut?0:1);
     if(a.leak>=100)breach(i,null);
   });
 }
@@ -2308,6 +2340,7 @@ function breach(i,from,fromIdx){
   toast(from?`🔓 The breach spread from ${from} to ${a.name}. RED ALERT.`:`🔓 ${a.name} leaked long enough to get breached. RED ALERT.`);
 }
 function spawns(dt){
+  if(S.tut)return; // the tutorial sets up every ticket, email and pickup itself
   if(!freezeActive()){
   // a full queue takes nothing new: the bars show everything that is waiting, so there is never a hidden backlog.
   // (a full ticket queue keeps escalating and a full inbox keeps sending VPs until you work it down)
@@ -2440,7 +2473,7 @@ function buildPrompt(){
     else if(z===0)parts.push(copy?"Space: discard the copy":rackUnder()>=0?"Space: put it down here":"Walk onto an empty rack to put it down");
     else parts.push(copy?"Carry the copy to the cloud → (on-prem stays live)":"Carry it to the cloud →");}
   else{
-    const g=grabTarget();if(g&&g.fire===0&&!g.down&&!S.alert)parts.push(S.frozen?"⛔ Can't move: a server is offline":pipeLanes()>0?`Space: ${freePipelineLane()>=0?"pipeline":"carry (pipeline busy)"} · ${pipeDur()}s pipeline (${Math.round(Math.min(1,successChance(g.tier)+0.1)*100)}%)`:`Space: grab (${Math.round(successChance(g.tier)*100)}% cutover)`);
+    const g=grabTarget();if(g&&g.fire===0&&!g.down&&!S.alert&&tutGrabOK())parts.push(S.frozen?"⛔ Can't move: a server is offline":pipeLanes()>0?`Space: ${freePipelineLane()>=0?"pipeline":"carry (pipeline busy)"} · ${pipeDur()}s pipeline (${Math.round(Math.min(1,successChance(g.tier)+0.1)*100)}%)`:`Space: grab (${Math.round(successChance(g.tier)*100)}% cutover)`);
     const rb=rollbackTarget();if(rb)parts.push(`Hold Space: roll back (${ROLLBACK_TIME}s)`);
     const f=S.fix;
     if(S.cloud.some((a,i)=>a&&a.rsTag&&dist(P,SLOTS[i])<RS_REACH))parts.push("E: approve FinOps saving (hold E to approve as you walk)");
@@ -2470,7 +2503,7 @@ function tickSlow(dt){
 const slowDepth=()=>S?clamp((1-(S.slow??1))/(1-ALERT_SLOW.easy),0,1):0;
 function update(dt){
   tickSlow(dt);
-  S.t+=dt;S.time+=dt;
+  S.t+=dt;if(!S.tut)S.time+=dt;
   const e0=S.energy;
   const P=S.p;if(P.stun>0)P.stun-=dt;if(P.inv>0)P.inv-=dt;
   const stk=stick.on&&(stick.x||stick.y),mx=stk?stick.x:(keys.r?1:0)-(keys.l?1:0),my=stk?stick.y:(keys.d?1:0)-(keys.u?1:0),m=stk?1:Math.hypot(mx,my)||1;
@@ -2508,7 +2541,7 @@ function update(dt){
   tickPipeline(dt);
   // a server being moved is in its cutover window: it counts as down at a quarter of the outage rate (MIGRATE_BURN)
   {const moving=shutDownMoving(),m=migrateMult();
-   for(const a of moving){S.err-=TIER[a.tier].sla*m*dt;spend("downtime",TIER[a.tier].drain*m*dt);}
+   for(const a of moving){if(!S.tut)S.err-=TIER[a.tier].sla*m*dt;spend("downtime",TIER[a.tier].drain*m*dt);}
    if(migrateBurn()>=MIGRATE_WARN&&S.time>=(S.burnT||0)){S.burnT=S.time+30;toast(`⚠️ ${moving.length} servers are shut down for migration and uptime is draining.${S.upgrades.bluegreen?" Slow down, or move fewer at once.":" Move fewer at once, or get Blue-Green Cutovers."}`);}}
   tickOnPrem(dt);cancelDeadCopies();tickCloud(dt);tickFinops(dt);observeTick();spawns(dt);tickHazards(dt);
   for(const b of S.bots){b.flash=Math.max(0,b.flash-dt);(b.kind==="patch"?patchBot:moverBot)(b,dt,b.kind==="patch"?patchBotSpeed():85);}
@@ -2519,6 +2552,7 @@ function update(dt){
   S.secCalm=(S.secCalm||0)+dt;
   if(S.secCalm>20&&!S.cloud.some(a=>a&&a.breach)&&S.security<100){S.security=Math.min(100,S.security+0.3*dt);if(S.security>=30)S.secWarned=false;}
   S.energy=clamp(S.energy+(S.upgrades.oncall?0.9:0.6)*dt,0,100);
+  tutTick(dt);
   buildPrompt();
   // running costs. The report also tracks what the cloud apps would have cost had they stayed on-prem;
   // it's shown but never scored, and it goes negative while the cloud costs more than on-prem.
@@ -2873,6 +2907,7 @@ function draw(){
   drawSlowmo();
   if(freezeActive()){ctx.fillStyle="#163947";rr(W/2-170,30,340,28,6);ctx.fill();tx(`❄ CHANGE FREEZE · ${Math.ceil(S.freezeT)}s${S.freezeT<=3?" · THAWING":""}`,W/2,44,14,"#bcecff",{weight:700});}
   for(const f of S.fl){ctx.globalAlpha=1-f.t/f.life;tx(f.text,f.x,f.y-f.t*26,11,f.color,{weight:600});ctx.globalAlpha=1;}
+  if(S.tut&&(mode==="play"||mode==="paused"))drawTutor();
   if(mode==="celebrate")drawCelebration();
   ctx.restore();
 }
@@ -2917,6 +2952,7 @@ function hud(){
   $("freeze").disabled=mode!=="play"||!S.upgrades.freezecharge;
   $("freeze").textContent=S.upgrades.freezecharge?"❄ Freeze (F) · 1 charge":"❄ Freeze · buy between clients";
   if(!S)return;
+  {const on=!!S.tut&&["play","paused","celebrate"].includes(mode);if($("clip").hidden===on){$("clip").hidden=!on;if(!on)tutHighlight(null);}}
   const c=client(),late=overdue();
   $("h-sprint").textContent=`#${S.sprint}`;
   // (lease, uptime, security and points now live in the health bars below)
@@ -2990,9 +3026,9 @@ function titleScreen(){
   <div class="diffs">${opts}</div>
   <div class="avatar"><label for="avatar"><b>Your avatar:</b></label><input id="avatar" value="${AVATAR}" aria-label="Your avatar: type or paste any emoji" autocomplete="off" spellcheck="false">${AVATAR_PICKS.map(a=>`<button type="button" class="avpick${a===AVATAR?" on":""}" data-avatar="${a}" aria-label="Use ${a} as your avatar" aria-pressed="${a===AVATAR}">${a}</button>`).join("")}<small>or any emoji (Win + . / Ctrl + Cmd + Space)</small></div>
   <label class="hardcore noai"><input type="checkbox" id="noai" ${NOAI?"checked":""}><span><b>Old school:</b> no AI upskills. The AI Agent and AI Chatbots never reach the shop. Keep it up long enough with only checklist work left and the job may get outsourced.</span></label>
-  <button class="btn" data-act="start">Start new career</button>
+  <div class="row"><button class="btn" data-act="start">Start new career</button></div>
   <div class="row menulinks">
-    <button class="btn ghost sm" data-act="tut">Tutorial</button>
+    <button class="btn ghost sm" data-act="tut">Quick tutorial</button>
     <button class="btn ghost sm" data-act="howto">How to play</button>
     <button class="btn ghost sm" data-act="notes">Why it works this way</button>
     <button class="btn ghost sm" data-act="learn">📚 Learn more</button>
@@ -3015,12 +3051,12 @@ function tutorial(i){
   mode="title";i=clamp(i|0,0,TUT.length-1);const p=TUT[i];
   const dots=TUT.map((_,k)=>`<i class="${k===i?"on":""}"></i>`).join("");
   show(`<div class="eyebrow">Tutorial · ${i+1} of ${TUT.length}</div>
-  <div class="tut"><div class="tut-ic">${p.i}</div><div><h2>${p.t}</h2><p>${p.b}</p><p class="tip">${p.tip}</p></div></div>
+  <div class="tut"><div class="tut-ic">${p.i}</div><div><h2>${p.t}</h2><p>${p.b}</p><p class="tut-tip">${p.tip}</p></div></div>
   <div class="dots" aria-hidden="true">${dots}</div>
   <div class="row">
     ${i>0?`<button class="btn ghost" data-act="tutgo" data-page="${i-1}">Back</button>`:""}
     ${i<TUT.length-1?`<button class="btn" data-act="tutgo" data-page="${i+1}">Next</button>`:`<button class="btn" data-act="start">Start new career</button>`}
-    <button class="btn ghost" data-act="menu" style="margin-left:auto">Main menu</button>
+    <span class="tutorial-actions"><button class="btn ghost" data-act="handson">📎 Hands on Tutorial</button><button class="btn ghost" data-act="menu">Main menu</button></span>
   </div>`);
 }
 const NOTES=[
@@ -3185,6 +3221,127 @@ function howToPlay(){
   <p style="color:var(--muted);font-size:13px">On a phone, play in landscape: drag anywhere on the left half to move, hold FIX and tap GRAB on the right. Move with WASD or arrows. Your hands are full while carrying, so you can't fix anything until you drop it.</p>
   <button class="btn" data-act="menu">Back to menu</button>`);
 }
+/* ==== Hands-on tutorial ==== */
+/* A guided first client in a reverse shadow: you do the work, and a senior paperclip watches and points at what's next,
+   on the floor and in the panel above it. Paperclip Supply Co. (TUT_CLIENT) is tiny, and while S.tut is set nothing
+   happens by itself: no new tickets, email, users, pickups, specials or leaks, compliance clocks are paused, fires and
+   leaks grow slowly and fires never spread, and every cutover succeeds. Each step sets up its own lesson and waits until
+   you've handled it. You can only pick up a server on the steps that ask for it, so the room can't empty before the
+   lessons are done. The review then gets the paperclip's notes, and the run never touches career records. */
+const CLIP_SVG=`<svg viewBox="-14 -30 28 56" aria-hidden="true"><path transform="rotate(180)" d="M-3 8 L-3 -12 A4 4 0 0 1 5 -12 L5 16 A6 6 0 0 1 -7 16 L-7 -18 A8 8 0 0 1 9 -18 L9 10" fill="none" stroke="#cfd8de" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="-4" cy="-6" r="3.6" fill="#fff" stroke="#222" stroke-width=".7"/><circle cx="6" cy="-7" r="3.6" fill="#fff" stroke="#222" stroke-width=".7"/><circle cx="-3" cy="-5" r="1.6" fill="#111"/><circle cx="7" cy="-6" r="1.6" fill="#111"/><path d="M-8 -12 L-1 -13 M3 -14 L10 -12" stroke="#ddd" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+$("clip").querySelector(".clip-art").innerHTML=CLIP_SVG;
+const clipNote=html=>S&&S.tut?`<div class="clipnote">${CLIP_SVG}<p>${html}</p></div>`:"";
+const rackOf=a=>a&&S.racks[a.slot]===a?RACKS[a.slot]:null;
+const tutPick=f=>S.racks.find(a=>a&&f(a))||null;
+const nextToMove=()=>{const o={bronze:0,silver:1,gold:2};return S.racks.filter(a=>a&&!a.hidden).sort((a,b)=>o[a.tier]-o[b.tier])[0]||null;};
+const slotNear=()=>{const i=nearestEmptySlot(S.p.x,S.p.y);return i<0?null:SLOTS[i];};
+/* Each step: say (text, or a function of the step state T), and either next:true (an info step: Enter or "Got it")
+   or done(T). enter(T) sets the lesson up, at(T) is where the paperclip points, grab lets you pick up servers,
+   ok is said as the step completes, hl lists HUD elements to outline. T is shared across steps. */
+const TUTOR=[
+  {say:`Hi! I'm your <b>senior paperclip</b>. Today you're in a <b>reverse shadow</b>: you do the work, I watch and point. Start by stretching your legs: move with <kbd>WASD</kbd> or the arrow keys (on a phone, drag on the left half).`,
+   enter:T=>{T.x0=S.p.x;T.y0=S.p.y;},done:T=>Math.hypot(S.p.x-T.x0,S.p.y-T.y0)>90},
+  {say:`Quick tour of the dashboard, outlined above. <b>Uptime</b> and <b>Security</b> get you fired if they hit zero. <b>Energy</b> ⚡ pays for patches and repairs. <b>IT spend</b> tracks the financial result. Client stars rate your delivery; watch both, along with the lease target.`,
+   next:true,hl:()=>[$("hb-up"),$("hb-sec"),$("c-en"),$("h-budget").parentNode]},
+  {say:`The room on the left is the client's <b>on-prem</b> server room, and each rack is a server. The colour is its tier: <b>bronze</b> is easy, silver is harder, gold is the crown jewels. The % is its <b>cutover odds</b>, the chance it comes up in the cloud. Walk to the bronze one I'm pointing at.`,
+   enter:T=>{T.a=tutPick(a=>!a.hidden&&a.tier==="bronze");},at:T=>rackOf(T.a),done:T=>!T.a||grabTarget()===T.a},
+  {say:`Press <kbd>Space</kbd> (or GRAB) to pick it up. Your hands are full while you carry it, so you walk slower and can't fix anything.`,grab:true,
+   at:T=>rackOf(T.a)||rackOf(grabTarget()),done:T=>{if(S.carry)T.a=S.carry;return!!S.carry;}},
+  {say:`Carry it right, through the hallway, into the <b>cloud</b>. Stand on an empty slot and press <kbd>Space</kbd>. A server being moved is shut down, which nibbles at your uptime, so don't sightsee.`,grab:true,
+   at:T=>S.carry?slotNear():rackOf(T.a),done:()=>liveCloud()>0,
+   ok:"Live in the cloud! Migrating gives energy back and credits the old hardware. Real cutovers can fail: if one does, hold E on it to retry or hold Space to roll it back. I rigged today's odds."},
+  {say:T=>`Servers still on-prem need patching. See the ring on <b>${T.a?T.a.name:"that server"}</b>? That's its <b>compliance</b> timer: if it runs out, the audit fails, costing money and security. Walk over and hold <kbd>E</kbd> to patch it (it costs ⚡). I paused the clocks today; real ones never stop.`,
+   enter:T=>{T.a=tutPick(a=>!a.hidden&&a.tier==="silver")||tutPick(a=>!a.hidden);if(T.a){T.a.covered=false;T.a.timer=T.a.maxT*0.28;}},
+   at:T=>rackOf(T.a),done:T=>!T.a||T.a.covered,
+   ok:"Green bar and a ✓: covered until this cycle ends. Then it needs patching again, every cycle, until you migrate it."},
+  {say:`Ding. <b>Tickets</b> land at the desk at the bottom of the hallway. Its bar has 5 slots, and if it fills, tickets <b>escalate</b> and set servers on fire. Hold <kbd>E</kbd> at the desk to close them.`,
+   enter:()=>{S.tk=[{age:0},{age:0},{age:0}];sfx("ticket");fl(DESK,"+3 tickets",C.muted);},at:()=>DESK,done:()=>!S.tk.length},
+  {say:`And <b>email</b> lands in the inbox at the top. Vendor spam goes away by itself, but legal, finance and exec mail fills the bar, and a full inbox sends a <b>VP</b> hunting for you. Hold <kbd>E</kbd> at the inbox to answer.`,
+   enter:()=>{S.em=["legal","finance","exec"].map(type=>({type,age:0,life:EMAIL[type].life}));sfx("email");fl(INBOX,"+3 emails",C.muted);},at:()=>INBOX,done:()=>!importantMail().length},
+  {say:T=>`For practice, I staged an escalated ticket: <b>${T.a?T.a.name:"a server"}</b> is on fire. Hold <kbd>E</kbd> on it to put it out. If it burns through, the server goes offline and burns uptime until you hold <kbd>E</kbd> to bring it back up, and nothing can move while anything is offline.`,
+   enter:T=>{T.a=tutPick(a=>!a.hidden&&!a.down);if(T.a){T.a.fire=20;T.a.spreadT=3;sfx("fireStart");}},
+   at:T=>rackOf(T.a),done:T=>!T.a||(!T.a.fire&&!T.a.down),
+   ok:"Fire's out. Fires come from escalated tickets, so keeping the desk clear is fire prevention."},
+  {say:`See the <b>❓</b> rack? The client forgot to mention that one. They always do. Hold <kbd>E</kbd> on it to investigate: it's free, just slow.`,
+   enter:T=>{T.a=tutPick(a=>a.hidden);if(T.a)T.a.hiddenLicenseDue=S.time+150;},at:T=>rackOf(T.a),done:()=>!S.racks.some(a=>a&&a.hidden),
+   ok:"Found it. Forgotten servers can come with a license about to renew, so move them before it does."},
+  {say:`Hallway life. <b>☕ Coffee</b> refills energy and gives you a burst of speed. <b>Users</b> like that one stop you for a "quick question", and the better dressed they are, the longer it takes. A <b>🍩 donut</b> fills your mouth, so nobody can stop you for a bit. Go get the coffee.`,
+   enter:T=>{S.snacks=S.snacks||{coffee:0,donut:0};T.cups=S.snacks.coffee;S.st=[{x:480,y:210,life:1e9,kind:"coffee"},{x:420,y:430,life:1e9,kind:"donut"}];
+     S.users.push({x:550,y:420,rank:1,vx:0,vy:0,turn:0,cd:0,line:""});},
+   at:()=>S.st.find(s=>s.kind==="coffee")||null,done:T=>S.snacks.coffee>T.cups},
+  {say:T=>`The cloud isn't safe either: <b>${T.c?T.c.name:"an app"}</b> sprang a <b>leak</b>. Leave it and it becomes a <b>breach</b>, a red alert that drains security and spreads next door. Hold <kbd>E</kbd> on it to seal it.`,
+   enter:T=>{T.ci=S.cloud.findIndex(a=>a&&!a.staged&&!a.down&&!a.breach);T.c=S.cloud[T.ci]||null;if(T.c){T.c.leakOn=true;T.c.leak=25;T.c.tfT=0;}},
+   at:T=>T.c&&S.cloud[T.ci]===T.c?SLOTS[T.ci]:null,done:T=>!T.c||S.cloud[T.ci]!==T.c||(!T.c.leakOn&&!T.c.breach),
+   ok:"Sealed. Security upgrades make leaks rarer, so you won't always be doing this by hand."},
+  {say:`Last job: move everything else to the cloud. <b>Bronze first</b>: every bronze you move raises silver's odds, and bronze plus silver raise gold's. Watch the % on each rack. The client is done when the room is empty.`,grab:true,
+   at:()=>S.carry?slotNear():(r=>r?RACKS[r.slot]:null)(nextToMove()),done:()=>false},
+];
+const tutGrabOK=()=>!S.tut||!!(TUTOR[S.tut.i]||{}).grab;
+function tutHighlight(els){document.querySelectorAll(".tut-hl").forEach(e=>e.classList.remove("tut-hl"));if(els)for(const e of els)if(e)e.classList.add("tut-hl");}
+function tutSay(html,label){$("clip-say").innerHTML=html;$("clip-step").textContent=label||"";$("clip-next").hidden=true;}
+function tutRender(){
+  const T=S.tut,st=TUTOR[T.i];if(!st)return;
+  tutSay(typeof st.say==="function"?st.say(T):st.say,`Reverse shadow · step ${T.i+1} of ${TUTOR.length}`);
+  $("clip-next").hidden=!st.next;tutHighlight(st.hl?st.hl():null);
+}
+function tutTick(dt){
+  const T=S.tut;if(!T)return;const st=TUTOR[T.i];if(!st)return;
+  if(!T.entered){T.entered=true;T.t=0;T.ack=false;if(st.enter)st.enter(T);tutRender();}
+  T.t+=dt;
+  if(st.next?T.ack:st.done(T)){
+    if(st.ok)toast(`📎 ${st.ok}`);sfx("click");
+    T.i++;T.entered=false;tutHighlight(null);
+  }
+}
+// "Got it" on an info step (Enter or the button)
+function tutAck(){const T=S&&S.tut,st=T&&TUTOR[T.i];if(!st||!st.next||!T.entered)return false;T.ack=true;return true;}
+$("clip-next").addEventListener("click",e=>{e.currentTarget.blur();if(mode==="play")tutAck();});
+$("clip-skip").addEventListener("click",e=>{e.currentTarget.blur();newRun();titleScreen();});
+// the paperclip on the floor: a wire clip with googly eyes, hovering by whatever you should go to next
+function drawClip(x,y,s){
+  ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.lineCap="round";ctx.lineJoin="round";
+  const wire=()=>{ctx.beginPath();ctx.moveTo(-3,8);ctx.lineTo(-3,-12);ctx.arc(1,-12,4,Math.PI,0);ctx.lineTo(5,16);ctx.arc(-1,16,6,0,Math.PI);ctx.lineTo(-7,-18);ctx.arc(1,-18,8,Math.PI,0);ctx.lineTo(9,10);};
+  ctx.save();ctx.rotate(Math.PI); // turn the wire only; the face stays upright
+  ctx.strokeStyle="rgba(0,0,0,.5)";ctx.lineWidth=5;wire();ctx.stroke();
+  ctx.strokeStyle="#cfd8de";ctx.lineWidth=3;wire();ctx.stroke();
+  ctx.strokeStyle="rgba(255,255,255,.7)";ctx.lineWidth=1;wire();ctx.stroke();ctx.restore();
+  const blink=!RM&&(S.t%4)<0.12;
+  for(const[ex,ey]of[[-4,-6],[6,-7]]){
+    if(blink){ctx.strokeStyle="#222";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(ex-3,ey);ctx.lineTo(ex+3,ey);ctx.stroke();continue;}
+    ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(ex,ey,3.8,0,7);ctx.fill();ctx.strokeStyle="#222";ctx.lineWidth=.8;ctx.stroke();
+    ctx.fillStyle="#111";ctx.beginPath();ctx.arc(ex+1,ey+1,1.7,0,7);ctx.fill();}
+  ctx.strokeStyle="#e8eef2";ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(-8,-12);ctx.lineTo(-1,-13);ctx.moveTo(3,-14);ctx.lineTo(10,-12);ctx.stroke();
+  ctx.restore();
+}
+function drawTutor(){
+  const T=S.tut,st=TUTOR[T.i];if(!st||!T.entered)return;
+  const p=st.at?st.at(T):null,bob=RM?0:Math.sin(S.t*4)*4;
+  if(!p){drawClip(S.p.x+34,S.p.y-30+bob,1.1);return;} // nowhere to go: the paperclip hangs around you
+  const pulse=RM?0.5:0.5+0.5*Math.sin(S.t*5);
+  // a faint dashed trail from you to the target when it's a walk away
+  if(dist(S.p,p)>110){ctx.save();ctx.setLineDash([6,8]);ctx.lineDashOffset=RM?0:-S.t*30;ctx.strokeStyle="rgba(255,181,71,.45)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(S.p.x,S.p.y);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.restore();}
+  ctx.strokeStyle=`rgba(255,181,71,${0.5+0.4*pulse})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(p.x,p.y,40+4*pulse,0,7);ctx.stroke();
+  // above the target, or below it when it's near the top edge, with an arrow pointing at it
+  const up=p.y>130,cy=up?p.y-80+bob:p.y+84+bob,ay=up?p.y-48+bob:p.y+50+bob,dir=up?1:-1;
+  ctx.fillStyle=C.amber;ctx.beginPath();ctx.moveTo(p.x-7,ay-6*dir);ctx.lineTo(p.x+7,ay-6*dir);ctx.lineTo(p.x,ay+4*dir);ctx.closePath();ctx.fill();
+  drawClip(p.x+(p.x>W-40?-16:0),cy,1.25);
+}
+function handsOn(){
+  mode="title";
+  show(`<div class="eyebrow">Hands on Tutorial</div>
+  <div class="clipnote big">${CLIP_SVG}<div><h2>It looks like you're trying to migrate a server.</h2><p>Good news: you're in a <b>reverse shadow</b>. Normally the new hire shadows a senior engineer and watches. Today it's the other way round: <b>you</b> do the work, and I, a senior paperclip with more uptime than your whole team, watch and tell you where to go next.</p></div></div>
+  <p>One tiny client, Paperclip Supply Co. Nothing happens unless I set it up, the deadline, compliance, license and incident-growth clocks are paused, and I've rigged the cutover odds in your favour. Follow the paperclip on the floor. You'll learn to move servers, patch, close tickets, answer email, fight a fire, find a forgotten server and seal a leak. Then we'll read the end-of-client report together and spend your first improvement sprint.</p>
+  <p style="font-size:13px;color:var(--muted)">Move with WASD or the arrows, Space grabs and drops, hold E to fix, P pauses. On a phone, drag on the left half and use GRAB and FIX. Nothing here counts toward your career records.</p>
+  <div class="row"><button class="btn" data-act="handsgo">Let's go</button><button class="btn ghost" data-act="menu">Main menu</button></div>`);
+}
+function tutDone(){
+  try{localStorage.setItem("liftshift-tutdone","1");}catch(e){}
+  mode="title";
+  show(`<div class="eyebrow">Hands on Tutorial · complete</div>
+  <div class="clipnote big">${CLIP_SVG}<div><h2>Reverse shadow complete.</h2><p>You moved a client to the cloud, patched a server, closed tickets, answered email, put out a fire, found a forgotten server, sealed a leak and read your first report. I'm going back to the supply closet.</p></div></div>
+  <p>One warning before you go: real clients don't pause their clocks, nobody rigs the cutover odds, and everything happens at once. Whatever you bought here stays here: a real career starts with zero automation. Bronze first.</p>
+  <div class="row"><button class="btn" data-act="start">Start new career</button><button class="btn ghost" data-act="howto">How to play</button><button class="btn ghost" data-act="menu">Main menu</button></div>`);
+}
 /* ==== Shop and between-client review ==== */
 // 6 offers per planning, at least 2 of them security. Maxed-out items are left out.
 // the shop after a "Give me a break" client stocks every big-ticket tool you don't own yet, plus Patch Bot
@@ -3261,25 +3418,31 @@ function review(){
   const owned=toolkitHtml();
   const done=S.career[S.career.length-1],nx=getClient(S.sprint+1),nec=engagementCfg(S.sprint+1),cnt=nec.apps.length;
   // the improvement sprint and next client, unless the AI ran this client by itself and is about to fire you
-  const sprint=()=>`  ${retroBlock()}
+  const sprint=()=>`  ${clipNote(`<b>Retrospective:</b> after every client you pick one free action item based on what hurt. It's the one fix the team actually adopts. Pick whichever sounds useful.`)}
+  ${retroBlock()}
   <h3>Improvement sprint</h3>
+  ${clipNote(`Now the <b>upskill</b>. You start every career with zero automation, and this is where that changes. Story points buy tools, bots and practices. Incidents create unplanned work that eats points, and points you don't spend are gone. Each card links to the real practice behind it. Try buying something: I'd start with a 🤖 Patch Bot.`)}
   <p style="font-size:13.5px">Before the next client, the team gets one sprint to build tools. Everything you build here comes with you to every future client.</p>
   ${capacityLine()}
   <p style="font-size:13.5px">You have <b>${S.points} of ${S.cap} points</b> left to commit. Points you don't spend are gone; velocity doesn't bank.</p>
   ${breakMust().length?`<p style="font-size:13.5px">🏖️ <b>Back from your easy job.</b> The tools you've been missing are on the shelf this sprint.</p>`:""}
   <div class="shop">${cards||'<p style="color:var(--muted)">Nothing left to buy.</p>'}</div>
+  ${S.tut&&Object.keys(S.upgrades).length?clipNote(`Nice. In a real career that tool follows you to every client, and every client after this is bigger and busier than the last. The tools are how you keep up.`):""}
   <div class="row reroll"><button class="btn ghost sm" data-act="reroll" ${S.points<rerollCost()?"disabled":""}>💡 Brainstorm new ideas · ${rerollCost()} pt${rerollCost()>1?"s":""}</button>
     <span>${S.rerollMsg||"Don't like these options? Hold a meeting. Each one this sprint costs a point more than the last."}</span></div>
   ${owned}
-  <div class="modcard">Next client: <b>${nx.name}.</b> ${cnt} known servers (plus whatever they forgot to mention)${cnt+nec.hidden.length>12?`. Too big for one room, so they'll arrive in ${Math.ceil((cnt+nec.hidden.length)/12)} waves`:""}. Lease target: ${nec.days} days.${nx.trait?` <b>${nx.trait.name}:</b> ${nx.trait.desc}`:""}</div>
-  <div class="row"><button class="btn" data-act="next">Start engagement: ${nx.short}</button><button class="btn ghost sm" data-act="retire">Retire and see your career</button></div>`;
+  ${S.tut?`${clipNote(`That's the whole loop: migrate a client, read the report, upskill, take on a bigger client. When you're done shopping, finish the tutorial.`)}
+  <div class="row"><button class="btn" data-act="tutdone">Finish the tutorial</button></div>`:`<div class="modcard">Next client: <b>${nx.name}.</b> ${cnt} known servers (plus whatever they forgot to mention)${cnt+nec.hidden.length>12?`. Too big for one room, so they'll arrive in ${Math.ceil((cnt+nec.hidden.length)/12)} waves`:""}. Lease target: ${nec.days} days.${nx.trait?` <b>${nx.trait.name}:</b> ${nx.trait.desc}`:""}</div>
+  <div class="row"><button class="btn" data-act="next">Start engagement: ${nx.short}</button><button class="btn ghost sm" data-act="retire">Retire and see your career</button></div>`}`;
   show(`<div class="eyebrow">Engagement ${S.sprint} · complete</div><h2>${done.name}</h2>
   <div class="row"><div class="stars" aria-label="${done.stars} of 5 stars">${stars(done.stars)}</div><div style="color:var(--muted);font-size:13.5px">Client satisfaction. Promoted to <b style="color:var(--ink)">${careerTitle()}</b>.</div></div>
+  ${clipNote(`This is the <b>end-of-client report</b>. The stars are the client's rating, and they're your career score: breaches, three or more failed audits, using up half the uptime budget and finishing past the lease target each cost stars. Below them is what actually happened, money included. Every client gets one of these.`)}
   ${statBlock()}
   ${S.secRefill>0?`<p style="font-size:13px;color:var(--ok)">🛡️ Security review between clients: +${Math.round(S.secRefill)} security (now ${Math.round(S.security)}).</p>`:""}
   <blockquote>"${S.quote}"<cite>${client().contact}</cite></blockquote>
   ${rumorBlock()}
   ${S.agentNews?`<div class="modcard" style="border-color:var(--ai)">🧠 <b>Leadership announced an AI strategy.</b> The AI Agent upgrade is now available. It's fast, it's everywhere, and it bills you for every prompt.</div>`:""}
+  ${clipNote(`These are <b>DORA metrics</b>, how real delivery teams measure themselves: how often you ship, how long a change takes, how often one fails, and how fast you recover. Elite teams ship small changes often and recover fast.`)}
   ${doraBlock()}
   ${agentBlock()}
   ${S.obsolete?obsoleteBlock():S.outsourced?outsourcedBlock():`${fireBossBlock()}${sprint()}`}`);
@@ -3868,7 +4031,9 @@ $("devterm").addEventListener("click",e=>{
   if(b.dataset.up)devSet(b.dataset.up,+b.dataset.to);else if(b.dataset.do)DEV_ACTIONS[b.dataset.do]();else return;
   devMenu();});
 function togglePause(){
-  if(mode==="play"){mode="paused";show(`<h2>Paused</h2><p>The fires are paused too. This is the only time that happens.</p>
+  if(mode==="play"&&S.tut){mode="paused";show(`<h2>Paused</h2><p>The paperclip will wait. It's very patient. It's a paperclip.</p>
+    <div class="row"><button class="btn" data-act="resume">Resume</button><button class="btn ghost" data-act="menu">Leave tutorial</button></div>`);}
+  else if(mode==="play"){mode="paused";show(`<h2>Paused</h2><p>The fires are paused too. This is the only time that happens.</p>
     <div class="row"><button class="btn" data-act="resume">Resume</button><button class="btn ghost" data-act="restart">Restart run</button><button class="btn ghost" data-act="quit">Give up</button></div>
     <p style="font-size:12.5px;color:var(--muted)">Restart throws this run away and starts a new one. Giving up means handing in your notice.</p>${toolkitHtml()}`);}
   else if(mode==="paused")play();
@@ -3905,6 +4070,9 @@ ov.addEventListener("click",e=>{
   else if(a==="restart"){newRun();toast(`New career (${diffLabel()}). First client: ${client().name}.`);play();}
   else if(a==="menu"){newRun();titleScreen();}
   else if(a==="tut")tutorial(0);
+  else if(a==="handson")handsOn();
+  else if(a==="handsgo"){newRun(true);toast("📎 Hands-on tutorial: follow the paperclip.");play();}
+  else if(a==="tutdone")tutDone();
   else if(a==="tutgo")tutorial(+b.dataset.page);
   else if(a==="howto")howToPlay();
   else if(a==="notes")notes();

@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,CREDITS_OLD").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,CREDITS_OLD,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -69,6 +69,65 @@ test("every inline script parses", () => {
   const scripts = [...doc.querySelectorAll("script:not([src])")];
   check(scripts.length > 0, "no inline scripts found");
   scripts.forEach((sc, i) => { try { new Function(sc.textContent); } catch (e) { throw new Error(`script #${i + 1}: ${e.message}`); } });
+});
+
+
+/* ---------- hands-on tutorial ---------- */
+test("Quick tutorial keeps hands-on beside Main menu on every page", () => {
+  G.newRun();G.titleScreen();check(!W.document.querySelector('[data-act="handson"]'),"hands-on still crowds main menu");
+  for(let i=0;i<G.TUT.length;i++){
+    G.tutorial(i);const hands=W.document.querySelector('[data-act="handson"]');
+    check(W.getComputedStyle(W.document.querySelector(".tut-tip")).position==="static","tutorial tip floats over navigation");
+    check(hands&&hands.nextElementSibling?.dataset.act==="menu","hands-on missing or separated from Main menu on page "+i);
+    check(W.document.querySelectorAll('[data-act="handson"]').length===1,"duplicate hands-on entry");
+  }
+});
+test("paperclip rotates its wire without moving its eyes", () => {
+  const doc=new DOMParser().parseFromString(G.CLIP_SVG,"image/svg+xml");
+  check(doc.querySelector("path").getAttribute("transform")==="rotate(180)","wire is upside down");
+  check([...doc.querySelectorAll("circle")].every(e=>!e.hasAttribute("transform")),"eyes rotate with wire");
+  check(doc.querySelector("circle").getAttribute("cy")==="-6","eyes moved");
+});
+test("tutorial waits for actions and its chosen rack", () => {
+  G.newRun(true); G.setMode("play"); const S=G.S;
+  G.tutTick(0); G.tutTick(30); check(S.tut.i===0,"movement skipped");
+  S.p.x+=100;G.tutTick(0);G.tutTick(0);check(S.tut.i===1,"dashboard missing");
+  G.tutAck();G.tutTick(0);G.tutTick(0);
+  const target=S.tut.a,other=S.racks.find(a=>a&&!a.hidden&&a!==target);
+  standAt(S,G.RACKS[other.slot]);G.tutTick(0);check(S.tut.i===2,"wrong rack advanced guide");
+  standAt(S,G.RACKS[target.slot]);G.tutTick(0);G.tutTick(0);check(S.tut.i===3,"target did not advance");
+});
+test("tutorial hazards and clocks wait safely while reading", () => {
+  G.newRun(true);G.setMode("play");const S=G.S,a=firstRack(S);a.fire=20;a.lic=100;
+  const timer=a.timer,time=S.time,err=S.err;
+  for(let i=0;i<1200;i++)G.update(.1);
+  check(a.fire===20&&!a.down&&a.timer===timer&&a.lic===100,"practice hazard or clock advanced");
+  check(S.time===time&&S.err>=err&&S.tk.length===0&&S.em.length===0,"practice accrued pressure");
+});
+test("tutorial completes every lesson through report, upskill and clean career restart", () => {
+  seed(3);G.newRun(true);G.setMode("play");const S=G.S;
+  const before=W.localStorage.getItem("liftshift-clients");
+  const tick=()=>G.tutTick(0);
+  const fixAt=p=>{standAt(S,p);G.keys.fix=false;G.doFix(0);G.keys.fix=true;for(let i=0;i<200;i++)G.doFix(.1);G.keys.fix=false;G.doFix(0);};
+  tick();S.p.x+=100;tick();tick();G.tutAck();tick();tick();
+  standAt(S,G.RACKS[S.tut.a.slot]);tick();tick();G.doGrab();tick();tick();
+  standAt(S,G.SLOTS[0]);fixedRandom(.99999);G.doGrab();tick();tick();
+  check(S.cloud[0]&&!S.cloud[0].down,"tutorial cutover failed");
+  fixAt(G.RACKS[S.tut.a.slot]);tick();tick();check(S.tut.i===6,"patch lesson stuck");
+  fixAt(G.DESK);tick();tick();check(S.tut.i===7,"tickets lesson stuck");
+  fixAt(G.INBOX);tick();tick();check(S.tut.i===8,"email lesson stuck");
+  fixAt(G.RACKS[S.tut.a.slot]);tick();tick();check(S.tut.i===9,"fire lesson stuck");
+  fixAt(G.RACKS[S.tut.a.slot]);tick();tick();check(S.tut.i===10,"discovery lesson stuck");
+  standAt(S,S.st.find(s=>s.kind==="coffee"));G.tickHazards(0);tick();tick();
+  G.tickOnPrem(120);G.update(.01);check(!S.cloud[0].breach,"practice leak escalated");
+  fixAt(G.SLOTS[S.tut.ci]);tick();tick();check(S.tut.i===12,"leak lesson stuck");
+  S.users=[];for(const a of S.racks.filter(Boolean)){standAt(S,G.RACKS[a.slot]);G.doGrab();standAt(S,G.SLOTS[S.cloud.findIndex(c=>!c)]);G.doGrab();}
+  check(G.engagementReady(),"practice client cannot complete");G.finishEngagement();
+  check(W.document.body.textContent.includes("end-of-client report"),"report explanation absent");
+  check(W.document.body.textContent.includes("upskill"),"upskill explanation absent");
+  check(W.localStorage.getItem("liftshift-clients")===before,"practice changed career record");
+  check(S.offers.includes("patchbot"),"Patch Bot missing");G.buy("patchbot");check(S.upgrades.patchbot,"practice purchase failed");
+  G.tutDone();G.newRun();check(!G.S.tut&&!G.S.upgrades.patchbot,"tutorial state leaked to career");
 });
 
 /* ---------- patch cycles ---------- */

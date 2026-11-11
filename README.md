@@ -18,6 +18,12 @@ The lesson is not to become a faster superhero. It is to build a better operatin
 
 The game uses satire and compressed time. Its probabilities, costs, DORA-style ratings, and incident behavior are teaching devices, not production forecasts or real-world benchmarks. Cloud costs in particular are tilted optimistic. The game lets you approve FinOps downsizing by holding E and walking past servers; in real life, check utilization and test before you shrink anything. Please don't use them to plan a real migration, don't put them in a slide deck for your executives, and don't quote us.
 
+## Hands on Tutorial
+
+Open **Quick tutorial**, then choose **📎 Hands on Tutorial** beside **Main menu** on any page for a guided practice client. You are in a reverse shadow: you do the work while a senior paperclip points out where to go and what to look for. Practice movement, carrying and cutover, patch coverage, tickets, email, firefighting, discovery, coffee and cloud leaks, then read your client report and buy an upskill.
+
+Practice pauses deadline, compliance, license and incident-growth clocks and guarantees successful cutovers. Tutorial purchases and results do not carry into career records. Pause or leave whenever you like; real careers keep their normal timing and risks.
+
 ## How it plays
 
 1. Start a career and choose a difficulty.
