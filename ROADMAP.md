@@ -92,7 +92,7 @@ Planning notes only. Nothing here is implemented or a settled specification. Whe
 ### The thesis
 - **Realism in the server rooms, surrealism in the hallway.** The brainstorm started from wanting reality to distort, moving away from the learning game, and ended at realistic placement decisions. The reconciliation: the technical rooms keep telling the operational truth (cause and effect stay teachable), while the hallway, the one place that carries the client's personality, is where things get eerie and silly.
 - **The central question:** "What belongs where, and can you prove it works?" Not "is cloud good" or "is on-prem good". Leaving a workload in the cloud can be the right answer.
-- **The emotional arc mirrors the first career.** At first you can barely see enough to cope; by the end you have a clear picture and systems you trust. The dark cloud room literally brightens as your understanding grows.
+- **The emotional arc mirrors the first career.** At first you can barely see enough to cope; by the end you have a clear picture and systems you trust. The dark basement literally brightens as your understanding grows.
 
 ### Premise and the cycle
 - The credits and the LaS OS boot screen already hint at a loop, maybe a simulation. Keep that unresolved. "Is this a simulation?" is less interesting than **"Why does it need me to keep doing this?"**
@@ -156,33 +156,43 @@ In the first career, VPs hunt you. In the second, it's your turn: you need somet
 - Possible end-report stat: total VP time taken, as a shareable brag.
 - Open: how often the VP appears, whether a caught VP can still refuse, and how this works for the hospital and dentist hallways (a zombie VP still answers "brains").
 
-### Arrival: the ambiance
-- At the first client you hear a faint, muffled alert before you see anything: a pulsing beep-beep-beep or buzz coming through the walls.
-- The on-prem data center still exists, slightly dimmer than before, with cobwebs on its left side.
-- The cloud side is dark, and the pulsing alert gets louder as you go in. Light is only a small pool around you.
-- Candidate payoff: the buzz quiets as you restore monitoring and light the room, so the soundscape tracks your progress.
-- Keep it faint enough not to grate over a whole client, use the cosmetic sound generator (never game randomness), and respect the sound settings.
+### Arrival: very, very familiar
+- **Not ominous.** The first client of the second career looks normal. It's the same map, and you expect the same gameplay, just backwards.
+- The on-prem data center still exists: cobwebbed and poorly lit.
+- The cloud side is lit and visibly busy; there's clearly a lot going on. Among it sit a few familiar unknown "?" servers.
+- The surprise comes from the habit the first career taught you: you investigate an unknown, and it turns out to be a stairway down.
+- Optional hint, easy to miss: a faint, muffled alert through the floor before the stairway is found. Use the cosmetic sound generator (never game randomness) and respect the sound settings.
+- **Superseded:** an ominous arrival with a pulsing alert through the walls and a dark upstairs cloud room. The darkness now lives in the basement.
 
-### The dark cloud room
-- The cloud area is dark because the client has lost visibility of what it runs. A small pool of light surrounds you. Beyond it you hear alerts and see occasional signs of activity. The infrastructure exists, but nobody keeps a useful picture of it.
+### The basement: the dark, damp tier under the cloud
+Inspired by dungeon-crawler stairways, built entirely from the game's own pieces.
+- **Reveal:** investigating a "?" server upstairs reveals a stairway. What the hell? It follows the hidden-server rule: revealed by investigation, never by progress.
+- **Dark and damp.** The client lost visibility of what it runs, and this is where that shows. A small pool of light surrounds you; beyond it you hear alerts and see occasional signs of activity.
+- **What's down there:** all sorts of stuff, and everything starts as unknown, so there's a lot of investigating.
+  - Real workloads the business actually depends on.
+  - Orphaned workloads nobody owns.
+  - **Crypto miners.** They aren't obvious at first. Investigate one and coins start spilling out of it: the client's money flowing away. Oh my God. (A nod to cryptojacking through over-broad access, which links to the "temporary admin for everyone" rogue upskill.)
+- **New verb: shut it down.** You can shut down servers on the fly. A miner should die immediately.
+  - The tension: shut down something you haven't investigated and it might be a real workload, causing an outage.
+  - Open: whether shutting down needs investigation first, and whether it can be undone.
+- **The scream test.** A real ops practice: when nobody knows what a server does, turn it off and see who screams. Here it's literal and playable:
+  - Shut something off and, if anyone depended on it, users scream.
+  - In the basement you hear the screams muffled through the ceiling; upstairs you hear them loud and clear from the hallway.
+  - Silence is evidence: no screams suggests an orphan you can retire. Screams mean turn it back on, fast, and now you know who owns it.
+  - It's a risky, fast alternative to careful investigation, which fits the theme of shortcuts that work until they don't. Open: how long you wait for screams, and what screaming costs (outage burn, angry users or VPs in the hallway).
+- **Tracing the wires.** Cables run to and between the servers. Following them to work out what is really connected to what could be another form of investigation, revealing dependencies before you move or shut anything down. Open: how tracing is drawn and controlled, and how it differs from the normal investigation hold.
 - **Seeing is not understanding** (candidate split):
-  - Walking up reveals a service.
+  - Walking up reveals that something is there.
   - Investigating reveals its purpose, cost, health and dependencies.
   - Monitoring upgrades widen live visibility and let you watch services remotely.
 - Once investigated, a service stays on your map after you walk away. Without monitoring its status becomes "last known". Players shouldn't have to memorize a room they've already explored.
-- Monitoring can be an interim investment while you migrate, or what makes staying in the cloud viable.
-- **Loop:** discover → stabilize → assess → improve or relocate → verify.
-- Open questions: exact visibility rules, controls, progression and economics. Incidents and interaction targets must stay readable in the dark; darkness should mean missing knowledge, not an inaccessible screen. Resolve reduced motion and other accessibility needs before building it.
-
-### The basement: a second tier under the cloud
-Inspired by dungeon-crawler stairways, built entirely from the game's own pieces.
-- **Reveal:** in the dark cloud room you find the familiar unknown "?" box and investigate it as usual. It turns out to be a stairway down. What the hell? It follows the hidden-server rule: revealed by investigation, never by progress.
-- **Downstairs** is a second, even less discovered tier of the cloud: the sprawl nobody knew about.
 - **You can't see the other floor**, but you get a little visibility both ways: a muffled alert sound from the other level, and the stairway (the hole going down, or the stairs going up) pulses red on and off while something is wrong on the other floor. You know there's trouble, not what it is, and you choose when to go. The red glow also covers players with sound off; under reduced motion it should be steady red, not pulsing.
 - **The goal is to bring things up.** Work moves from the basement to the upstairs floor, and some services need work in the basement before they can move.
 - **Space is the puzzle.** Upstairs eventually fills up, so you have to deal with things upstairs first (clean up, consolidate, repatriate, retire) before anything else comes up. That makes the placement decisions physical and visual.
 - **Done means one level.** Ideally nothing stays in the basement: everything the client needs fits on a single floor.
-- Open: how to juggle incidents on two floors, how the stairway is drawn and controlled, and how many clients have a basement.
+- **Loop:** discover → stabilize → assess → improve, relocate or shut down → verify.
+- **Layout is open.** Is the whole basement cloud, or does it have its own odd corners? Are there user interactions down there? One riff: nobody comes down here, except maybe one forgotten contractor still working on a project that was cancelled years ago.
+- Open: how to juggle incidents on two floors, how the stairway is drawn and controlled, and how many clients have a basement. Incidents and interaction targets must stay readable in the dark; darkness should mean missing knowledge, not an inaccessible screen. Resolve reduced motion and other accessibility needs before building it.
 
 ### Placement: what you might find, and a sensible response
 These are scenarios, not rules that make one destination automatically correct.
@@ -226,7 +236,7 @@ Candidate rogue upskills (riffs, nothing chosen):
 
 | Shortcut | What it gives you now | What it costs later |
 | --- | --- | --- |
-| Shadow IT | Teams self-serve, so fewer tickets reach your queue | New undocumented services appear in the dark cloud room, to be discovered and paid for. Shadow IT is literally why the room is dark. |
+| Shadow IT | Teams self-serve, so fewer tickets reach your queue | New undocumented services appear in the dark basement, to be discovered and paid for. Shadow IT is literally why the basement exists. |
 | Click-ops hotfix | Instead of holding E, you can mash it: tapping faster makes the job go faster. It's manual effort poured into something that should be automated. | Toil that never goes away, and configuration drift: the same fault comes back later |
 | "Temporary" admin for everyone | Every action is faster; no access waits | Bigger blast radius when something goes wrong (and in AI variant B, a route back in for the AI) |
 | Mute the noisy alerts | Fewer interruptions | Problems surface later and larger |
@@ -280,6 +290,7 @@ Non-AI opposition is parked too. The core assessment loop must work without any 
 - [ ] Decide what carries over from the first career and how the return is unlocked.
 - [ ] Decide how much the upskill system changes, and the balance of sound upskills to rogue ones.
 - [ ] Work out the basement: two-floor incident juggling, the upstairs space limit, and how often it appears.
+- [ ] Prototype the shut-down verb with the scream test, and decide whether wire tracing earns a place beside investigation.
 - [ ] Figure out the snapshot mechanic.
 - [ ] Settle how client mandates, assessment windows and evidence-based persuasion fit together.
 - [ ] Decide what makes the VP appear for the reverse hunt, and what catching them achieves.
