@@ -127,6 +127,9 @@ Each bad practice produces a symptom and a client conclusion that blames the des
 | Automation got broad permissions and little oversight | Changes nobody understands, made faster than anyone can investigate | "We need physical control again." |
 | Monitoring became noise, so people turned it off | Green dashboards and angry users | "We never know what's happening up there." |
 | Retries were left uncontrolled | A retry storm turns a small failure into an overload | "It just falls over." |
+| FinOps went absolutely crazy: right-sizing shrank servers until they fell over, while others were beefed up far too much. After enough outages, FinOps was turned off or neutered. | Lingering undersized servers that need capacity added just to stay up, next to oversized ones nobody dares touch, and no working FinOps scan | "Cost optimization causes outages." |
+
+The FinOps row matters for the upskills below: adding capacity to an undersized server is a legitimate emergency measure while you work out what else the environment needs. It only becomes a bad practice when it replaces fixing the cause.
 
 ### Why each client is coming back
 Give every client a concrete reason. Some are sensible, some are corporate fashion; that keeps the teaching honest.
@@ -153,6 +156,13 @@ In the first career, VPs hunt you. In the second, it's your turn: you need somet
 - Possible end-report stat: total VP time taken, as a shareable brag.
 - Open: how often the VP appears, whether a caught VP can still refuse, and how this works for the hospital and dentist hallways (a zombie VP still answers "brains").
 
+### Arrival: the ambiance
+- At the first client you hear a faint, muffled alert before you see anything: a pulsing beep-beep-beep or buzz coming through the walls.
+- The on-prem data center still exists, slightly dimmer than before, with cobwebs on its left side.
+- The cloud side is dark, and the pulsing alert gets louder as you go in. Light is only a small pool around you.
+- Candidate payoff: the buzz quiets as you restore monitoring and light the room, so the soundscape tracks your progress.
+- Keep it faint enough not to grate over a whole client, use the cosmetic sound generator (never game randomness), and respect the sound settings.
+
 ### The dark cloud room
 - The cloud area is dark because the client has lost visibility of what it runs. A small pool of light surrounds you. Beyond it you hear alerts and see occasional signs of activity. The infrastructure exists, but nobody keeps a useful picture of it.
 - **Seeing is not understanding** (candidate split):
@@ -163,6 +173,16 @@ In the first career, VPs hunt you. In the second, it's your turn: you need somet
 - Monitoring can be an interim investment while you migrate, or what makes staying in the cloud viable.
 - **Loop:** discover → stabilize → assess → improve or relocate → verify.
 - Open questions: exact visibility rules, controls, progression and economics. Incidents and interaction targets must stay readable in the dark; darkness should mean missing knowledge, not an inaccessible screen. Resolve reduced motion and other accessibility needs before building it.
+
+### The basement: a second tier under the cloud
+Inspired by dungeon-crawler stairways, built entirely from the game's own pieces.
+- **Reveal:** in the dark cloud room you find the familiar unknown "?" box and investigate it as usual. It turns out to be a stairway down. What the hell? It follows the hidden-server rule: revealed by investigation, never by progress.
+- **Downstairs** is a second, even less discovered tier of the cloud: the sprawl nobody knew about.
+- **You can't see the other floor**, but you get a little visibility both ways: a muffled alert sound from the other level, and the stairway (the hole going down, or the stairs going up) pulses red on and off while something is wrong on the other floor. You know there's trouble, not what it is, and you choose when to go. The red glow also covers players with sound off; under reduced motion it should be steady red, not pulsing.
+- **The goal is to bring things up.** Work moves from the basement to the upstairs floor, and some services need work in the basement before they can move.
+- **Space is the puzzle.** Upstairs eventually fills up, so you have to deal with things upstairs first (clean up, consolidate, repatriate, retire) before anything else comes up. That makes the placement decisions physical and visual.
+- **Done means one level.** Ideally nothing stays in the basement: everything the client needs fits on a single floor.
+- Open: how to juggle incidents on two floors, how the stairway is drawn and controlled, and how many clients have a basement.
 
 ### Placement: what you might find, and a sensible response
 These are scenarios, not rules that make one destination automatically correct.
@@ -192,6 +212,33 @@ Carried over from the pure-reversal idea; these are the mechanics for any worklo
 - **Preparing the destination** is the main new pressure: a service is ready to leave, but its rack needs work first, and the cloud bill keeps running meanwhile.
 - **Cloud-only dependencies:** some services rely on cloud features and need a replacement ready before cutover. Keep those dependencies visible and local to the current wave so they're a choice you can act on (the same rule as wave ordering in the first career).
 - **Upgrades carry the joke:** cloud expertise still helps with discovery and safe cutovers, but now you're buying redundant power, configuration management, spare capacity, and an expensive appliance that promises to make on-prem "feel like the cloud".
+
+### Upskills: some of them are rogue (early thinking)
+Still undecided how much the skill system changes. The idea: some second-career upskills are rogue upskills, bad practices that sound genuinely beneficial, such as Shadow IT. **Not the total opposite of the first career.** A shop full of bad practices just guarantees collapse, and nobody wins. Most upskills stay sound (possibly the familiar ones), with a few shortcuts mixed in.
+- **Why it teaches:** bad practices happen because they work at first. A shortcut should give a real, immediate benefit and a delayed, visible, traceable cost. The player feels the temptation the clients gave in to.
+- **A loan, not a trap.** Each shortcut's debt can be paid down later with a cleanup action, so taking one is a trade-off you can recover from, not a slow death sentence.
+- **Keep the cause legible.** When the bill arrives, the floor says where it came from (for example, a service tagged as Shadow IT), so cause and effect stay teachable.
+- **Limit the dose.** For example, the shop offers at most one shortcut per sprint, or you can hold only a few at once. Exact limits are open.
+- **The cycle closes on you.** Lean on shortcuts and your finished estate becomes the mess that gets the next consultant hired. That fits the boot-screen loop without needing a third campaign.
+- Mr Paperclip loves every rogue upskill.
+
+Candidate rogue upskills (riffs, nothing chosen):
+
+| Shortcut | What it gives you now | What it costs later |
+| --- | --- | --- |
+| Shadow IT | Teams self-serve, so fewer tickets reach your queue | New undocumented services appear in the dark cloud room, to be discovered and paid for. Shadow IT is literally why the room is dark. |
+| Click-ops hotfix | Instead of holding E, you can mash it: tapping faster makes the job go faster. It's manual effort poured into something that should be automated. | Toil that never goes away, and configuration drift: the same fault comes back later |
+| "Temporary" admin for everyone | Every action is faster; no access waits | Bigger blast radius when something goes wrong (and in AI variant B, a route back in for the AI) |
+| Mute the noisy alerts | Fewer interruptions | Problems surface later and larger |
+| Just add capacity | An outage or slowdown clears instantly; sometimes it's the right emergency call for a server FinOps shrank too far | The bill climbs and, if it replaces a real fix, the fault stays |
+| Snapshot everything, forever | Feel safe about every change | Storage costs pile up quietly. Mechanics still to figure out. |
+| Skip the change review | Changes land faster | Occasional surprise breakage |
+| Three-year commitment discount (Claude's suggestion, not from the brainstorm; drop it if it doesn't fit) | Cloud providers discount running costs if you promise one to three years of usage up front, so the bill drops right away | Lock-in: you keep paying for that commitment even if you later move the workload on-prem |
+
+- **Click-ops accessibility:** mashing must stay optional. Holding still works at the normal pace, because rapid tapping is hard for some players and on some devices.
+- **CAB:** skipping the change review is the joke, but it's also a chance for the long-wanted CAB to appear as references, for example Mr Paperclip saying "You should put a change ticket in" at the worst moments.
+- The commitment discount isn't really a bad practice; it's a sound choice that becomes a trap only if placement changes.
+- Possible recognition: an achievement for finishing with no shortcuts, and a joke one for taking every shortcut and surviving.
 
 ### Hallway: client personality becomes surreal
 - Intended eventual direction: the hallway alone expresses the client's personality; the technical rooms stay familiar across clients.
@@ -231,6 +278,9 @@ Non-AI opposition is parked too. The core assessment loop must work without any 
 - [ ] Define the finish condition across cloud, on-prem and hybrid outcomes.
 - [ ] Find the smallest discovery/visibility and placement loop worth prototyping.
 - [ ] Decide what carries over from the first career and how the return is unlocked.
+- [ ] Decide how much the upskill system changes, and the balance of sound upskills to rogue ones.
+- [ ] Work out the basement: two-floor incident juggling, the upstairs space limit, and how often it appears.
+- [ ] Figure out the snapshot mechanic.
 - [ ] Settle how client mandates, assessment windows and evidence-based persuasion fit together.
 - [ ] Decide what makes the VP appear for the reverse hunt, and what catching them achieves.
 - [ ] Try the "small cracks" layer as a possible first step, before any new mode.
