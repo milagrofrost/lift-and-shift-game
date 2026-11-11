@@ -150,6 +150,17 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 - Lower-tier-first migration advice must be feasible with wave ordering. Avoid requiring future-wave work to unlock progress in the current wave.
 - Distinguish client completion from inter-wave consolidation; do not silently change risk ownership between them.
 
+## Agent change-and-review workflow
+
+Use this sequence for each change, scaled to its scope. Keep notes in the task or PR; do not add a process document for every small edit. This workflow does not authorize merges or publication.
+
+1. **Define success before editing.** State the player-visible outcome (or contributor outcome for documentation/tooling), classify the change as presentation, behavior, balance, or a combination, and identify a few observable acceptance checks. Preserve existing tuning unless rebalancing is requested.
+2. **Map the affected paths.** For shared behavior, identify the relevant player, Patch Bot, Mover Bot, manager, temporary worker, AI agent, pipeline, rollback, restore, and client-transition paths. Mark irrelevant paths briefly rather than silently omitting them. Use the implementation and validation requirements below to choose edge cases.
+3. **Implement and check consistency.** Make the smallest coherent change. For presentation and interaction, review `DESIGN.md` and affected findings in `docs/design-audit.md`: state meanings, shared components, wording, keyboard/touch controls, and reduced motion. Update affected explanations alongside behavior.
+4. **Collect evidence appropriate to the change.** Behavior changes need meaningful deterministic checks; appearance needs real browser observation; input needs actual interaction; motion needs observation over time, including reduced motion. A screenshot cannot establish input or animation correctness. Documentation-only changes need content, reference, and diff review rather than gameplay tests. Run the applicable checks below.
+5. **Review the final diff in a separate pass.** Compare the finished change with the acceptance checks. Look for contradictory instructions, unintended tuning or accounting changes, missed state transitions, hidden-information leaks, and cosmetic use of gameplay randomness. Inspect the final result after edits, not just the original plan. Fix findings and rerun affected checks; a separate review pass does not require another agent.
+6. **Report the outcome precisely.** Separate what was implemented, what was tested and its result, what remains untested or blocked, and whether anything was committed, pushed, merged, or published. Never claim more verification than the evidence supports. A blocked browser check remains open; source inspection does not turn it into a pass. Complete independent authorized work and record the remaining gap without bypassing tool restrictions.
+
 ## Implementation and validation
 
 - For presentation and interaction changes, follow `DESIGN.md` and review the affected entries in `docs/design-audit.md`. Record source evidence separately from browser observations; keep untested checks explicit.
