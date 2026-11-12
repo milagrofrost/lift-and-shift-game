@@ -3,6 +3,12 @@
 What runs on GitHub for Lift & Shift, when, and what it protects. **If you change anything in `workflows/`, update
 this file in the same pull request.** CI fails the pull request otherwise (`tests/workflow-docs.mjs`).
 
+> **Yes, this is a lot for a one-file browser game.** Required checks, three browser engines, eleven emulated
+> screens, a balance bot, production smoke tests and a screenshot gallery are probably more than this project
+> strictly needs. That's on purpose: I'm using the game as a hands-on way to learn CI, browser testing, deployment
+> and the other practices it teaches about. If something here looks overengineered, it probably is, and it's
+> probably there because I wanted to learn how it works. — Matt Frost
+
 ## How a change reaches players
 
 1. Work on a branch and open a pull request into `main`.
