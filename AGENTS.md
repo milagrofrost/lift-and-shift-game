@@ -14,7 +14,8 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 
 - Inspect Git status, branch, and applicable instructions before editing. Preserve unrelated user changes.
 - `lift-and-shift.html` contains the game. No build system is required. `functions/` holds dependency-free Cloudflare Pages Functions for shared report links.
-- Gameplay revisions are merged into `main`. Cloudflare Pages deploys `main` to https://las.milagrofrost.com. Use feature branches for new work; pushing main publishes the site.
+- Gameplay revisions are merged into `main`. Cloudflare Pages deploys `main` to https://las.milagrofrost.com. Use feature branches and pull requests; `main` is protected (pull request plus four green CI checks), and merging publishes the site.
+- Workflows: `.github/README.md` explains every GitHub workflow, the protection on `main` and the required check names. Any change under `.github/workflows/` must update it in the same pull request (CI enforces this). Renaming a CI job also means updating the ruleset's required checks.
 - The design direction below describes accepted behavior, including feature-branch work. Inspect the current branch before claiming it is implemented.
 - Do not merge branches, rewrite history, publish releases, or change repository visibility without authorization.
 - Keep local machine configuration, credentials, temporary scripts, and personal paths out of commits. `.claude/` is local configuration, not part of the published game.
@@ -171,7 +172,7 @@ Use this sequence for each change, scaled to its scope. Keep notes in the task o
 - Cosmetic code never draws on `Math.random`: sound and music use `sndRand`, Mr Paperclip uses `clipRand`, and drawing uses none. Otherwise sounds (throttled by wall-clock time) and music (on its own timer) shift the game's rolls and seeded runs stop matching.
 - Use meaningful deterministic regression checks for accounting and state transitions. Validate full JavaScript syntax.
 - Run `tests/regression.html` (served over HTTP) before pushing `main`; it must read `PASS`. Add or update checks there when you change a rule it covers, instead of writing throwaway scripts.
-- GitHub Actions runs syntax, PWA, regression, and the desktop and phone browser tests (`tests/e2e/`) on every push. Its screenshots are evidence of layout and state, not a substitute for playtesting input feel, motion over time, or real-iPhone behavior (silent switch, `navigator.audioSession`, Home Screen mode). Add a scene to `tests/e2e/scenes.mjs` when you add a screen or touch word.
+- GitHub Actions runs syntax, PWA, regression, and the desktop and phone browser tests (`tests/e2e/`) on every pull request and on `main`. A pull request that changes the game also gets a balance comparison against `main` (`tests/balance/`); treat a ⚠️ there as a prompt to explain or rebalance, never as proof a difficulty is (un)winnable. After a merge, `tests/smoke/` checks the live site. Its screenshots are evidence of layout and state, not a substitute for playtesting input feel, motion over time, or real-iPhone behavior (silent switch, `navigator.audioSession`, Home Screen mode). Add a scene to `tests/e2e/scenes.mjs` when you add a screen or touch word.
 - Test patching early/mid/late in a cycle; covered/uncovered expiry; incident completion; failed/successful cutover accounting; freeze duration/cooldown/charge use; and escalation pickup/return/relocation when relevant.
 - Browser-playtest visual and input changes. Source inspection or syntax checks alone do not establish that a UI looks or plays correctly.
 - Do not refresh or restart a user's active test run unnecessarily. Use a separate tab for your checks.

@@ -1,0 +1,64 @@
+name: Live site
+
+# After each push to main, wait for Cloudflare Pages to serve that exact game, then smoke-test production.
+# Also runs every morning, so an outside change (Cloudflare, an expired link, the service worker) shows up.
+# See .github/README.md.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 13 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: live-site
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  SITE: https://las.milagrofrost.com
+
+jobs:
+  smoke:
+    name: Smoke test las.milagrofrost.com
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Wait for the deploy
+        if: github.event_name == 'push'
+        run: |
+          want=$(sha256sum lift-and-shift.html | cut -d' ' -f1)
+          for i in $(seq 1 60); do
+            got=$(curl -fsSL "$SITE/lift-and-shift?ci=$GITHUB_SHA" | sha256sum | cut -d' ' -f1 || true)
+            if [ "$got" = "$want" ]; then echo "Live after about $((i * 10)) seconds."; exit 0; fi
+            sleep 10
+          done
+          echo "::error::After 10 minutes the live game still isn't this commit's lift-and-shift.html. Check the Cloudflare Pages deployment."
+          exit 1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-chromium webkit
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Smoke test
+        run: npx playwright test -c tests/smoke
+        env:
+          CI: '1'
+          SMOKE_URL: ${{ env.SITE }}
+      - name: Keep traces of failures
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: live-site-traces
+          path: test-results/smoke/
+          if-no-files-found: ignore
+          retention-days: 14

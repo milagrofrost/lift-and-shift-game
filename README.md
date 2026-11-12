@@ -106,14 +106,14 @@ Run it before every push to `main`, and add a check whenever you change a rule i
 
 ## Automated checks
 
-Every push and pull request runs [GitHub Actions](.github/workflows/ci.yml):
+Changes reach `main` only through pull requests, and four checks must pass first. [.github/README.md](.github/README.md) explains every workflow, the protection on `main`, and how to run each one locally. In short, each pull request runs [CI](.github/workflows/ci.yml):
 
-- **Syntax and PWA:** `node tests/syntax.mjs` parses every script, and `node tests/pwa.mjs` checks the service worker.
+- **Syntax, PWA and docs:** `node tests/syntax.mjs` parses every script, `node tests/pwa.mjs` checks the service worker, and a pull request that changes the workflows must update `.github/README.md`.
 - **Regression:** `tests/regression.html` in Chromium and WebKit (Safari's engine). It must read `PASS`.
-- **Desktop:** 1440×900, 1280×720 and reduced motion, in Chromium, WebKit and Firefox. Twelve set-up scenes per screen (menu, tutorials, a fire, the ticket queue, a deploy, a failed cutover, a red alert, pause, the review, DEBUG, an end screen) with checks on what each one shows, plus a 20-second keyboard play session recorded as video.
+- **Desktop:** 1440×900, 1280×720 and reduced motion, in Chromium, WebKit and Firefox. Fourteen set-up scenes per screen (menu, tutorials, a fire, the ticket queue, a deploy, a failed cutover, a red alert, pause, the review, DEBUG, an end screen, How to play, the hands-on tutorial) with checks on what each one shows, plus a 20-second keyboard play session recorded as video.
 - **Phone and tablet:** iPhone 15, iPhone SE, Pixel 7 and iPad in landscape, an iPhone held upright, and reduced motion. The same scenes, checking the touch words and gray-out and that the buttons never move. A 20-second touch play session with video, and an offline reload through the same redirects Cloudflare Pages serves.
 
-Screenshots, videos and the Playwright report are attached to each run as downloadable artifacts, and a pull request gets one comment with the results. `node tests/check-links.mjs` runs weekly in its own workflow.
+Screenshots, videos and the Playwright report are attached to each run as downloadable artifacts, and a pull request gets one comment with the results. A pull request that changes the game also gets a **balance** comment: a bot plays 100 seeded careers on `main` and on the change and flags big swings in survival, incidents and spend. After each merge, a **live site** check waits for the Cloudflare deploy and smoke-tests production (opening, offline, share links); it also runs daily. `node tests/check-links.mjs` runs weekly.
 
 To run the browser tests locally (needs Node 22):
 
