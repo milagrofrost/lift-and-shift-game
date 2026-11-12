@@ -6,7 +6,7 @@ this file in the same pull request.** CI fails the pull request otherwise (`test
 ## How a change reaches players
 
 1. Work on a branch and open a pull request into `main`.
-2. **CI** runs on the pull request: four required checks, plus a summary comment with screenshots and video.
+2. **CI** runs on the pull request: four required checks, a screenshot gallery on Cloudflare Pages, and a summary comment.
 3. If the pull request changes the game, **Balance** comments how the bot's careers changed against `main`.
 4. Merge when the required checks are green. `main` is protected, so it only changes through a pull request.
 5. Cloudflare Pages deploys `main` to <https://las.milagrofrost.com> (Cloudflare does this, not GitHub Actions).
@@ -16,7 +16,7 @@ this file in the same pull request.** CI fails the pull request otherwise (`test
 
 | Workflow | File | Runs on | Blocks merging? | What it does |
 | --- | --- | --- | --- | --- |
-| CI | [`ci.yml`](workflows/ci.yml) | pull requests, pushes to `main`, by hand | Yes (4 checks) | Syntax, service worker, regression, desktop and phone browser tests |
+| CI | [`ci.yml`](workflows/ci.yml) | pull requests, pushes to `main`, by hand | Yes (4 checks) | Syntax, service worker, regression, desktop and phone browser tests; publishes a screenshot gallery |
 | Balance | [`balance.yml`](workflows/balance.yml) | pull requests that touch the game or the bot, by hand | No | Bot plays 100 seeded careers on `main` and on the pull request; comments the comparison |
 | Live site | [`smoke.yml`](workflows/smoke.yml) | pushes to `main`, daily at 13:23 UTC, by hand | No (runs after merge) | Waits for the deploy, then checks production |
 | Learn more links | [`links.yml`](workflows/links.yml) | Mondays 06:17 UTC, by hand | No | Every outside link the game shows still works |
@@ -34,10 +34,36 @@ Four jobs run side by side, about 2½ minutes in all. Each is a required status 
 | **Desktop (Chromium, WebKit, Firefox)** | `tests/e2e`: 1440×900, 1280×720 and reduced motion. Fourteen set-up scenes with checks on what each shows, and a recorded 20-second keyboard play session |
 | **Phone and tablet (Chromium, WebKit)** | `tests/e2e`: iPhone 15, iPhone SE, Pixel 7, iPad, an upright iPhone and reduced motion. The same scenes, checking the touch words, gray-out, that the buttons never move and that no text names a key; a recorded touch play session; an offline reload through Cloudflare-style redirects |
 
-The **PR comment** job then posts (or updates) one comment on the pull request with a pass/fail table per device and
-links to the screenshots, videos and Playwright report. Those are also attached to every run as artifacts for 14
-days. CI runs once per pull request; pushing a branch without opening a pull request doesn't run it (use **Run
-workflow** if you want a run anyway).
+The **Screenshot gallery** job publishes every screenshot, the play videos and the Playwright reports as one page
+on Cloudflare Pages ([`tests/e2e/gallery.mjs`](../tests/e2e/gallery.mjs)), in a separate Pages project
+(`las-test-screenshots`) so the game's site is never touched. It runs even when tests fail, since that's when the
+pictures matter most.
+
+- Each pull request has its own address that updates with every run: `https://pr-<number>.las-test-screenshots.pages.dev`.
+- `main`'s latest run is at <https://las-test-screenshots.pages.dev>.
+- The page has a **By scene** grid (each scene across every screen, for spotting a layout that broke on one device),
+  a **By device** view, the play videos, and links to the Playwright reports. Click a picture for full size; the
+  arrow keys step to the same scene on the next screen.
+- The pages are public, like the repository. They only ever show the game.
+
+The **PR comment** job then posts (or updates) one comment on the pull request with a pass/fail table per device, a
+link to the gallery, four scenes inline (desktop beside iPhone), and zip downloads of everything. The zips are also
+on the run's page for 14 days. CI runs once per pull request; pushing a branch without opening a pull request doesn't
+run it (use **Run workflow** if you want a run anyway).
+
+#### Cloudflare secrets for the gallery
+
+The gallery job is skipped (with a notice) until two repository secrets exist. To set them up once:
+
+1. In the Cloudflare dashboard: **My Profile → API Tokens → Create Token → Create Custom Token**. Give it one
+   permission, **Account · Cloudflare Pages · Edit**, limited to your account. Copy the token.
+2. Your **Account ID** is on the dashboard's Workers & Pages overview (right-hand side).
+3. In GitHub: **Settings → Secrets and variables → Actions → New repository secret**. Add `CLOUDFLARE_API_TOKEN`
+   and `CLOUDFLARE_ACCOUNT_ID`. Or from a terminal: `gh secret set CLOUDFLARE_API_TOKEN` and
+   `gh secret set CLOUDFLARE_ACCOUNT_ID` (each asks you to paste the value).
+
+The first run creates the `las-test-screenshots` Pages project. Pull requests from forks never see the secrets, so
+they get the zips only.
 
 ### Balance
 

@@ -99,10 +99,57 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
 
+  gallery:
+    # Publishes the screenshots, play videos and reports as one browsable page on Cloudflare Pages (a separate
+    # project from the game). Skipped quietly until the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secrets exist.
+    name: Screenshot gallery
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    needs: [browser]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PAGES_PROJECT: las-test-screenshots
+    steps:
+      - uses: actions/checkout@v7
+        if: env.CLOUDFLARE_API_TOKEN != ''
+      - uses: actions/setup-node@v7
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v8
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        with:
+          path: artifacts
+      - name: Build the gallery
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        run: >
+          node tests/e2e/gallery.mjs artifacts site
+          --title "Lift & Shift test screenshots${{ github.event_name == 'pull_request' && format(' · PR #{0}', github.event.pull_request.number) || ' · main' }}"
+          --run "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          --pr "${{ github.event.pull_request.number }}" --sha "${{ github.event.pull_request.head.sha || github.sha }}"
+      - name: Publish to Cloudflare Pages
+        id: deploy
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        run: |
+          branch=${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || 'main' }}
+          npx --yes wrangler@4.155.0 pages project list | grep -qw "$PAGES_PROJECT" \
+            || npx --yes wrangler@4.155.0 pages project create "$PAGES_PROJECT" --production-branch main
+          npx --yes wrangler@4.155.0 pages deploy site --project-name "$PAGES_PROJECT" --branch "$branch" --commit-dirty=true
+          if [ "$branch" = main ]; then url="https://$PAGES_PROJECT.pages.dev"; else url="https://$branch.$PAGES_PROJECT.pages.dev"; fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "### [Screenshot gallery]($url)" >> "$GITHUB_STEP_SUMMARY"
+      - name: No Cloudflare secrets yet
+        if: env.CLOUDFLARE_API_TOKEN == ''
+        run: echo "::notice::Screenshot gallery skipped. Add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secrets to publish it (see .github/README.md)."
+
   comment:
     name: PR comment
     if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-    needs: [checks, browser]
+    needs: [checks, browser, gallery]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -116,6 +163,7 @@ jobs:
       - uses: actions/github-script@v9
         env:
           CHECKS: ${{ needs.checks.result }}
+          GALLERY: ${{ needs.gallery.outputs.url }}
         with:
           script: |
             const fs = require('fs'), path = require('path');
@@ -125,10 +173,17 @@ jobs:
               .map(a => `[${a.name}](${run}/artifacts/${a.id})`).join(' · ');
             const parts = fs.existsSync('summaries') ? fs.readdirSync('summaries').sort()
               .map(d => fs.readFileSync(path.join('summaries', d, 'summary.md'), 'utf8')) : [];
+            // a few scenes inline, desktop beside iPhone; the gallery has the rest
+            const G = process.env.GALLERY, v = Date.now();
+            const pic = (p, s) => `<a href="${G}/shots/${p}/${s}.png"><img src="${G}/shots/${p}/${s}.png?v=${v}" width="380" alt="${s} on ${p}"></a>`;
+            const peek = G ? ['', '| Desktop | iPhone 15 |', '| --- | --- |',
+              ...['04-fire', '05-tickets', '07-rollback', '08-red-alert'].map(s => `| ${pic('desktop-chromium', s)} | ${pic('phone-iphone15-webkit', s)} |`), ''] : [];
             const marker = '<!-- lift-and-shift-ci -->';
             const body = [marker, '## Desktop and phone checks',
               `Syntax, PWA and docs: ${process.env.CHECKS === 'success' ? '✅' : '❌'}`, '', ...parts,
-              `**Screenshots, videos and reports:** ${links || 'none uploaded'}`,
+              G ? `### 🖼️ [Open the screenshot gallery](${G})\nEvery scene on every screen side by side, the play videos and the Playwright reports.` : '',
+              ...peek,
+              `**Downloads (zip):** ${links || 'none uploaded'}`,
               `[Full run](${run}). Emulated phones aren't real iPhones: the silent switch, \`navigator.audioSession\`, Home Screen mode and real touch feel still need a check on a device.`].join('\n');
             const issue_number = context.payload.pull_request.number;
             const comments = await github.paginate(github.rest.issues.listComments, {...context.repo, issue_number});
