@@ -109,6 +109,16 @@ Planning notes only. Nothing here is implemented or a settled specification. Whe
 - Riff: the "previous employee" could be you. If the browser has your first career's last run, the carnage report could quietly show your own numbers, which fits the cracks layer below. Keep it to numbers already stored locally.
 - Open: whether his lines change for the second career (he's seen this before too), and how he reacts to each client's surprise place.
 
+### Character progression across the second career (brainstorm)
+Each stage or client is an opportunity to spend more time with one of the game's major recurring characters. The rough progression is **no one → the temp → the manager → the VP → the AI bot**, with room for additional stages or characters in between. This is a direction to explore, not a fixed client count or order.
+
+- **First, no one.** Establish the player's return and the strange familiarity of the world without making a major character the focus.
+- **Then, the temp.** The temp is still officially a temp despite having been around for a very long time. Let that contradiction become part of the interaction and the joke.
+- **Then, the manager.** Give the manager a stage with more direct interaction and a chance to explore their role beyond the first career's interruptions and assistance.
+- **Then, the VP.** Build toward the reverse chase and decision-maker interactions already described below.
+- **Finally, the AI bot.** Make the AI the culminating character encounter, connecting to the guardrails and containment finale.
+- **Possible stages between.** Other interactions or characters can bridge these steps if the pacing needs them. The important idea is an escalating series of character-focused encounters, not necessarily one character per client.
+
 ### The strange familiar: small cracks first
 The cheapest way in is an otherwise normal second career with a few cracks. The tools still work, but the organization's explanation stops making sense. Your competence from the first career is what lets you notice. The company insists it doesn't remember you.
 - Mr Paperclip almost recognizes you: "Your predecessor used to do that. Same face, too. Anyway."
