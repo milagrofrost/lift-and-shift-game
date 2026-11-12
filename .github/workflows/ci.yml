@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: node tests/syntax.mjs
@@ -47,14 +47,14 @@ jobs:
             projects: --project=phone-* --project=tablet-*
             browsers: chromium webkit
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.browsers }}
@@ -68,7 +68,7 @@ jobs:
         run: node tests/e2e/summary.mjs "${{ matrix.label }}" >> "$GITHUB_STEP_SUMMARY"
       - name: Upload screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: screenshots-${{ matrix.group }}
           path: tests/e2e/out/
@@ -76,7 +76,7 @@ jobs:
           retention-days: 14
       - name: Upload videos and report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: report-${{ matrix.group }}
           path: |
@@ -86,7 +86,7 @@ jobs:
           retention-days: 14
       - name: Keep the summary for the PR comment
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: summary-${{ matrix.group }}
           path: test-results/summary.md
@@ -103,11 +103,11 @@ jobs:
       pull-requests: write
       actions: read
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: summary-*
           path: summaries
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v9
         env:
           CHECKS: ${{ needs.checks.result }}
         with:
