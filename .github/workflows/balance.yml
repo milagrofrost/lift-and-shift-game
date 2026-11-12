@@ -1,0 +1,72 @@
+name: Balance
+
+# Plays 100 seeded Normal careers on main's game and on the pull request's, and comments the comparison.
+# Informational: it flags big swings but never blocks a merge. See .github/README.md.
+on:
+  pull_request:
+    paths:
+      - lift-and-shift.html
+      - tests/balance/**
+      - .github/workflows/balance.yml
+  workflow_dispatch:
+
+concurrency:
+  group: balance-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  balance:
+    name: Balance bot (main vs this PR)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-chromium
+      - run: npx playwright install --with-deps chromium
+      - name: Get main's copy of the game
+        run: git show "origin/${{ github.base_ref || 'main' }}:lift-and-shift.html" > "$RUNNER_TEMP/base.html"
+      - name: Play
+        run: node tests/balance/run.mjs --base "$RUNNER_TEMP/base.html" --head lift-and-shift.html --workers 4 --out test-results/balance.md
+      - name: Summarize
+        if: always()
+        run: cat test-results/balance.md >> "$GITHUB_STEP_SUMMARY" || echo "No balance report." >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the raw results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: balance
+          path: test-results/balance.*
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Comment on the pull request
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- lift-and-shift-balance -->';
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const report = fs.existsSync('test-results/balance.md') ? fs.readFileSync('test-results/balance.md', 'utf8') : '❌ The balance run failed before it finished. See the run log.';
+            const body = `${marker}\n${report}\n\n[Run log and raw results](${run})`;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {...context.repo, issue_number});
+            const old = comments.find(c => c.body && c.body.startsWith(marker));
+            if (old) await github.rest.issues.updateComment({...context.repo, comment_id: old.id, body});
+            else await github.rest.issues.createComment({...context.repo, issue_number, body});

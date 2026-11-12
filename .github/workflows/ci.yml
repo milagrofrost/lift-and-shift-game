@@ -1,8 +1,9 @@
 name: CI
 
+# Pull requests run once (not again for the branch push); main runs after each merge. See .github/README.md.
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -15,16 +16,21 @@ permissions:
 
 jobs:
   checks:
-    name: Syntax and PWA
+    name: Syntax, PWA and docs
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: node tests/syntax.mjs
       - run: node tests/pwa.mjs
+      - name: Workflow changes come with .github/README.md
+        if: github.event_name == 'pull_request'
+        run: node tests/workflow-docs.mjs "origin/${{ github.base_ref }}"
 
   browser:
     name: ${{ matrix.label }}
@@ -121,7 +127,7 @@ jobs:
               .map(d => fs.readFileSync(path.join('summaries', d, 'summary.md'), 'utf8')) : [];
             const marker = '<!-- lift-and-shift-ci -->';
             const body = [marker, '## Desktop and phone checks',
-              `Syntax and PWA: ${process.env.CHECKS === 'success' ? '✅' : '❌'}`, '', ...parts,
+              `Syntax, PWA and docs: ${process.env.CHECKS === 'success' ? '✅' : '❌'}`, '', ...parts,
               `**Screenshots, videos and reports:** ${links || 'none uploaded'}`,
               `[Full run](${run}). Emulated phones aren't real iPhones: the silent switch, \`navigator.audioSession\`, Home Screen mode and real touch feel still need a check on a device.`].join('\n');
             const issue_number = context.payload.pull_request.number;
