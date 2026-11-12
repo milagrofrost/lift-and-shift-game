@@ -34,6 +34,11 @@ export async function runScenes(page, testInfo, touch) {
     if (r.overlayOpen && r.overlayScroll !== 0) say(`overlay opened scrolled down by ${r.overlayScroll}px`);
     if (scene.alert && !r.alert) say('no red alert');
     if (scene.toastsTop && !r.toastsTop) say("toasts didn't move to the top");
+    // a touch screen names the on-screen buttons, never E or Space; a keyboard keeps the keys
+    const keyRef = /\b([Hh]old|[Tt]ap|[Pp]ress) (E|Space)\b|<kbd>(E|Space|WASD)<\/kbd>|(^|·  )(Hold )?(E|Space):/;
+    if (touch && keyRef.test(r.keyText)) say(`mentions a key on a touch screen: ${r.keyText.match(keyRef)[0]}`);
+    if (scene.hint) { const want = scene.hint[touch ? 'touch' : 'key'];
+      if (want instanceof RegExp ? !want.test(r.prompt) : r.prompt !== want) say(`floor hint reads "${r.prompt}", expected ${want}`); }
     const inPlay = r.mode === 'play';
     for (const k of ['fix', 'grab']) {
       const b = r[k];

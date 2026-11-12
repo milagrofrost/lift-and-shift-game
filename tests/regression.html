@@ -30,7 +30,7 @@
 const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
-  "fixWord,grabWord,setSilentPlay,silentBtn,HAS_SESSION,AU,toastsCover,FIX_WORDS,rollbackTarget,tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
+  "K,keyHint,TOUCH,fixWord,grabWord,setSilentPlay,silentBtn,HAS_SESSION,AU,toastsCover,FIX_WORDS,rollbackTarget,tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
   "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},get LOGLV(){return LOGLV},setLogLv:v=>{LOGLV=v},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
@@ -1092,6 +1092,25 @@ test("touch buttons name the action where you stand and go gray when there's not
   S.carry = null; S.racks[i] = a;
   S.cloud[j] = {name: a.name, tier: a.tier, down: true, rb: 0, orig: a, leak: 0}; S.racks[i] = null; [w, ok] = G.grabWord();
   check(w === "ROLLBACK" && ok, `failed cutover grab word ${w}`);
+});
+test("on a touch screen, hints and help name the FIX and GRAB buttons instead of E and Space", () => {
+  const S = fresh(); S.upgrades.pipeline = 0;
+  check(G.K("Hold E to retry or hold Space to roll back.") === "Hold E to retry or hold Space to roll back.", "keyboard text changed");
+  check(G.keyHint("Hold E: extinguish") === "Hold E: extinguish", "keyboard hint changed");
+  Object.defineProperty(G.TOUCH, "matches", {value: true, configurable: true});
+  try {
+    check(G.K("hold E to retry (3s, 80%) or hold Space to roll back.") === "hold FIX to retry (3s, 80%) or hold GRAB to roll back.", G.K("hold E to retry or hold Space to roll back."));
+    check(G.K("Press <kbd>Space</kbd> (or GRAB) to pick it up. Hold <kbd>E</kbd> at the desk.") === "Press <kbd>GRAB</kbd> to pick it up. Hold <kbd>FIX</kbd> at the desk.", "kbd keys not renamed");
+    check(G.K("Move with <kbd>WASD</kbd> or the arrow keys.") === "Move by dragging on the left half.", "movement not reworded");
+    check(G.K("Tap E on one (or hold E and walk past several)") === "Tap FIX on one (or hold FIX and walk past several)", "tap E not renamed");
+    check(G.K("Each rack shows E and Space bars") === "Each rack shows E and Space bars", "a bare letter E was renamed");
+    const i = S.racks.findIndex(a => a && !a.hidden), a = S.racks[i]; a.fire = 30; S.p.x = G.RACKS[i].x; S.p.y = G.RACKS[i].y; G.update(0.001);
+    check(G.keyHint("Hold E: extinguish") === "Hold DOUSE: extinguish", G.keyHint("Hold E: extinguish"));
+    a.fire = 0; S.fix = {kind: "patch", a};
+    check(G.keyHint("E: patch (3⚡)") === "PATCH (3⚡)", G.keyHint("E: patch (3⚡)"));
+    S.fix = null; check(G.keyHint("Space: grab (80% cutover)") === "GRAB (80% cutover)", G.keyHint("Space: grab (80% cutover)"));
+  } finally { delete G.TOUCH.matches; }
+  check(G.TOUCH.matches === false || G.TOUCH.matches === W.matchMedia("(pointer:coarse)").matches, "touch override leaked");
 });
 test("iPhone sound obeys the silent switch unless the player opts in, and the setting is saved", () => {
   check(G.AU.loud === false || G.AU.loud === true, "silent-mode setting missing");
