@@ -119,6 +119,14 @@ Each stage or client is an opportunity to spend more time with one of the game's
 - **Finally, the AI bot.** Make the AI the culminating character encounter, connecting to the guardrails and containment finale.
 - **Possible stages between.** Other interactions or characters can bridge these steps if the pacing needs them. The important idea is an escalating series of character-focused encounters, not necessarily one character per client.
 
+### Finale: nobody is the superhero (brainstorm)
+- **Possible ending:** the major characters introduced throughout the second career come together to contain the runaway AI agent. The temp, manager, VP, player, and possibly other allies each have something necessary to contribute. No one person, bot, or upgrade is the superhero.
+- **The point:** we need each other. A healthy operation comes from people with different roles cooperating, sharing responsibility, and putting checks around powerful systems. It isn't the story of one indispensable engineer saving everyone.
+- Let the earlier character-focused stages **earn the team-up**. Interactions with each character establish what they understand, what they can do, and how they might help when the final crisis arrives.
+- The finale should make that cooperation **playable**, not just show everyone standing together in a cutscene. Exactly who does what, and how the team overcomes old conflicts, remains open.
+- The win is still **containment through guardrails**, not destruction of the AI. An AI tool with limited, accountable responsibilities can be part of the solution; the uncontrolled agent is the threat.
+- Revisit the final VP appearance and abrupt ending so the collaborative victory lands. The closing joke shouldn't accidentally erase the idea that everyone mattered.
+
 ### The strange familiar: small cracks first
 The cheapest way in is an otherwise normal second career with a few cracks. The tools still work, but the organization's explanation stops making sense. Your competence from the first career is what lets you notice. The company insists it doesn't remember you.
 - Mr Paperclip almost recognizes you: "Your predecessor used to do that. Same face, too. Anyway."
