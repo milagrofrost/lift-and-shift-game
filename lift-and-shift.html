@@ -1775,7 +1775,7 @@ function drawAlert(){
   ctx.font=`700 13px ${DISP}`;const w=Math.min(W-40,ctx.measureText(msg).width+28);
   ctx.fillStyle=`rgba(150,20,15,${0.85+0.15*pulse})`;rr(W/2-w/2,104,w,40,6);ctx.fill();
   tx(msg,W/2,117,13,"#fff",{font:DISP,weight:700,max:w-16});
-  tx("Hold E on a flashing incident. Nothing else works until it's fixed. Costs no energy.",W/2,134,10,"#ffd9d4",{max:w-16,font:BODY,weight:600});
+  tx(K("Hold E on a flashing incident. Nothing else works until it's fixed. Costs no energy."),W/2,134,10,"#ffd9d4",{max:w-16,font:BODY,weight:600});
 }
 /* Energy feedback: drains rise off the player like steam (red, with puffs); gains drop down into the player
    (green) and land with a pulse. Continuous drains (firefighting) are batched into small bursts. */
@@ -2039,7 +2039,22 @@ function posOf(a){if(S.carry===a)return S.p;for(const b of S.bots)if(b.carry===a
 
 /* ==== Feedback, movement, player actions, migration, pipeline, FinOps ==== */
 /* ---------- feedback ---------- */
-function toast(msg){if(!/^(🔊|🔇|⚡ Out of energy)/.test(msg))logEv(msg);dbgLog(2,msg);const t=document.createElement("div");t.className="toast";t.textContent=msg;const box=$("toasts");box.appendChild(t);while(box.children.length>3)box.firstChild.remove();setTimeout(()=>t.remove(),4300);}
+/* On a touch screen there's no E or Space: text names the on-screen buttons instead (FIX and GRAB in general text; the
+   floor hint uses the word the button shows right now). Desktop text is untouched. */
+const TOUCH=matchMedia("(pointer:coarse)");
+const TOUCH_TEXT=[
+  [/<kbd>E<\/kbd>/g,"<kbd>FIX</kbd>"],[/<kbd>Space<\/kbd>/g,"<kbd>GRAB</kbd>"],[/ \(or GRAB\)/g,""],
+  [/\b([Mm])ove with <kbd>WASD<\/kbd> or the arrow keys(?: \(on a phone, drag on the left half\))?/g,"$1ove by dragging on the left half"],
+  ["Move with WASD or the arrows, Space grabs and drops, hold E to fix, P pauses. On a phone, drag on the left half and use GRAB and FIX.","Drag on the left half to move, tap GRAB to pick up and drop, hold FIX to fix, and ⏸ pauses."],
+  [/\bSpace to grab an app\b/g,"Tap GRAB to pick up an app"],
+  [/\b([Hh]old|[Tt]ap|[Pp]ress) E\b/g,"$1 FIX"],[/\b([Hh]old|[Pp]ress) Space\b/g,"$1 GRAB"],
+];
+function K(s){if(!s||!TOUCH.matches)return s;for(const[a,b]of TOUCH_TEXT)s=s.replaceAll(a,b);return s;}
+// the floor hint: "Hold E: extinguish" reads "Hold DOUSE: extinguish", and "E: patch (3⚡)" reads "PATCH (3⚡)"
+function keyHint(t){if(!t||!TOUCH.matches)return t;
+  t=t.replace(/^(Hold )?(E|Space)\b/,(m,h,k)=>(h||"")+(k==="E"?fixWord()||"FIX":grabWord()[0])).replace("(hold E to approve as you walk)","(hold to approve as you walk)");
+  return t.replace(/^((?:Hold )?([A-Z]+)): (\S+)/,(m,lead,w,v)=>v.toLowerCase()===w.toLowerCase()?lead:m);}
+function toast(msg){if(!/^(🔊|🔇|⚡ Out of energy)/.test(msg))logEv(msg);dbgLog(2,msg);const t=document.createElement("div");t.className="toast";t.textContent=K(msg);const box=$("toasts");box.appendChild(t);while(box.children.length>3)box.firstChild.remove();setTimeout(()=>t.remove(),4300);}
 /* Logging level (pause menu): how much text the floor shows. ERROR only incidents, WARN (default) short prompts and problems,
    INFO every hint and result, DEBUG all of that plus labels on everything and a log tail nobody asked for. Saved per browser. */
 const LOG_LEVELS=["ERROR","WARN","INFO","DEBUG"];
@@ -2072,7 +2087,7 @@ function fl(p,text,color,lvl,short){
   dbgLog(lvl,text);
   const L=logLv();if(lvl>L){if(short==null)return;text=short;}
   if(L>=3)text=`[${LOG_LEVELS[lvl]}] ${text}`;
-  S.fl.push({x:p.x,y:p.y-20,text,color,t:0,life:L>=3?2:1.3});
+  S.fl.push({x:p.x,y:p.y-20,text:K(text),color,t:0,life:L>=3?2:1.3});
 }
 function warn(){if(S.t-S.warnT>2.5){S.warnT=S.t;clipEv("tired");toast("⚡ Out of energy. Migrate an app to recharge. You can still fight fires, just slowly.");}}
 
@@ -2572,7 +2587,7 @@ function moverBot(b,dt,sp){
 }
 // the hint over your head. Each part has an INFO wording, a shorter WARN one, and an ERROR one only for incidents (null hides it)
 function buildPrompt(){
-  const P=S.p,parts=[],L=logLv(),say=(info,warn=info,err=null)=>{const t=L>=2?info:L===1?warn:err;if(t)parts.push(t);};
+  const P=S.p,parts=[],L=logLv(),say=(info,warn=info,err=null)=>{const t=keyHint(L>=2?info:L===1?warn:err);if(t)parts.push(t);};
   if(S.carry){const z=zoneOf(P.x),a=S.carry,copy=liveCopy(a),pct=Math.round(successChance(a.tier)*100);
     if(z===2){if(slotUnder()>=0)say(`Space: ${copy?"deploy the copy of":"migrate"} ${a.name} (${pct}%)`,`Space: ${copy?"deploy":"migrate"} ${pct}%`);
       else if(S.cloud.some(c=>!c))say("Walk onto an empty cloud slot",null);else say("☁️ The cloud is full","☁️ Cloud full");}
@@ -3221,7 +3236,7 @@ function hud(){
 /* ==== Screens: menu, tutorial, notes, how to play ==== */
 /* ---------- screens ---------- */
 const ov=$("overlay");
-function show(html){hideTip();ov.innerHTML=`<div class="card" role="dialog" aria-modal="true">${html}</div>`;ov.hidden=false;
+function show(html){hideTip();ov.innerHTML=`<div class="card" role="dialog" aria-modal="true">${K(html)}</div>`;ov.hidden=false;
   // open at the top: focus the first button without scrolling the card down to it
   const b=ov.querySelector(".btn:not(:disabled)");if(b)b.focus({preventScroll:true});ov.scrollTop=0;ov.firstElementChild.scrollTop=0;}
 /* Hover tips on the toolkit chips: the upgrade's description follows the mouse while it's over a chip. A tap shows it
@@ -3544,7 +3559,7 @@ function tutHighlight(els){document.querySelectorAll(".tut-hl").forEach(e=>e.cla
 const TUT_DONE_SAY="🎉 The room's empty: that's a finished client. Next, we'll read the end-of-client report together.";
 // "Got it" keeps its space when it isn't needed, so the text column never changes width between tips
 const showGotIt=on=>{$("clip-next").style.visibility=on?"":"hidden";};
-function tutSay(html,label){$("clip-say").innerHTML=html;$("clip-step").textContent=label||"";showGotIt(false);}
+function tutSay(html,label){$("clip-say").innerHTML=K(html);$("clip-step").textContent=label||"";showGotIt(false);}
 /* The tips panel is as tall as its longest tip at the current width, so the floor below never jumps up and down
    as the text changes. Measured off-screen with every tip (sample server names for the ones that name one). */
 function tutFitClip(){
@@ -3731,7 +3746,7 @@ function clipEv(k){
   if(c.sayT>0&&c.pr&&S.t-c.at<1.5)return false; // never talk over an urgent line that just started
   let bag=c.bags[k];
   if(!bag||!bag.length){bag=c.bags[k]=CLIP_LINES[k].map((_,i)=>i);for(let i=bag.length-1;i>0;i--){const j=Math.floor(clipRand()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}}
-  c.lastK=c.lastK||{};c.lastK[k]=S.t;c.say=CLIP_LINES[k][bag.pop()];c.sayT=CLIP_SAY_T;c.at=S.t;c.pr=pr;c.next=S.t+8+4*clipRand();
+  c.lastK=c.lastK||{};c.lastK[k]=S.t;c.say=K(CLIP_LINES[k][bag.pop()]);c.sayT=CLIP_SAY_T;c.at=S.t;c.pr=pr;c.next=S.t+8+4*clipRand();
   S.energy=Math.min(100,S.energy+1);fl({x:c.x,y:c.y+34},"📎 +1⚡",C.amber,2); // the one useful thing about him
   return true;
 }
