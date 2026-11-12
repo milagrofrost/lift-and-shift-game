@@ -338,8 +338,10 @@ It mirrors the first career's lesson that the AI agent amplifies whatever practi
 - In the final client the VP is nowhere to be seen. After appearing in a new guise at every client, he's just gone, and you forget about him.
 - You defeat the AI. There's a celebration. You think the game is over.
 - A pause. The view is zoomed in a little on the player. Footsteps in the distance, coming closer and closer.
-- He walks into frame. It's the VP. He stands in front of you and says one of his famous lines. Cut. That's the end of the game.
-- Candidate lines, from the first career's VP: "Per my last email..." / "Just following up." / "Did you see my email?" Or one that sets up the cycle: "Got a minute? The new CIO has some thoughts about the cloud." Which line is open.
+- He walks into frame. It's the VP. He stands in front of you and says: **"Per my last email..."** (chosen; a line from the first career's VP).
+- Then a sudden, sharp noise and an instant cut to black. Not literally a gunshot, just abrupt enough to startle. Deliberately ambiguous: players can interpret it however they like. That's the end of the game.
+- Superseded candidates: "Just following up." / "Did you see my email?" / "Got a minute? The new CIO has some thoughts about the cloud."
+- Production notes: the noise is synthesized like the game's other sounds and plays even if music is off, but obeys mute and the sound settings. With sound off, the hard cut to black carries the moment alone. A hard cut isn't motion, so it's fine under reduced motion.
 - How it fits the cycle punchline: the VP could deliver the cloud-first news in person instead of an email, or his line could come first and the email and boot screen follow. Open.
 
 Open: how it's drawn and voiced, whether "battle" means phases or one long engagement, and how hard the final client is given the softer second-career fail state.
