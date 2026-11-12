@@ -89,6 +89,8 @@ Late-game AI was a disaster on a 10-client career with no Patch Bot: patching sa
 
 Planning notes only. Nothing here is implemented or a settled specification. Where an idea was replaced during the brainstorm, it is marked **superseded** so it isn't mistaken for a live option.
 
+These are the raw notes. [docs/second-career.md](docs/second-career.md) is the story bible that organizes them: controlling idea, cast, client grid, setups and payoffs, and decision log.
+
 ### The thesis
 - **Realism in the server rooms, surrealism in the hallway.** The brainstorm started from wanting reality to distort, moving away from the learning game, and ended at realistic placement decisions. The reconciliation: the technical rooms keep telling the operational truth (cause and effect stay teachable), while the hallway, the one place that carries the client's personality, is where things get eerie and silly.
 - **Every client is a different experience.** Unlike the first career, second-career clients don't need to be consistent. Each one starts on the familiar map and then hides its own surprise off it: a stairway down, a hole in the wall. Some clients are long and detailed, some are quick mini-games, and they don't all have to be about maintaining a data center. Straying from the original theme is the point of a second run. The teaching still holds inside each one: cause and effect stay understandable, however strange the place.
