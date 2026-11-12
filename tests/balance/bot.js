@@ -26,7 +26,10 @@ async function career({diff="normal",skill="expert",seed=1,maxClients=8,preset=n
   const GAME=game||SRC;
   if(!GAME.includes(HOOK))throw new Error("hook not found");
   const f=document.createElement("iframe");f.style.cssText="position:absolute;left:-9999px;width:960px;height:600px;border:0";document.body.appendChild(f);
-  const W=f.contentWindow;W.document.open();let src=GAME.replace(HOOK,EXPOSE);for(const[a,b]of patch||[]){if(!src.includes(a))throw new Error("patch target not found: "+a);src=src.split(a).join(b);}W.document.write(src);W.document.close();
+  const W=f.contentWindow;W.document.open();let src=GAME.replace(HOOK,EXPOSE);
+  // Mr Paperclip's own generator is seeded from the clock; his lines give energy, so seed him from the career instead
+  // or a career that buys him plays out differently every run
+  src=src.replace(/let clipSeed=\(Date\.now\(\)>>>0\)\|\|7;/,`let clipSeed=${(seed*2654435761)>>>0}||7;`);for(const[a,b]of patch||[]){if(!src.includes(a))throw new Error("patch target not found: "+a);src=src.split(a).join(b);}W.document.write(src);W.document.close();
   // the game's script waits for its stylesheets (Google Fonts), so give it real time to start
   for(let k=0;k<400&&!W.__G;k++)await new Promise(r=>setTimeout(r,25));
   if(!W.__G){f.remove();throw new Error("the game did not start in the bot's frame");}

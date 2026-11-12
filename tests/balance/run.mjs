@@ -32,7 +32,9 @@ try {
     await page.goto(`http://127.0.0.1:${opts.port}/tests/balance/runner.html`);
     await page.waitForFunction(() => window.simCareer);
     for (let job; (job = jobs.shift());) {
-      const r = await page.evaluate(([o, src]) => window.simCareer({...o, src}),
+      // a career saves records and settings (best career, clients, tips) that the next one on this page would read;
+      // which career follows which depends on timing, so every career starts from empty storage
+      const r = await page.evaluate(([o, src]) => { localStorage.clear(); sessionStorage.clear(); return window.simCareer({...o, src}); },
         [{diff: opts.diff, skill: opts.skill, seed: job.seed, maxClients: opts.clients}, SRC[job.v]]);
       results[job.v].push(r);
     }
