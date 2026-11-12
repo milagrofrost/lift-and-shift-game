@@ -1,0 +1,13 @@
+{
+  "name": "lift-and-shift-tests",
+  "private": true,
+  "description": "Test tooling only. The game itself has no build step or dependencies.",
+  "scripts": {
+    "test": "playwright test -c tests/e2e",
+    "test:desktop": "playwright test -c tests/e2e --project=desktop-chromium",
+    "test:phone": "playwright test -c tests/e2e --project=phone-iphone15-chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
+  }
+}

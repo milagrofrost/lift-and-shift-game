@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Syntax and PWA
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: node tests/syntax.mjs
+      - run: node tests/pwa.mjs
+
+  browser:
+    name: ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: regression
+            label: Regression (Chromium, WebKit)
+            projects: --project=regression-*
+            browsers: chromium webkit
+          - group: desktop
+            label: Desktop (Chromium, WebKit, Firefox)
+            projects: --project=desktop-*
+            browsers: chromium webkit firefox
+          - group: phone
+            label: Phone and tablet (Chromium, WebKit)
+            projects: --project=phone-* --project=tablet-*
+            browsers: chromium webkit
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.browsers }}
+      - run: npx playwright install --with-deps ${{ matrix.browsers }}
+      - name: Run tests
+        run: npx playwright test -c tests/e2e ${{ matrix.projects }}
+        env:
+          CI: '1'
+      - name: Summarize
+        if: always()
+        run: node tests/e2e/summary.mjs "${{ matrix.label }}" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshots-${{ matrix.group }}
+          path: tests/e2e/out/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Upload videos and report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: report-${{ matrix.group }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Keep the summary for the PR comment
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: summary-${{ matrix.group }}
+          path: test-results/summary.md
+          if-no-files-found: ignore
+          retention-days: 3
+
+  comment:
+    name: PR comment
+    if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: [checks, browser]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: summary-*
+          path: summaries
+      - uses: actions/github-script@v9
+        env:
+          CHECKS: ${{ needs.checks.result }}
+        with:
+          script: |
+            const fs = require('fs'), path = require('path');
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const {data} = await github.rest.actions.listWorkflowRunArtifacts({...context.repo, run_id: context.runId, per_page: 100});
+            const links = data.artifacts.filter(a => !a.name.startsWith('summary-'))
+              .map(a => `[${a.name}](${run}/artifacts/${a.id})`).join(' · ');
+            const parts = fs.existsSync('summaries') ? fs.readdirSync('summaries').sort()
+              .map(d => fs.readFileSync(path.join('summaries', d, 'summary.md'), 'utf8')) : [];
+            const marker = '<!-- lift-and-shift-ci -->';
+            const body = [marker, '## Desktop and phone checks',
+              `Syntax and PWA: ${process.env.CHECKS === 'success' ? '✅' : '❌'}`, '', ...parts,
+              `**Screenshots, videos and reports:** ${links || 'none uploaded'}`,
+              `[Full run](${run}). Emulated phones aren't real iPhones: the silent switch, \`navigator.audioSession\`, Home Screen mode and real touch feel still need a check on a device.`].join('\n');
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {...context.repo, issue_number});
+            const old = comments.find(c => c.body && c.body.startsWith(marker));
+            if (old) await github.rest.issues.updateComment({...context.repo, comment_id: old.id, body});
+            else await github.rest.issues.createComment({...context.repo, issue_number, body});

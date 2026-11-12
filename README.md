@@ -104,6 +104,33 @@ Play at **https://las.milagrofrost.com**. Cloudflare Pages automatically deploys
 
 Run it before every push to `main`, and add a check whenever you change a rule it covers.
 
+## Automated checks
+
+Every push and pull request runs [GitHub Actions](.github/workflows/ci.yml):
+
+- **Syntax and PWA:** `node tests/syntax.mjs` parses every script, and `node tests/pwa.mjs` checks the service worker.
+- **Regression:** `tests/regression.html` in Chromium and WebKit (Safari's engine). It must read `PASS`.
+- **Desktop:** 1440×900, 1280×720 and reduced motion, in Chromium, WebKit and Firefox. Twelve set-up scenes per screen (menu, tutorials, a fire, the ticket queue, a deploy, a failed cutover, a red alert, pause, the review, DEBUG, an end screen) with checks on what each one shows, plus a 20-second keyboard play session recorded as video.
+- **Phone and tablet:** iPhone 15, iPhone SE, Pixel 7 and iPad in landscape, an iPhone held upright, and reduced motion. The same scenes, checking the touch words and gray-out and that the buttons never move. A 20-second touch play session with video, and an offline reload through the same redirects Cloudflare Pages serves.
+
+Screenshots, videos and the Playwright report are attached to each run as downloadable artifacts, and a pull request gets one comment with the results. `node tests/check-links.mjs` runs weekly in its own workflow.
+
+To run the browser tests locally (needs Node 22):
+
+```bash
+npm ci
+```
+
+```bash
+npx playwright install chromium webkit firefox
+```
+
+```bash
+npx playwright test -c tests/e2e
+```
+
+Add `--project=desktop-*` or `--project=phone-*` to run one group. Screenshots land in `tests/e2e/out/`. The scenes reuse the regression page's `HOOK` and `NAMES`, so they need no changes to the game. Emulated phones aren't real iPhones: the silent switch, `navigator.audioSession`, Home Screen mode and real touch feel still need a check on a device.
+
 ## Contributing, including AI assistants
 
 Use [DESIGN.md](DESIGN.md) for the shared visual and interaction standard. The [design audit](docs/design-audit.md) tracks consistency findings, evidence, and checks still needed.

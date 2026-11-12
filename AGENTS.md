@@ -51,7 +51,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 | Dev console, backups, terminal, pause | cheats, restore points, `CLI` commands, `togglePause` |
 | Main loop | `frame()` |
 
-`tests/regression.html` reaches internals through the `NAMES` list and the start-up `HOOK` line; update both when you rename a function it uses or change the last line of the script. Put big new systems, such as multiplayer, in their own `.js` files from the start rather than growing this file; don't rewrite or split the existing code.
+`tests/regression.html` reaches internals through the `NAMES` list and the start-up `HOOK` line; update both when you rename a function it uses or change the last line of the script. The browser tests in `tests/e2e/` read both from there. Put big new systems, such as multiplayer, in their own `.js` files from the start rather than growing this file; don't rewrite or split the existing code.
 
 ## Accepted gameplay direction
 
@@ -171,6 +171,7 @@ Use this sequence for each change, scaled to its scope. Keep notes in the task o
 - Cosmetic code never draws on `Math.random`: sound and music use `sndRand`, Mr Paperclip uses `clipRand`, and drawing uses none. Otherwise sounds (throttled by wall-clock time) and music (on its own timer) shift the game's rolls and seeded runs stop matching.
 - Use meaningful deterministic regression checks for accounting and state transitions. Validate full JavaScript syntax.
 - Run `tests/regression.html` (served over HTTP) before pushing `main`; it must read `PASS`. Add or update checks there when you change a rule it covers, instead of writing throwaway scripts.
+- GitHub Actions runs syntax, PWA, regression, and the desktop and phone browser tests (`tests/e2e/`) on every push. Its screenshots are evidence of layout and state, not a substitute for playtesting input feel, motion over time, or real-iPhone behavior (silent switch, `navigator.audioSession`, Home Screen mode). Add a scene to `tests/e2e/scenes.mjs` when you add a screen or touch word.
 - Test patching early/mid/late in a cycle; covered/uncovered expiry; incident completion; failed/successful cutover accounting; freeze duration/cooldown/charge use; and escalation pickup/return/relocation when relevant.
 - Browser-playtest visual and input changes. Source inspection or syntax checks alone do not establish that a UI looks or plays correctly.
 - Do not refresh or restart a user's active test run unnecessarily. Use a separate tab for your checks.
