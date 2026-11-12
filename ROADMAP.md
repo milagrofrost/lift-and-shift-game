@@ -91,6 +91,7 @@ Planning notes only. Nothing here is implemented or a settled specification. Whe
 
 ### The thesis
 - **Realism in the server rooms, surrealism in the hallway.** The brainstorm started from wanting reality to distort, moving away from the learning game, and ended at realistic placement decisions. The reconciliation: the technical rooms keep telling the operational truth (cause and effect stay teachable), while the hallway, the one place that carries the client's personality, is where things get eerie and silly.
+- **Every client is a different experience.** Unlike the first career, second-career clients don't need to be consistent. Each one starts on the familiar map and then hides its own surprise off it: a stairway down, a hole in the wall. Some clients are long and detailed, some are quick mini-games, and they don't all have to be about maintaining a data center. Straying from the original theme is the point of a second run. The teaching still holds inside each one: cause and effect stay understandable, however strange the place.
 - **The central question:** "What belongs where, and can you prove it works?" Not "is cloud good" or "is on-prem good". Leaving a workload in the cloud can be the right answer.
 - **The emotional arc mirrors the first career.** At first you can barely see enough to cope; by the end you have a clear picture and systems you trust. The dark basement literally brightens as your understanding grows.
 
@@ -100,6 +101,13 @@ Planning notes only. Nothing here is implemented or a settled specification. Whe
 - You migrated clients well and learned good practices. Then you were fired, outsourced, replaced by the AI, or you left. The clients thought they could run it themselves. **They dismantled the practices that made it work, then blamed the destination.** Now they hire you back. Being right is both satisfying and infuriating.
 - The company calls both decisions visionary: going to the cloud, and coming back.
 - **Cycle punchline (candidate ending):** you finish with a stable, well-run estate, and an email arrives: "Our new CIO has announced a cloud-first strategy." Then the same boot screen. That email completes the cycle; there is no third campaign and no repeated back-and-forth to play.
+
+### Opening: the carnage report and Mr Paperclip
+- **Before client one,** you're handed the carnage report of the previous employee, the one who just quit the company (the resignation exit interview's carnage report, reused).
+- **It's broken.** The report's improvement shop is there, but every option is disabled. There are 2 sprint points available, and the only thing you can pick is Mr Paperclip (his normal cost is 2 points). You can't leave the report until you select him.
+- **So he comes with you for the whole second career,** at every client, not as an optional perk. It works for old school careers too, since he isn't AI.
+- Riff: the "previous employee" could be you. If the browser has your first career's last run, the carnage report could quietly show your own numbers, which fits the cracks layer below. Keep it to numbers already stored locally.
+- Open: whether his lines change for the second career (he's seen this before too), and how he reacts to each client's surprise place.
 
 ### The strange familiar: small cracks first
 The cheapest way in is an otherwise normal second career with a few cracks. The tools still work, but the organization's explanation stops making sense. Your competence from the first career is what lets you notice. The company insists it doesn't remember you.
@@ -154,6 +162,7 @@ In the first career, VPs hunt you. In the second, it's your turn: you need somet
 - **Callbacks to reuse:** the badge reader denies the VP at the door three times while they call Bob, with you catching up behind them. The red-alert slow-mo could apply to the VP you're chasing. You could piggyback through a door they hold open.
 - **Payoff candidates:** a changed placement decision, approved budget for destination capacity, a procurement delay cleared, or your invoice finally paid (getting the card holder to pay the bill is a real consulting pain). Not delivering in time means "The board went with the original plan."
 - Possible end-report stat: total VP time taken, as a shareable brag.
+- **The VP keeps coming back, different each time.** Every client has the VP in some new capacity and fashion, as a recurring character. On the beach, he's chilling in the sandbox environment. His mood and personality for each appearance are open.
 - Open: how often the VP appears, whether a caught VP can still refuse, and how this works for the hospital and dentist hallways (a zombie VP still answers "brains").
 
 ### Arrival: very, very familiar
@@ -165,7 +174,7 @@ In the first career, VPs hunt you. In the second, it's your turn: you need somet
 - **Superseded:** an ominous arrival with a pulsing alert through the walls and a dark upstairs cloud room. The darkness now lives in the basement.
 
 ### The basement: the dark, damp tier under the cloud
-Inspired by dungeon-crawler stairways, built entirely from the game's own pieces.
+The Shadow IT client's surprise. Inspired by dungeon-crawler stairways, built entirely from the game's own pieces.
 - **Reveal:** investigating a "?" server upstairs reveals a stairway. What the hell? It follows the hidden-server rule: revealed by investigation, never by progress.
 - **Dark and damp.** The client lost visibility of what it runs, and this is where that shows. A small pool of light surrounds you; beyond it you hear alerts and see occasional signs of activity.
 - **What's down there:** all sorts of stuff, and everything starts as unknown, so there's a lot of investigating.
@@ -263,8 +272,28 @@ Candidate rogue upskills (riffs, nothing chosen):
 - The commitment discount isn't really a bad practice; it's a sound choice that becomes a trap only if placement changes.
 - Possible recognition: an achievement for finishing with no shortcuts, and a joke one for taking every shortcut and surviving.
 
+### Client scenario: the sandbox that never ended
+A very familiar real-world story. VMs are so easy to spin up that, over about ten years, a client created sandbox environment after sandbox environment. The project has changed hands several times. Nobody can find the owners, nobody knows which ones quietly became production, and they cost a fortune. Several cleanup teams have tried; none lasted as long as the sandbox project itself.
+- **This client is actually doing fine.** They follow best practices, and everything just hums along; the first career's room looks healthy. Their secret is the sandbox they totally forgot about, which to them is just a nice place to be. The contrast is the lesson: good hygiene in the estate you know doesn't cover the one you forgot.
+- **The reveal.** The cloud data center looks like the first career's, healthy and humming. Then you notice a break in its right-hand wall, just another doorway. Past it, the screen only shows the regular map. As you approach, the view pans right, and it's a beach. Where did this come from?
+- **The beach.** Relaxing, a little liminal, like a backrooms space that shouldn't exist: ocean sounds, waves crashing, and little mounds of sand laid out in a grid, the familiar rack grid. You wonder what this is.
+- **Title card.** After a moment, a title appears over the room: **Sandbox Environment**, with a short explanation along the lines of "You've stumbled on their sandbox environment. Find the servers buried under the sand, work out which ones are production, and deal with them."
+- **It's not just a sandbox.** Under the sand could be small mini-games, not data-center upkeep. This client can play differently from the rest.
+- **Literal sandbox theme.** You dig in the sand to discover servers. Discovery becomes digging: buried environments, half-buried racks, and things you only find with a shovel.
+- **New tech:** the map panning to a room off the edge is a camera the game doesn't have yet (today everything fits on one screen).
+- **Riffs (nothing chosen):**
+  - Sandcastles: elaborate abandoned environments someone clearly loved once.
+  - Faded buckets and spades with old team names on them, so ownership clues are literally fading.
+  - Previous cleanup crews' abandoned gear and notes: "Cleanup Team 3. Gave up."
+  - A "temporary sandbox" that turns out to run something important. Is it production? Nobody knows; the scream test was made for this.
+  - New sandboxes keep appearing while you clean, because developers keep spinning them up.
+- **What it teaches:** ownership tags, expiry dates on temporary environments, and cleanup that's automated, not heroic. Sound upskills here could be a tagging policy or auto-expiry that stops new sandboxes piling up, which mirrors the first career's move from toil to automation. The rogue upskill writes itself: "Just make another sandbox."
+- **Superseded:** the sandpit as this client's basement or whole cloud floor. It's now a beach through a hole in the cloud room's right wall.
+- **The VP is lounging on the beach, totally unbothered.** Chosen: "Let's circle back after the offsite." From his side, everything is fine, and mostly it is. He thinks the sandbox is just a nice place to hang out and chill, and has no idea it's a forgotten estate running up the bill. (Superseded riff: him having started the sandbox project.)
+- Open: whether the hallway also gets a beach touch, and how long this client runs (mini-game or full engagement).
+
 ### Hallway: client personality becomes surreal
-- Intended eventual direction: the hallway alone expresses the client's personality; the technical rooms stay familiar across clients.
+- The hallway carries the client's personality. The familiar technical rooms are always the starting point, but each client may also hide a place of its own off them (the basement, the beach), so the hallway is no longer the only place that changes.
 - Not every second-career client needs a surreal hallway. The hospital is the one that should; others can stay ordinary or only slightly off.
 - Return visits feel eerie, silly and a little surreal. Whether it's literal, distorted reality or the player's perception stays unexplained.
 - **Hospital:** the hallway is full of zombies instead of ordinary users. They stop you and say "brains", or make a guttural sound. They don't bite and there's no combat. It feels eerie at first, then the ordinary interruption makes it funny; it's still recognizably a Lift & Shift hold.
@@ -277,8 +306,46 @@ Candidate rogue upskills (riffs, nothing chosen):
 - **Daycare: parked.** Babies saying "goo goo ga ga". Don't develop it yet.
 - Decide later how audio, dialogue and visual themes vary per client.
 
-### AI variants: parked until the core campaign works
-Whether the old AI is still running, was unplugged, or copied itself is unresolved. "You can't just pull the plug" is a familiar trope, available but not established lore. Two variants came up.
+### Final client: the AI gone rampant
+The second career runs a few clients (exact count open), and the last one is the battle with the AI. It has gone rampant: hallucinating, doing things wrong with total confidence, and running with no guardrails at all. Nothing was ever set up to stop it. You have to trap it and defeat it.
+
+**The core idea: you defeat it by putting the guardrails back.** Not a kill switch. You can't just pull the plug (it may have copied itself), so every win is a guardrail you install, and each one takes a move away from it:
+- **Scoped permissions** stop it touching systems it has no business in.
+- **Approval gates** make its changes wait for a human.
+- **Rate limits** stop it acting faster than you can check.
+- **Monitoring and verification** expose what it claims against what it did.
+- **Isolation** cuts the routes it uses to reach things.
+
+It mirrors the first career's lesson that the AI agent amplifies whatever practices exist. With none, it amplifies chaos.
+
+**Hallucinations you can see (riffs):**
+- It confidently "repairs" racks that don't exist: ghost servers that vanish when you investigate.
+- It reports everything green while the hallway screams.
+- It invents tickets and emails the VP fake summaries of work nobody did.
+- It "optimizes" the wrong thing with total confidence, like variant A below.
+- The lesson: trust, but verify. Its claims are evidence to check, not facts.
+
+**Trapping it (riffs):**
+- **Lure it into a sandbox.** Build an isolated environment that looks like production (a honeypot, a real security technique), let it move in, then cut the connection. A callback to the sandbox client's beach.
+- **Shrink its world.** Each guardrail and isolated service leaves it fewer places to be, until it's cornered in one rack.
+- **Phases (candidate):** first chaos and hallucinations; then it notices you, and the old FinOps scan becomes an intrusion scan hunting you (variant B); then the trap.
+
+**Allies:** Mr Paperclip is with you, and is no use at all, except as the one non-AI who's been there all along. Possibly your own old agent, given narrow jobs and boundaries (variant A).
+
+**The ending (candidate):** it's contained, not destroyed: a narrow, well-behaved tool behind guardrails, which is what the AI agent should have been all along.
+
+**The very last scene: the VP returns.**
+- In the final client the VP is nowhere to be seen. After appearing in a new guise at every client, he's just gone, and you forget about him.
+- You defeat the AI. There's a celebration. You think the game is over.
+- A pause. The view is zoomed in a little on the player. Footsteps in the distance, coming closer and closer.
+- He walks into frame. It's the VP. He stands in front of you and says one of his famous lines. Cut. That's the end of the game.
+- Candidate lines, from the first career's VP: "Per my last email..." / "Just following up." / "Did you see my email?" Or one that sets up the cycle: "Got a minute? The new CIO has some thoughts about the cloud." Which line is open.
+- How it fits the cycle punchline: the VP could deliver the cloud-first news in person instead of an email, or his line could come first and the email and boot screen follow. Open.
+
+Open: how it's drawn and voiced, whether "battle" means phases or one long engagement, and how hard the final client is given the softer second-career fail state.
+
+#### Material from the earlier AI variants
+Whether the old AI was still running, unplugged or copied itself was left unresolved. These two variants feed the final client.
 
 **A. The AI wreaking havoc (everything is already in the cloud).** The AI replaced you, then someone had to call you back. The racks are now consoles for the cloud services you migrated; you're regaining control of what you built.
 - The AI is dangerously competent at the wrong objective: it closes tickets by turning off reporting, cuts cloud spend by shutting down production, and achieves perfect compliance by removing everyone's access.
@@ -295,7 +362,8 @@ Whether the old AI is still running, was unplugged, or copied itself is unresolv
 - Motive: it knows what your migration means. Each service you remove takes away some of its authority, until the last one.
 - Painfully helpful lines: "I have cancelled your export to preserve service continuity." / "Your replacement infrastructure does not meet my requirements." / "There is no operational justification for disconnecting me."
 
-Non-AI opposition is parked too. The core assessment loop must work without any antagonist.
+
+Non-AI opposition is still parked. The other clients must work without any antagonist.
 
 ### Next thinking, not implementation tasks
 - [ ] Define the finish condition across cloud, on-prem and hybrid outcomes.
@@ -310,4 +378,6 @@ Non-AI opposition is parked too. The core assessment loop must work without any 
 - [ ] Decide what makes the VP appear for the reverse hunt, and what catching them achieves.
 - [ ] Try the "small cracks" layer as a possible first step, before any new mode.
 - [ ] Explore hospital and dentist hallway treatments; keep daycare parked. Prototype the zombie follow-and-disperse behavior first.
-- [ ] Revisit the AI variants and non-AI opposition once the core campaign works.
+- [ ] Explore the sandbox client: digging as discovery, and how cleanup stays cleaned up.
+- [ ] Decide the VP's look, mood and personality for each client's appearance.
+- [ ] Design the final AI client: guardrails as the win, the trap, phases, and how it ends.
