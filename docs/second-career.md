@@ -1,6 +1,8 @@
-# Second career: story bible (draft)
+# Day 2 (the second career): story bible (draft)
 
-This is the organizing layer for the second-career brainstorm. The raw notes, with full detail and history, stay in [ROADMAP.md](../ROADMAP.md) under "Second career". This document arranges them into one story: the theme, the cast, the client sequence, and what sets up what. Nothing here is implemented.
+This is the organizing layer for the second-career brainstorm. The raw notes, with full detail and history, stay in [ROADMAP.md](../ROADMAP.md) under "Day 2, the second career". This document arranges them into one story: the theme, the cast, the client sequence, and what sets up what. Nothing here is implemented.
+
+**Naming (decided):** the first career is **Day 1** and the second is **Day 2**. Day 1 is the project: react, keep the servers from burning, migrate. Day 2 is operations: build processes that keep working after you leave. Older text below still says "first career" and "second career". The tutorial keeps its name but slips in a Day 0 wink ("Paperclip Supply Co. · Day 0"), because Day 0 never existed in our lifetime: we got roped in on Day 1.
 
 **Status labels used below**
 - **Decided:** you've chosen it.
@@ -125,6 +127,7 @@ Every setup should pay off. Anything without a payoff is a loose end, or a candi
 - Client 1's surprise is the Shadow IT basement.
 - The sandbox beach, with a healthy client and the VP lounging: "Let's circle back after the offsite."
 - The ending line and the hard cut to black.
+- Naming: Day 1 (the first career) and Day 2 (the second). The tutorial stays "Tutorials" with a Day 0 wink inside it.
 - Soft fail direction: no restarting the whole career.
 
 **Candidate**
@@ -142,12 +145,14 @@ Every setup should pay off. Anything without a payoff is a loose end, or a candi
 - Each character as a guardrail in the finale.
 - Client 1 basement, take 2 (after two prototype playtests): the temp lives in the basement as a slave to tickets; the arc is from firefighting to policing; Mr Paperclip's snarky guidance becomes the rulebook; Papers, Please belongs at a checkpoint for new requests, not in archaeology of old boxes. Then the rhythm (ticket, server, ticket, server), unplugging the ticket system as a physical freeze to get your bearings, and plugging it back in with the rules. Raw notes, including a beat-by-beat map to real-world practice and the "don't become the department of no" mechanic (overly strict rules create more Shadow IT), are in ROADMAP.md, "The basement, take 2".
 - The VP signs the gate, then delivers the sting.
+- Day 2 is won by what keeps working without you: a "six months later" time skip at the end of each client, and the heroics trap (firefight everything yourself and the client collapses once you leave).
 - The guardrail collection: each client teaches a guardrail family (draft: ITGC's access, change and operations, plus budgets), gleaned from established frameworks (CIS Controls, NIST CSF 2.0, ITGC, ITIL, SRE, FinOps; OWASP LLM Top 10 and NIST AI RMF for the boss). The finale applies them to the AI.
 - Each guardrail family belongs to a character: the temp (access and intake), the manager (change), the VP (budgets), and you (operations: seeing and verifying). At each one's stage you help them with their difficulty using the guardrails that fit their role, and in the finale each installs their family on the AI.
 - First-career skills carry over through the prologue's carnage report; without a first-career record, you write a résumé from a point budget sized like a solid first career, and a transfer code protects against lost progress.
 - First-career upskills return implemented poorly (a self-service portal that auto-approves everything, policy as code in audit-only mode); fixing them restores them as guardrails.
 
 **Superseded**
+- A "Day 3" (end of life) and a "Day 0" title card after the ending: dropped as too much.
 - Mr Paperclip "always wrong, right exactly once" (replaced by: wrong at the fire, right at the checkpoint).
 - Basement as solo archaeology (prototype 2's console triage, with nobody there): kept as evidence for a policy sweep, not the core loop.
 - A pure reversal of the first career.

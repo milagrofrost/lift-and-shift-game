@@ -85,11 +85,32 @@ Late-game AI was a disaster on a 10-client career with no Patch Bot: patching sa
 - Paid loot boxes, unless the joke is that it contains an invoice.
 - Dedicated game servers for two-player games.
 
-## Second career: return, reassess, and the strange familiar (brainstorm, 11 November 2026)
+## Day 2, the second career: return, reassess, and the strange familiar (brainstorm, 11 November 2026)
 
 Planning notes only. Nothing here is implemented or a settled specification. Where an idea was replaced during the brainstorm, it is marked **superseded** so it isn't mistaken for a live option.
 
 These are the raw notes. [docs/second-career.md](docs/second-career.md) is the story bible that organizes them: controlling idea, cast, client grid, setups and payoffs, and decision log.
+
+### Naming: Day 1 and Day 2 (decided, 13 November 2026)
+- **The first career is "Day 1"; the second career is "Day 2".** These notes still say "first career" and "second career" in older sections; read them as Day 1 and Day 2.
+- **Why it works:** it's real jargon (Day 1 is build and deploy; Day 2 is operate) that IT people recognize instantly, and newcomers learn something true from the title. It says what changed between the two, and "Lift & Shift: Day 2" reads as the morning after the launch party. The main menu can show them side by side, a gentle nudge to play in order without a lock.
+- **The core contrast:**
+  - **Day 1 is the project.** You react, doing what you must to keep the servers from burning, and above all you migrate to the cloud, your primary objective. You win by finishing. Then the project ends and you leave.
+  - **Day 2 is operations.** You create processes so things can be maintained long term, not just for a project or a season. You win by building something that keeps working when you leave.
+  - It explains why Day 2 exists: every client rotted *because* Day 1 was a project. The project team rolled off, nobody owned the "run" part, and the practices decayed. **Projects end; operations don't.**
+- **We got roped in on Day 1.** Day 0 (design and planning) never existed in our lifetime: the decision was made in a meeting you weren't invited to, and you show up on Day 1 to a deadline, a full ticket queue and servers already on fire. Day 2 starts the same way: you're called back after the client already decided what went wrong. Day 0 is where the VP lives (probably in a meeting with Joe), a quiet reason he has to own a number in Day 2. Flavor, not a mechanic; a candidate line for Day 2's opening: *"Day 0 happened in a meeting you weren't invited to."*
+- **The tutorial gets a Day 0 wink.** It's still called "Tutorials" in the menu, but Day 0 slips in once you're inside: the one day where someone explains things, nothing burns unless it's staged, and every cutover succeeds. Planned touches (a small change to the real game, its own branch and pull request):
+  - The tutorial's client card reads *Paperclip Supply Co. · Day 0*.
+  - The finish screen: *"That was Day 0. Tomorrow is Day 1, and nobody will explain anything."*
+  - Optional: the senior paperclip's first line, *"Welcome to Day 0. It's the day someone explains things to you. Enjoy it, it doesn't happen again."*
+  - Check `tests/e2e/` scenes and AGENTS.md/README tutorial wording when it's built.
+- **Considered and dropped:** a "Day 3" (end of life and retirement) and a "Day 0" title card after the ending. Too much. The skipped-retirement idea survives without a name in the basement, the sandbox beach and "sandboxes with expiry".
+
+**What Day 2 framing changes in play (riffs):**
+- **Win by what keeps working without you.** Day 1 scores migrations; Day 2 should score whether the temp can run the rulebook alone, whether the manager's change windows held, whether the VP's budget stayed under its cap.
+- **"Six months later."** At the end of each client, skip time and show the floor without you in it. Good processes held: the temp stamps, junk bounces, the bill is flat. Weak ones rotted: boxes creep back, the dashboard is muted again. It's "what went wrong after you left" made playable inside each client, and a stronger ending than prototype 3's "tomorrow's cleanup".
+- **The heroics trap.** If you personally firefight everything, the client looks great while you're there and collapses after the time skip. Being indispensable is the failure mode. It ties to "No one fixes it alone" and to the cycle's question, "Why does it need me to keep doing this?": because you never built the process.
+- **The boss.** An AI with no Day 2 processes is a project that never ends; the guardrails are what turn it into something you can operate.
 
 ### The thesis
 - **Realism in the server rooms, surrealism in the hallway.** The brainstorm started from wanting reality to distort, moving away from the learning game, and ended at realistic placement decisions. The reconciliation: the technical rooms keep telling the operational truth (cause and effect stay teachable), while the hallway, the one place that carries the client's personality, is where things get eerie and silly.
