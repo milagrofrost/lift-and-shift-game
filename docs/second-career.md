@@ -20,6 +20,8 @@ Every other theme in the notes fits under it:
 
 Use it as a filter. An idea that serves it can be structure; an idea that doesn't can still be flavor.
 
+**Candidate, from the guardrail collection:** *If we can't put guardrails on ourselves, we can't put them on our AI.* It is the same idea made playable: each client teaches a family of guardrails, the player applies them to themselves and to processes, and the boss stage tests them on the AI. See ROADMAP.md, "The guardrail collection".
+
 ## 2. World rules
 
 These hold at every client, so the variety stays coherent.
@@ -59,6 +61,7 @@ One row per client. **Proposed** pairings are flagged; the rest come from the no
 | **New verb** | Picking him | Shut down; the scream test; **proposed:** unplugging the ticket system, stamping requests against a rulebook | **Proposed:** wire tracing | Open | Digging | Installing guardrails; the honeypot trap |
 | **VP's guise** | | Open | Open | Open | Lounging, "Let's circle back after the offsite" (decided) | Absent (decided) |
 | **Rogue upskill on offer** | | Shadow IT, "temporary" admin | Open | Skip the change review, just add capacity | "Just make another sandbox" | |
+| **Guardrails collected (proposed)** | | Inventory and ownership, budgets, expiring access, separation of duties | Isolation and blast radius | Change control, freezes, rate limits | Human sign-off, sandboxes with expiry | All of them, applied to the AI |
 | **Sets up for the finale** | Mr Paperclip's change-ticket nag | Isolation, the scream test, darkness; **proposed:** Mr Paperclip's rulebook, the freed temp guarding the stairs | The temp's map of every wire | The manager's access and freezes | The sandbox becomes the honeypot; the VP's signature | |
 
 Notes on the grid:
@@ -91,6 +94,9 @@ Every setup should pay off. Anything without a payoff is a loose end, or a candi
 | Mr Paperclip's process nagging | First career (wrong at the fire); client 1 (right at the checkpoint, the rulebook) (proposed) | His change ticket stops the AI in the finale |
 | The temp rubber-stamping tickets, including root for svc-build-77 | Client 1 (proposed) | The freed temp guards the door with the rulebook; in the finale, the temp's guardrail |
 | Hidden "?" servers and investigating | First career | The stairway reveal in client 1 |
+| Each client's guardrails, collected | Clients 1–4 (proposed) | The boss: each guardrail blocks one of the AI's moves; each one missed is a gap it uses |
+| Rogue upskills never paid down | Every client (proposed) | The AI's route back in |
+| First-career upskills found broken and fixed | Every client (open) | Restored upskills become collected guardrails |
 | The scream test | Client 1 | The finale: the AI reports green while the hallway screams |
 | Wire tracing | Client 2 (proposed) | The temp cuts the AI's connections |
 | Badge readers, freezes | First career, client 3 | The manager locks the AI out |
@@ -136,6 +142,8 @@ Every setup should pay off. Anything without a payoff is a loose end, or a candi
 - Each character as a guardrail in the finale.
 - Client 1 basement, take 2 (after two prototype playtests): the temp lives in the basement as a slave to tickets; the arc is from firefighting to policing; Mr Paperclip's snarky guidance becomes the rulebook; Papers, Please belongs at a checkpoint for new requests, not in archaeology of old boxes. Then the rhythm (ticket, server, ticket, server), unplugging the ticket system as a physical freeze to get your bearings, and plugging it back in with the rules. Raw notes, including a beat-by-beat map to real-world practice and the "don't become the department of no" mechanic (overly strict rules create more Shadow IT), are in ROADMAP.md, "The basement, take 2".
 - The VP signs the gate, then delivers the sting.
+- The guardrail collection: each client teaches a guardrail family (draft: ITGC's access, change and operations, plus budgets), gleaned from established frameworks (CIS Controls, NIST CSF 2.0, ITGC, ITIL, SRE, FinOps; OWASP LLM Top 10 and NIST AI RMF for the boss). The finale applies them to the AI.
+- First-career upskills return implemented poorly (a self-service portal that auto-approves everything, policy as code in audit-only mode); fixing them restores them as guardrails.
 
 **Superseded**
 - Mr Paperclip "always wrong, right exactly once" (replaced by: wrong at the fire, right at the checkpoint).
@@ -153,8 +161,10 @@ Every setup should pay off. Anything without a payoff is a loose end, or a candi
 
 1. Do you accept the controlling idea, or is the theme something else?
 2. Does the temp move into client 1's basement, and if so, who is client 2's focus?
-3. Which setting goes with the temp's and the manager's clients?
-4. What does each character's client actually ask the player to do *with* them?
-5. What is the finale's playable cooperation, moment to moment?
-6. How many clients in total, and which are quick mini-games?
-7. What are the VP's guises at clients 1 to 3?
+3. Is "if we can't put guardrails on ourselves, we can't put them on our AI" the controlling idea, or the finale's thesis under "No one fixes it alone"?
+4. How do first-career upskills carry over: does the client start with them broken, or does the player bring them, and what happens for players who never bought them?
+5. Which setting goes with the temp's and the manager's clients?
+6. What does each character's client actually ask the player to do *with* them?
+7. What is the finale's playable cooperation, moment to moment?
+8. How many clients in total, and which are quick mini-games?
+9. What are the VP's guises at clients 1 to 3?

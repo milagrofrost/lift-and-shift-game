@@ -129,6 +129,103 @@ Each stage or client is an opportunity to spend more time with one of the game's
 - The win is still **containment through guardrails**, not destruction of the AI. An AI tool with limited, accountable responsibilities can be part of the solution; the uncontrolled agent is the threat.
 - Revisit the final VP appearance and abrupt ending so the collaborative victory lands. The closing joke shouldn't accidentally erase the idea that everyone mattered.
 
+### The guardrail collection: the second career's spine (brainstorm, 13 November 2026)
+**The idea:** every stage of the second career, you discover specific guardrails. You apply them to yourself and to processes, and you collect them. At the boss stage you meet the AI bot and apply the guardrails you collected to it. **If we can't put guardrails on ourselves, how will we put them on our AI bot?**
+- That line is a candidate controlling idea. It turns "nobody is the superhero" from a theme into a mechanic: each guardrail comes from a person you met, so the team-up *is* the collection.
+- **Discovered by living without them first.** Each client shows a family of guardrails missing (the temp rubber-stamping tickets), lets you feel the cost, then has you build the guardrail. Prototype 3's rulebook pages are literally the first guardrails collected.
+- **On ourselves, not just others.** Some guardrails apply to the player. The rogue upskills (temporary admin for everyone, skipping review, click-ops) are self-inflicted gaps. Giving them up, or paying them down, is putting a guardrail on yourself. The career asks the question before the boss does: did you live by the rules you wrote?
+- **Guardrails, not a kill switch.** Prototype 3's "Deny everything" trap is a kill switch, not a guardrail, and it fails. The finale makes the same point.
+
+**Draft mapping of clients to guardrail families** (proposed; the client order follows the story bible):
+
+| Client | You learn to stop… | Guardrails you collect | What the AI does without them |
+| --- | --- | --- | --- |
+| 1. The temp's basement | Rubber-stamping every request | Owner required, budget caps, admin that expires, no root for service accounts, leavers cut off | Spins up anything it's asked, with no owner and no budget, at machine speed: the temp's loop at a million tickets a second |
+| 2. Wires and dependencies | Changing what you can't see the edges of | Isolation, blast-radius limits, knowing what's connected | Reaches everything from anywhere |
+| 3. The manager | Changing things on a whim | Change control, freezes, approval for risky moves, rate limits | Changes prod nonstop, faster than anyone can review |
+| 4. The VP and the sandbox beach | Things nobody owns, decisions nobody signs | Sandboxes with expiry, ownership, a human sign-off | Acts with no one accountable; nothing ever expires |
+| Boss: the AI | | Everything you collected | Everything above, at once |
+
+**The boss fight (riffs):**
+- The AI is every bad habit from the second career, fully automated. Each collected guardrail blocks one of its moves: it tries to spin up a GPU fleet and "no budget code, no GPU" bounces it (*bzzt*); it tries to change prod and the manager's freeze holds; it tries to act alone and the VP's signature gate stops it.
+- **Every guardrail you missed is a gap it uses.** Never found "admin expires" in client 1? The AI walks through that door.
+- **Your shortcuts come back.** A rogue upskill you never paid down ("temporary admin for everyone") is the AI's route back in. Your own shortcuts become its way in.
+- **The cast installs them with you:** the temp knows the rulebook, the manager holds the freeze keys, and the VP has the signature.
+- **Why it's true to real life:** AI-agent governance today is mostly the same controls we already use for people and automation (least privilege, spending and rate limits, approval for high-impact actions, sandboxes, audit logs, someone accountable). Organizations that can't apply them to their own staff and scripts tend to fail at applying them to an agent.
+
+#### Established guardrails to glean from
+The established frameworks keep landing on the same small set of ideas.
+
+**General IT and security**
+- **CIS Critical Security Controls (v8):** 18 prioritized controls. The first two are inventory of hardware and inventory of software: the Shadow IT basement is literally Controls 1 and 2. Others: account management, access control, audit logs, data recovery, incident response.
+- **NIST Cybersecurity Framework 2.0:** Govern, Identify, Protect, Detect, Respond, Recover. Version 2.0 added *Govern*, which is the "policing" layer.
+- **IT General Controls (ITGC):** what auditors check for SOX and similar, in three areas: **access** (who can do what), **change** (how things change, with approval) and **operations** (backups, monitoring, job runs). Compact and game-friendly.
+- **ISO/IEC 27001:** the international standard behind most corporate security policies, with a catalog of 93 controls.
+- **Zero Trust (NIST SP 800-207):** never trust by default, verify every request, least privilege, limit blast radius.
+
+**Operations and cost**
+- **ITIL 4:** change enablement, service request management and incident management: the temp's ticket world.
+- **Google's SRE practices:** error budgets, toil limits, blameless postmortems, rate limiting.
+- **Cloud Well-Architected frameworks:** pillars such as security, reliability, cost optimization and operational excellence.
+- **The FinOps Framework:** budgets, cost allocation tags, showback and chargeback.
+
+**AI-specific, for the boss stage**
+- **OWASP Top 10 for LLM Applications.** Two entries describe the rampant AI almost word for word:
+  - **Excessive Agency:** too many permissions, too much functionality, too little oversight. Mitigations: minimize permissions and tools, human approval for high-impact actions, rate limits.
+  - **Unbounded Consumption:** runaway cost and resource use. Mitigation: budget and rate caps.
+- **NIST AI Risk Management Framework:** Govern, Map, Measure, Manage.
+- **ISO/IEC 42001:** the management-system standard for AI.
+- **The EU AI Act:** its human-oversight requirement is the VP's signature gate.
+
+The AI mitigations are the same controls as for people, which supports the thesis directly.
+
+**The common set, mapped to the game:**
+
+| Guardrail | Where it comes from | Second-career client | What it stops the AI doing |
+| --- | --- | --- | --- |
+| Inventory and ownership | CIS 1–2, NIST Identify | 1, the basement | Creating things nobody knows about |
+| Least privilege and expiring access | CIS 5–6, ITGC access, Zero Trust | 1, admin expires | Using permissions it shouldn't have |
+| Budgets and quotas | FinOps, OWASP Unbounded Consumption | 1, no budget code, no GPU | Running up the bill |
+| Separation of duties (four eyes): whoever asks isn't whoever approves | ITGC, SOX | 1, the temp stops self-approving | Approving its own actions |
+| Isolation and blast radius | Zero Trust, CIS 12 | 2, wires | Reaching everything from anywhere |
+| Change control and freezes | ITIL, ITGC change | 3, the manager | Changing prod nonstop |
+| Rate limits and error budgets | SRE | 3, or Joe's meetings | Acting faster than anyone can review |
+| Human approval for high-impact actions | EU AI Act, OWASP Excessive Agency | 4, the VP signs | Acting with no one accountable |
+| Sandboxes with expiry | Well-Architected, lifecycle policies | 4, the beach | Experimenting in prod; keeping things forever |
+| Audit logs and monitoring | CIS 8, NIST Detect | Every client | Doing things nobody can see |
+| Tested recovery | CIS 11, NIST Recover | Already in game: restore points | Making damage permanent |
+
+- The first career already teaches some of these (patching is CIS 7; hidden servers are inventory; restore points, incident response, FinOps). The second career adds the **governance layer** on top, which is why NIST added Govern.
+- **Suggestion:** use ITGC's three areas (**access, change, operations**) plus **budgets** as the four collectible guardrail families. Each client can own one family, and the boss tests all four.
+- The Learn more screen could link each guardrail to its framework, the way upgrades link to real resources today.
+
+#### Don't discard the first career's upskills (open, to think about)
+The skills gained and learned in the first career shouldn't be thrown away. Either they help, or we see what happens when they're implemented poorly, and fixing them is part of the work. Many of them already *are* guardrails: Policy as Code, Least-Privilege IAM, Secrets Manager, SIEM Monitoring, Asset Inventory, Badge Access Audit, Self-Service Portal, Runbooks, Blameless Postmortems, Observability, FinOps Dashboard, Terraform the cloud.
+
+**Riff: the client still has your old upskills, badly implemented.** It fits "what went wrong after you left": they didn't remove the practices, they hollowed them out. Each one starts broken in a recognizable way; fixing it restores it, and a restored upskill becomes a collected guardrail (and a tool for the boss). Candidate broken states:
+
+| First-career upskill | Implemented poorly | Fixed, it becomes |
+| --- | --- | --- |
+| Self-Service Portal | Auto-approves everything: it *is* the temp's ticket loop, automated | Self-service with guardrails (golden paths) |
+| Policy as Code | Switched to "audit only" after it blocked a VP's request | Preventive controls that actually enforce |
+| Least-Privilege IAM | One exception per person, and the exceptions never expire | Expiring, scoped access |
+| Asset Inventory | A spreadsheet last updated in 2021 | Inventory and ownership |
+| SIEM Monitoring / Observability | So noisy everyone muted it; every dashboard is green | Audit logs and monitoring that people read |
+| FinOps Dashboard | Went crazy, then got neutered (already in the notes) | Budgets and quotas |
+| Runbooks | Describe a system that no longer exists | Documented, current process |
+| Blameless Postmortems | Became blame sessions, so nobody reports anything | Learning from incidents |
+| Badge Access Audit | The door is propped open with a fire extinguisher | Access control |
+| Terraform the cloud | Drifted: half the estate was click-opsed since | Change as code |
+| Patch Bot | Patches prod at 3pm on a Friday | Automation with scope and change windows |
+| AI Agent | Admin everywhere, no foundations, nobody watching | The boss itself: the most poorly implemented upskill of all |
+
+- **Why it works:** first-career players recognize their own tools, and the satire is precise. Most organizations do own the right tools, configured to do nothing.
+- **Open:**
+  - Do second-career clients start with these upskills in their broken state, or does the player bring them?
+  - Is fixing an upskill a client objective, a side quest, or how a guardrail is collected?
+  - Do players who never bought an upskill in their first career meet it for the first time here?
+  - How does the old school (no-AI) first career carry into the boss stage?
+
 ### The strange familiar: small cracks first
 The cheapest way in is an otherwise normal second career with a few cracks. The tools still work, but the organization's explanation stops making sense. Your competence from the first career is what lets you notice. The company insists it doesn't remember you.
 - Mr Paperclip almost recognizes you: "Your predecessor used to do that. Same face, too. Anyway."
