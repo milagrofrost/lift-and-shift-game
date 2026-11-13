@@ -52,14 +52,14 @@ One row per client. **Proposed** pairings are flagged; the rest come from the no
 
 | | Prologue | Client 1 | Client 2 | Client 3 | Client 4 | Finale |
 | --- | --- | --- | --- | --- | --- | --- |
-| **Character in focus** | Mr Paperclip | No one (decided) | The temp (decided) | The manager (decided) | The VP (decided) | The AI, then everyone (decided) |
+| **Character in focus** | Mr Paperclip | No one (decided); **proposed:** the temp, who lives in the basement | The temp (decided); open if he moves to client 1 | The manager (decided) | The VP (decided) | The AI, then everyone (decided) |
 | **Setting and surprise** | Broken carnage report: only Mr Paperclip can be picked (decided) | Shadow IT: a "?" server is a stairway to the dark basement (decided) | **Proposed:** the hospital, zombie hallway | **Proposed:** the dentist | **Proposed:** the sandbox beach through the wall | The rampant AI's estate |
 | **Why the client is back** | | Unpredictable bills? | Open | Open | They aren't; they think they're fine | The AI took over |
-| **IT lesson** | | Visibility, Shadow IT, orphans and miners | **Proposed:** dependencies and institutional knowledge | **Proposed:** change control, and FinOps that overcorrected | Forgotten estates, ownership tags, expiry dates | Guardrails around automation |
-| **New verb** | Picking him | Shut down; the scream test | **Proposed:** wire tracing | Open | Digging | Installing guardrails; the honeypot trap |
+| **IT lesson** | | Visibility, Shadow IT, orphans and miners; **proposed:** from firefighting tickets to policing requests | **Proposed:** dependencies and institutional knowledge | **Proposed:** change control, and FinOps that overcorrected | Forgotten estates, ownership tags, expiry dates | Guardrails around automation |
+| **New verb** | Picking him | Shut down; the scream test; **proposed:** stamping requests against a rulebook | **Proposed:** wire tracing | Open | Digging | Installing guardrails; the honeypot trap |
 | **VP's guise** | | Open | Open | Open | Lounging, "Let's circle back after the offsite" (decided) | Absent (decided) |
 | **Rogue upskill on offer** | | Shadow IT, "temporary" admin | Open | Skip the change review, just add capacity | "Just make another sandbox" | |
-| **Sets up for the finale** | Mr Paperclip's change-ticket nag | Isolation, the scream test, darkness | The temp's map of every wire | The manager's access and freezes | The sandbox becomes the honeypot; the VP's signature | |
+| **Sets up for the finale** | Mr Paperclip's change-ticket nag | Isolation, the scream test, darkness; **proposed:** Mr Paperclip's rulebook, the freed temp guarding the stairs | The temp's map of every wire | The manager's access and freezes | The sandbox becomes the honeypot; the VP's signature | |
 
 Notes on the grid:
 - **The VP's stage is the sandbox beach (proposed).** The notes put him lounging there, and the progression puts him fourth, so they fit together. The reverse chase and the invoice play out on the beach.
@@ -71,8 +71,8 @@ Notes on the grid:
 | Character | First career | In the second career | Wants | Needs | Finale contribution (proposed guardrail) |
 | --- | --- | --- | --- | --- | --- |
 | **You** | Hero who migrated everything | Called back to clean up | To be proven right | To stop being the only one who fixes things | **Monitoring and verification:** checking what the AI claims against what it did |
-| **Mr Paperclip** | Optional backseat driver | Forced on you in the prologue; with you all career | Credit | (He doesn't change. That's the joke.) | **The change ticket.** His advice is always wrong, except once: "You should put a change ticket in" finally applies, and it's what stops the AI's next move |
-| **The temp** | Short-shift helper | Still "temporary" after years; their own client | To finally be hired | To be recognized for what they know | **Isolation:** they know where every wire goes, so they know which connections to cut |
+| **Mr Paperclip** | Optional backseat driver, wrong at the fire | Forced on you in the prologue; with you all career. **Proposed:** snarky but useful; his guidance on which requests are legitimate becomes the rulebook | Credit | (He doesn't change; the job changes around him. Process was wrong at the fire and is right at the checkpoint.) | **The change ticket.** "You should put a change ticket in" stops the AI's next move, the payoff of the rulebook he wrote in client 1 |
+| **The temp** | Short-shift helper | Still "temporary" after years; their own client. **Proposed:** found in client 1's basement, "managing" Shadow IT by rubber-stamping every ticket, freed as you sort the queue | To finally be hired | To be recognized for what they know | **Isolation:** they know where every wire goes, so they know which connections to cut |
 | **The manager** | Interrupts, freezes, inspects | Their own client, with a deeper role | Things to look under control | To trust the team instead of inspecting it | **Scoped permissions and freezes:** the badges and access the manager always kept, now used to lock the AI out |
 | **The VP** | Hunts you through the hallway | Recurring in a new guise each client; you hunt him | To not hear bad news | To own a decision | **The approval gate:** the AI can't act without a human sign-off, and the VP finally has to show up and sign |
 | **The AI** | Your agent, then your replacement | Rampant, hallucinating, no guardrails | Control | Boundaries | Ends contained: a narrow, accountable tool |
@@ -88,7 +88,8 @@ Every setup should pay off. Anything without a payoff is a loose end, or a candi
 | Set up | Where | Pays off |
 | --- | --- | --- |
 | The carnage report | Prologue | Shows your own first-career numbers (candidate); the "previous employee" was you |
-| Mr Paperclip's wrong advice and CAB nagging | Every client | He's right exactly once, in the finale (proposed) |
+| Mr Paperclip's process nagging | First career (wrong at the fire); client 1 (right at the checkpoint, the rulebook) (proposed) | His change ticket stops the AI in the finale |
+| The temp rubber-stamping tickets, including root for svc-build-77 | Client 1 (proposed) | The freed temp guards the door with the rulebook; in the finale, the temp's guardrail |
 | Hidden "?" servers and investigating | First career | The stairway reveal in client 1 |
 | The scream test | Client 1 | The finale: the AI reports green while the hallway screams |
 | Wire tracing | Client 2 (proposed) | The temp cuts the AI's connections |
@@ -132,10 +133,13 @@ Every setup should pay off. Anything without a payoff is a loose end, or a candi
 - Controlling idea: *No one fixes it alone.*
 - The three-act shape.
 - Client pairings: temp with the hospital, manager with the dentist, VP with the sandbox beach.
-- Each character as a guardrail in the finale; Mr Paperclip right exactly once.
+- Each character as a guardrail in the finale.
+- Client 1 basement, take 2 (after two prototype playtests): the temp lives in the basement as a slave to tickets; the arc is from firefighting to policing; Mr Paperclip's snarky guidance becomes the rulebook; Papers, Please belongs at a checkpoint for new requests, not in archaeology of old boxes. Raw notes in ROADMAP.md, "The basement, take 2".
 - The VP signs the gate, then delivers the sting.
 
 **Superseded**
+- Mr Paperclip "always wrong, right exactly once" (replaced by: wrong at the fire, right at the checkpoint).
+- Basement as solo archaeology (prototype 2's console triage, with nobody there): kept as evidence for a policy sweep, not the core loop.
 - A pure reversal of the first career.
 - The client refusing all cleanup.
 - An ominous arrival with a dark upstairs cloud room.
@@ -148,8 +152,9 @@ Every setup should pay off. Anything without a payoff is a loose end, or a candi
 ## 9. Open questions, most structural first
 
 1. Do you accept the controlling idea, or is the theme something else?
-2. Which setting goes with the temp's and the manager's clients?
-3. What does each character's client actually ask the player to do *with* them?
-4. What is the finale's playable cooperation, moment to moment?
-5. How many clients in total, and which are quick mini-games?
-6. What are the VP's guises at clients 1 to 3?
+2. Does the temp move into client 1's basement, and if so, who is client 2's focus?
+3. Which setting goes with the temp's and the manager's clients?
+4. What does each character's client actually ask the player to do *with* them?
+5. What is the finale's playable cooperation, moment to moment?
+6. How many clients in total, and which are quick mini-games?
+7. What are the VP's guises at clients 1 to 3?

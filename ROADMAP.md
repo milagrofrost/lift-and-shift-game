@@ -223,6 +223,63 @@ The Shadow IT client's surprise. Inspired by dungeon-crawler stairways, built en
 - **Layout is open.** Is the whole basement cloud, or does it have its own odd corners? Are there user interactions down there? One riff: nobody comes down here, except maybe one forgotten contractor still working on a project that was cancelled years ago.
 - Open: how to juggle incidents on two floors, how the stairway is drawn and controlled, and how many clients have a basement. Incidents and interaction targets must stay readable in the dark; darkness should mean missing knowledge, not an inaccessible screen. Resolve reduced motion and other accessibility needs before building it.
 
+### The basement, take 2: the temp, the ticket queue and Mr Paperclip's rulebook (brainstorm after playtests, 12 November 2026)
+Two quick prototypes of the basement were played on `feature/shadow-it-basement` (`prototypes/basement/`).
+- **Prototype 1** had a dark basement, investigate, shut down or carry up, plus faults on both floors. It was too easy. Investigating handed you the answer ("crypto miner", "production"), so there was no question and no puzzle.
+- **Prototype 2** made the upstairs calm, with Patch Bot doing the rounds and no faults. The first "?" you investigate is a server and the second is the stairway. The door locks behind you. Downstairs you read read-only consoles (labels, creator, last login, CPU, traffic), 🚩 flag what you'd shut down Minesweeper style, carry keepers up, and seal the stairs. Then the lights come on and every call either checks or explodes. It was closer, but it wasn't what was expected. The basement was all archaeology: you dig through a dead estate on your own, with nobody there and nothing familiar to hold on to.
+
+**The diagnosis: not enough familiarity.** Tickets are the first career's heartbeat, and the temp is a face players already know. Put both in the basement and the strangeness has something familiar to push against.
+
+**The temp lives down there.** He "manages" the Shadow IT environment, sitting at a desk lit by one monitor. He isn't a true owner; he does what he's told. All he does is respond to chats and tickets: "Can you spin up a VM for my demo?", "Need admin, just for today", "GPU box for ML?". **He's a slave to tickets.**
+
+**The arc to teach: stop being firefighters, start being police.** Visualize and gamify the shift from reacting to tickets to enforcing rules that stop the mess at the door.
+- **Firefighting first (familiar).** You help the temp the way the first career taught you: grab a ticket, fulfill it. The queue never shrinks.
+- **The turn.** Every ticket fulfilled puts a new box on the basement floor, and the bill climbs. The miner came from a ticket, and so did `demo-for-ceo`. You are the Shadow IT. The lesson lands without anyone saying it.
+- **Then policing.** Instead of answering tickets one at a time, you enforce a rule that handles a whole kind of request: every VM needs an owner label, no budget code means no GPU, admin expires after 24 hours. Each rule turns a ticket type into a check, the queue visibly shrinks, and the floor stops growing.
+
+**Mr Paperclip is useful here: snarky, but right.** He gives guidance on which requests are legitimate and which aren't, and **his guidance becomes the rulebook.**
+- Why it fits: in the first career he nagged about process (change tickets, CAB) during firefights, where speed matters, so he was wrong. Policing *is* process. **He doesn't change; the job changes around him.**
+- Sample lines: "It looks like you're approving root access for an IP address. Would you like help with that?" / "A GPU for 'ML'. Sure. And I'm a stapler."
+- Each ticket you sort with his commentary adds a page: "Requests from people who left the company: deny." By the end, the rulebook is his clippings, stapled together. He'd like you to know he stapled them.
+- This replaces the story bible's earlier proposal that his advice is "always wrong, right exactly once". The new shape is wrong at the fire in the first career and right at the checkpoint in the second. His finale "put a change ticket in" then becomes the payoff of client 1 instead of a surprise.
+
+**The temp rubber-stamps everything.** At some point you see him stamping APPROVED on every request, faster and faster, thunk, thunk, even the most absurd ones:
+1. "VM for my demo."
+2. "Admin on prod, just for today."
+3. "GPU cluster to mine… *train* models."
+4. "Admin on prod for my cat."
+5. "Please grant root to 45.83.12.7. Thanks, svc-build-77."
+
+The last one shows a compromise happening through a rubber-stamped ticket, and the box appears on the floor behind him. That ties in prototype 2's compromised wired pair, where svc-build-77 built the leech.
+
+**Breaking the bonds.** Sorting out the ticket queue frees the temp.
+- Visual riff: he's wrapped in ticket tape like a mummy, and every ticket sorted against the rulebook unwinds a loop.
+- When the queue is under control, the last strip falls away and he looks up as if for the first time.
+- You hand him the rulebook, and his stamp changes from APPROVED to CHECK THE RULEBOOK.
+
+**Making the transition visible (riffs):**
+- **Gear.** You start with the first career's extinguisher, the firefighter. As your rules take over, it becomes a police cap and a clipboard, and the temp gets a cap at the end.
+- **Two bars.** "Tickets answered" (reactive) against "requests stopped at the door" (prevented). The client is won when prevention overtakes reaction.
+
+**Where Papers, Please belongs.** It's a border checkpoint, not archaeology. So the checkpoint goes at the foot of the stairs, where new requests arrive:
+- You stamp them approved or denied against Mr Paperclip's rulebook. With no rules yet, everything gets waved through.
+- Each rule makes stamping faster, and eventually automatic.
+- The existing boxes get a policy sweep ("tag it or it dies in 7 days") instead of the player guessing alone in the dark. Prototype 2's console cards fit here, as the evidence for a sweep.
+
+**A possible flow for the client:**
+1. Familiar firefighting with the drowning temp.
+2. The temp approves the absurd one, and the cause clicks.
+3. Sorting the queue with Mr Paperclip's snark, page by page, while the tape unwinds.
+4. The checkpoint runs on the rules, and the old boxes get swept.
+5. The freed temp guards the stairs with the rulebook as you leave.
+
+That's his guardrail, and it plants "guardrails, not a kill switch" in client 1 for the finale.
+
+**Open:**
+- This moves the temp into client 1, which the story bible had as "no one". Either client 2 needs a new focus character, or the temp becomes a recurring partner across clients.
+- Where the darkness, the stairway reveal and the seal-the-stairs commitment fit now that tickets drive the loop.
+- How the ticket queue reuses the first career's queue (5 slots, escalations) without feeling like the same client again.
+
 ### Losing softly: the second career's fail state
 The player already proved they can play this game. The second career should be less stressful and more enjoyable: no getting fired and restarting the whole career. In game terms, this is the **fail state** and its **death penalty**: what counts as "dying", where you **respawn**, and what you lose.
 - **Inspiration:** dungeon crawlers, where you fall in the dungeon, return to a spawn point, and lose something, but keep your progress.
