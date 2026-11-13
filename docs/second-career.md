@@ -55,8 +55,8 @@ One row per client. **Proposed** pairings are flagged; the rest come from the no
 | **Character in focus** | Mr Paperclip | No one (decided); **proposed:** the temp, who lives in the basement | The temp (decided); open if he moves to client 1 | The manager (decided) | The VP (decided) | The AI, then everyone (decided) |
 | **Setting and surprise** | Broken carnage report: only Mr Paperclip can be picked (decided) | Shadow IT: a "?" server is a stairway to the dark basement (decided) | **Proposed:** the hospital, zombie hallway | **Proposed:** the dentist | **Proposed:** the sandbox beach through the wall | The rampant AI's estate |
 | **Why the client is back** | | Unpredictable bills? | Open | Open | They aren't; they think they're fine | The AI took over |
-| **IT lesson** | | Visibility, Shadow IT, orphans and miners; **proposed:** from firefighting tickets to policing requests | **Proposed:** dependencies and institutional knowledge | **Proposed:** change control, and FinOps that overcorrected | Forgotten estates, ownership tags, expiry dates | Guardrails around automation |
-| **New verb** | Picking him | Shut down; the scream test; **proposed:** stamping requests against a rulebook | **Proposed:** wire tracing | Open | Digging | Installing guardrails; the honeypot trap |
+| **IT lesson** | | Visibility, Shadow IT, orphans and miners; **proposed:** from firefighting tickets to policing requests (toil, provisioning freezes, inventory, preventive guardrails, without becoming the department of no) | **Proposed:** dependencies and institutional knowledge | **Proposed:** change control, and FinOps that overcorrected | Forgotten estates, ownership tags, expiry dates | Guardrails around automation |
+| **New verb** | Picking him | Shut down; the scream test; **proposed:** unplugging the ticket system, stamping requests against a rulebook | **Proposed:** wire tracing | Open | Digging | Installing guardrails; the honeypot trap |
 | **VP's guise** | | Open | Open | Open | Lounging, "Let's circle back after the offsite" (decided) | Absent (decided) |
 | **Rogue upskill on offer** | | Shadow IT, "temporary" admin | Open | Skip the change review, just add capacity | "Just make another sandbox" | |
 | **Sets up for the finale** | Mr Paperclip's change-ticket nag | Isolation, the scream test, darkness; **proposed:** Mr Paperclip's rulebook, the freed temp guarding the stairs | The temp's map of every wire | The manager's access and freezes | The sandbox becomes the honeypot; the VP's signature | |
@@ -134,7 +134,7 @@ Every setup should pay off. Anything without a payoff is a loose end, or a candi
 - The three-act shape.
 - Client pairings: temp with the hospital, manager with the dentist, VP with the sandbox beach.
 - Each character as a guardrail in the finale.
-- Client 1 basement, take 2 (after two prototype playtests): the temp lives in the basement as a slave to tickets; the arc is from firefighting to policing; Mr Paperclip's snarky guidance becomes the rulebook; Papers, Please belongs at a checkpoint for new requests, not in archaeology of old boxes. Raw notes in ROADMAP.md, "The basement, take 2".
+- Client 1 basement, take 2 (after two prototype playtests): the temp lives in the basement as a slave to tickets; the arc is from firefighting to policing; Mr Paperclip's snarky guidance becomes the rulebook; Papers, Please belongs at a checkpoint for new requests, not in archaeology of old boxes. Then the rhythm (ticket, server, ticket, server), unplugging the ticket system as a physical freeze to get your bearings, and plugging it back in with the rules. Raw notes, including a beat-by-beat map to real-world practice and the "don't become the department of no" mechanic (overly strict rules create more Shadow IT), are in ROADMAP.md, "The basement, take 2".
 - The VP signs the gate, then delivers the sting.
 
 **Superseded**

@@ -275,6 +275,53 @@ The last one shows a compromise happening through a rubber-stamped ticket, and t
 
 That's his guardrail, and it plants "guardrails, not a kill switch" in client 1 for the finale.
 
+**The rhythm: ticket, server, ticket, server.** He gets a ticket and spins up a server, over and over again. This is the image the client hangs on.
+- *Ding*: a ticket lands. He walks to an empty spot, and *thunk*, a new box appears. He walks back. *Ding.* It's steady and almost hypnotic; the music could lock to it.
+- The floor fills box by box, each one adding to the bill and creeping into your light. It speeds up as "just ask the temp" spreads: more servers bring more requests. He never looks up.
+- You arrive *into* it. The first thing you hear in the basement, before you see anything, is ding… thunk… ding… thunk.
+- It shows Shadow IT as a mechanism, happening in front of you, instead of a result you dig up afterwards. That is what both prototypes were missing.
+
+**Unplugging the ticket system to get a hold of things.** You hold E at the ticket system to stop it and get your bearings. It's the first career's emergency freeze made physical: it contains the chaos and fixes nothing.
+- The ticket system is a humming beige box under his desk with far too many cables. The hold ring fills, sparks fly, and the ding dies halfway through: *di—*.
+- In the silence there's just the drip and the hum. The temp reaches for a ticket that isn't there, mimes the stamp once, then looks up for the first time: "…Is it down? Should I open a ticket?" Mr Paperclip: "Have you tried turning it off and leaving it off?"
+- **Getting your bearings.** With the floor holding still, you walk the rows and read each box's console (prototype 2's cards belong here). Each pattern you find becomes a rulebook page for Mr Paperclip: "Half of these came from people who left. That's a rule." The temp can answer a question or two; he remembers every ticket, even if he never asked why.
+- **The freeze can't last.** Unanswered requests pile up where you can feel them:
+  - A counter on the dead box: "Tickets waiting: 14… 23… 41."
+  - Muffled pings, knocking and footsteps from upstairs.
+  - Eventually someone important comes down. That's a slot for this client's VP guise: "The ticket system is down?! I need a GPU for my demo by 3."
+- **Plug it back in with the rules.** The rhythm restarts, but some tickets bounce off the rulebook (*ding… bzzt*), and the temp only spins up the ones that pass.
+- **Revised flow:**
+  1. Down the stairs into the rhythm.
+  2. Unplug it and get your bearings.
+  3. Survey the boxes while pressure builds upstairs; Mr Paperclip writes rules from what you find.
+  4. Plug it back in with the rulebook.
+  5. Clean up the old boxes with the rules; the temp takes over the stamp.
+
+**How this maps to real-life practice** (the teaching layer for this client):
+
+| In the game | In real life |
+| --- | --- |
+| Ticket, server, ticket, server; nobody asks why | Ticket-driven provisioning with no governance: whatever is asked for gets built, with no owner, purpose or end date recorded. The most common route to sprawl, and what SRE calls **toil** (manual, repetitive, grows with demand, improves nothing). |
+| More servers bring more tickets | Easy fulfillment drives demand; without cost visibility, infrastructure feels free to the requester. |
+| Rubber-stamping root for svc-build-77 | Approval fatigue and weak service-account hygiene. Real breaches and cryptojacking often come through a request or credential nobody looked at. Fixes: separation of duties, least privilege, service accounts with owners and reviews. |
+| Unplugging the ticket system | A provisioning freeze: during a cost crisis or security incident, organizations temporarily block new resource creation, often with an org-wide deny policy. Blunt and unpopular, so it's short, announced and has an exception path. "Contains chaos, doesn't fix it" is accurate. |
+| Getting your bearings among the boxes | Discovery and inventory: asset inventory, cost reports by project, tag audits, last-login and usage data. You can't govern what you can't see. |
+| Mr Paperclip's findings become rulebook pages | Policies drawn from evidence: required tags (owner, cost center, environment); budgets and alerts; quotas (no GPUs without approval); expiry dates on sandboxes and demos; time-limited admin (just-in-time elevation) instead of permanent admin; shutting down leavers' resources. |
+| Plugging back in, some tickets bounce | Preventive controls, often policy as code, that reject requests breaking the rules at creation time; they complement detective controls that find problems afterwards. Best version: **self-service with guardrails**, a catalog of approved templates ("golden paths") so the right thing is the easy thing. |
+| Sweeping the old boxes | Cleanup campaigns, tag it or it goes: notify likely owners, give a grace period, snapshot before deleting, scream-test what's still unclaimed. |
+| The freed temp takes the stamp | Moving people from toil to engineering. The person drowning in tickets usually knows the estate best. SRE's rule of thumb caps toil at about half of someone's time so there's room to fix the system. |
+
+**Don't become the department of no.** "From firefighter to police" is right in direction, but if the rules only deny, people route around them: their own card, their own account, a box under a desk. **Overly strict rules create more Shadow IT.** As a mechanic:
+- If your rulebook bounces too much, legitimate requests get denied. Grumbling comes from upstairs, and boxes start appearing in the basement without going through the ticket system: people sneaking around you.
+- The win is that real requests get through quickly and absurd ones don't, not that everything is denied.
+- Mr Paperclip tempts you toward strict: "Deny all of them. Can't have Shadow IT if nobody has IT."
+- "Police" should feel like building codes, not handcuffs: the rules exist so people can build safely and quickly.
+
+**Where the game simplifies (fine for satire):**
+- Nobody literally unplugs the ticket system; a real freeze is a policy change plus an email.
+- Real cleanups take weeks of chasing owners, not one sweep.
+- Real rules come from many people (security, finance, the teams themselves). That fits the controlling idea: later clients could add the manager's and the VP's sign-offs to the rulebook.
+
 **Open:**
 - This moves the temp into client 1, which the story bible had as "no one". Either client 2 needs a new focus character, or the temp becomes a recurring partner across clients.
 - Where the darkness, the stairway reveal and the seal-the-stairs commitment fit now that tickets drive the loop.
