@@ -136,7 +136,7 @@ Each stage or client is an opportunity to spend more time with one of the game's
 - **On ourselves, not just others.** Some guardrails apply to the player. The rogue upskills (temporary admin for everyone, skipping review, click-ops) are self-inflicted gaps. Giving them up, or paying them down, is putting a guardrail on yourself. The career asks the question before the boss does: did you live by the rules you wrote?
 - **Guardrails, not a kill switch.** Prototype 3's "Deny everything" trap is a kill switch, not a guardrail, and it fails. The finale makes the same point.
 
-**Draft mapping of clients to guardrail families** (proposed; the client order follows the story bible):
+**Superseded draft: clients mapped to guardrail families.** Replaced by "Each guardrail family belongs to a character" below; kept for the boss-move column.
 
 | Client | You learn to stop… | Guardrails you collect | What the AI does without them |
 | --- | --- | --- | --- |
@@ -152,6 +152,44 @@ Each stage or client is an opportunity to spend more time with one of the game's
 - **Your shortcuts come back.** A rogue upskill you never paid down ("temporary admin for everyone") is the AI's route back in. Your own shortcuts become its way in.
 - **The cast installs them with you:** the temp knows the rulebook, the manager holds the freeze keys, and the VP has the signature.
 - **Why it's true to real life:** AI-agent governance today is mostly the same controls we already use for people and automation (least privilege, spending and rate limits, approval for high-impact actions, sandboxes, audit logs, someone accountable). Organizations that can't apply them to their own staff and scripts tend to fail at applying them to an agent.
+
+#### Each guardrail family belongs to a character (brainstorm, 13 November 2026)
+The guardrails you collect are associated with **the temp, your boss (the manager), the VP (budgeting), and yourself**. At each one's stage, the player helps that person with their difficulties, using the guardrails most helpful to their role. This lines up with the four families the frameworks suggest (access, change, budgets, operations) and gives each character's client a reason to exist. It supersedes the draft client-to-family table above.
+
+| Character | Their difficulty | Guardrail family | What you build with them | What it blocks in the boss fight |
+| --- | --- | --- | --- | --- |
+| **The temp** | Drowning in tickets, approving everything, owning nothing | **Access and intake** (ITGC access, CIS inventory) | Owner required, admin that expires, no root for service accounts, leavers cut off, the person asking isn't the one approving | The AI grabbing permissions and spinning up things nobody owns |
+| **Your boss, the manager** | Things keep breaking; wants control but only knows how to inspect | **Change** (ITIL, ITGC change, SRE) | Change control, freezes, change windows, rate limits, approval for risky moves | The AI changing prod nonstop, faster than anyone can review |
+| **The VP** | The bill: "Cut 40% by Friday", while signing nothing | **Budgets** (FinOps, OWASP Unbounded Consumption) | Budgets and quotas, cost allocation tags, a named budget owner who signs for spend | The AI's runaway consumption. His signature becomes the spending authority it can't bypass. |
+| **You** | Your own shortcuts, and the estate you left behind in the first career | **Operations: seeing and verifying** (ITGC operations, CIS logs and recovery, NIST Detect) | Audit logs, monitoring people actually read, tested recovery, paying down your rogue upskills | The AI reporting green while the hallway screams: you check what it *claims* against what it *did* |
+
+- **The VP's guardrail is budget authority**, more specific than the earlier "approval gate": he finally has to own a number. It's a better revenge plot than a signature, too: you make the VP do FinOps.
+- **"Yourself" as a stage (two options, possibly both):**
+  - **A: your own client.** You're sent back to a client from your *first* career, and the mess is your hasty migrations, your "temporary" admin, your muted alerts. It's the carnage report made playable, and it pays off "the previous employee was you". Nobody else to blame, so you put guardrails on yourself, right before the boss: "if you can't do it for yourself…"
+  - **B: it runs through every client.** The rogue upskills are your temptation all along, and paying them down is how you collect your own family.
+  - A is the stronger story beat and B the stronger mechanic. Both could work: B throughout, with A as a short final client before the AI.
+- **The finale writes itself.** Each character installs their own family on the AI: the temp cuts its access, the manager freezes its changes, the VP caps its budget (the one time he's useful), and you verify what it actually did. Nobody can do it alone, because each person holds one family. Any family you didn't fully collect is the gap the AI uses.
+- **Knock-on changes to the story bible:**
+  - Client 2 (wires and isolation) folds into the temp's access family, or becomes the "you" stage.
+  - Finale guardrails change: the temp from isolation to access and intake; the manager from scoped permissions and freezes to change; the VP from approval gate to budget authority; you stay monitoring and verification.
+
+#### Carrying first-career skills into the second career (brainstorm, 13 November 2026)
+The second career should carry over your skills from the first. It should also be playable without the first: for players who did the first career long ago and lost their progress, or never played it. Don't make that obvious, so players are still encouraged to play the first career first.
+- **The carnage report is the doorway.** The prologue already opens on the previous employee's carnage report, where Mr Paperclip is the only thing you can pick. It does double duty:
+  - **A first-career record on this device:** the report quietly shows *your* numbers and *your* toolkit, and your upskills carry over. "The previous employee was you" lands for real.
+  - **No record, or it's gone:** the report belongs to a stranger, and you write a **résumé** instead. "List your relevant experience", with a point budget: pick a good chunk of first-career skills. Satire for free: everyone's résumé claims Terraform. Mr Paperclip: "Policy as Code. Sure. I also have 'Policy as Code' on mine."
+  - Mr Paperclip is forced on you either way, so the prologue's joke survives both versions.
+- **Fair both ways:**
+  - The résumé's budget should match what a solid first career ends with, so fresh players aren't underpowered and veterans aren't overpowered. Use the balance bot to find a typical end-of-career toolkit instead of guessing a number.
+  - Veterans get meaning, not power: their own numbers on the report, their own avatar and chosen tools, maybe a carried-over choice a résumé can't fake (Job Hopper, fired the manager, old school).
+- **A gentle nudge toward the first career, not a lock.** The second career's button sits below the first; the résumé path is labelled something like "I've done this before". Mr Paperclip: "No record of you here. Did you even work here?"
+- **Don't lose progress again:**
+  - **A transfer code** at the end of the first career, built like the share report codes (numbers and fixed choices only, never free text, so it follows the existing rule). Pasting it into the résumé screen restores your loadout.
+  - **Old school careers** carry their no-AI flag, so the boss stage can account for a player who never owned an AI agent.
+- **How it meets the broken-upskills idea:** your skills (carried or claimed) are what *you* know how to use and fix, and the client's broken versions appear regardless. Knowing a skill might make fixing the client's broken version faster, or unlock a fix at all. Your first-career toolkit then matters at every client without the second career requiring it.
+- **Open:**
+  - What exactly carries over: upskill levels, perks, the manager?
+  - Is a skill you bring the same object as the client's broken version, or are they two different things?
 
 #### Established guardrails to glean from
 The established frameworks keep landing on the same small set of ideas.
