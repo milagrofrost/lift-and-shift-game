@@ -285,6 +285,19 @@ The guardrails you collect are associated with **the temp, your boss (the manage
 - **Riff: a "Thanks to" section** appears on Day 2 reports and fills only with what you actually handed over.
 - Share posts keep the existing rule: real stats, fixed choices, never free text.
 
+**Mr Paperclip plants the hint on Day 1, coyly (Day 1 change, idea).** Among his backseat-driver lines, a few that are quietly right: about working alone, never writing anything down, never keeping anyone in the loop. A little coy, never a lecture. Players who never buy him miss the satisfying setup but can still work it out on Day 2, where he's forced on everyone.
+- Draft lines:
+  - "You don't write anything down, huh? Bold."
+  - "Look at you, doing it all yourself. Inspiring. Exhausting to watch, but inspiring."
+  - "So independent. You don't need anybody. Love that for you."
+  - "Wild idea: keep somebody else in the loop on what you're doing? That'd be nice, wouldn't it? No? Cool."
+  - "Ooh, a new trick. Shame nobody else will ever know it."
+  - "If you get hit by a bus, where's the runbook? Asking for a friend. The friend is me."
+  - "The temp's just standing there. Not saying anything. Just observing."
+- Triggers that fit his existing events: long held work, finishing a client alone, the temp nearby, and more often late in the career (Partner and up), when it's gone to your head.
+- Keep the dose low so it reads as a running gag, not a moral. His other advice stays mostly wrong. Rules that already apply: his lines use his own random generator, give +1 energy, and never name keys.
+- **For players who never buy him:** one quiet carrier elsewhere, such as a single line from the tutorial's senior paperclip, or the manager asking "Did you write that down anywhere?" Optional.
+
 **Small Day 1 touches that would set it up (Day 1 changes, own branch):**
 - Late-career praise in the client review ("They asked for you by name.").
 - Mr Paperclip noticing you never write anything down.

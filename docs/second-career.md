@@ -164,6 +164,7 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 | Client card or briefing | "Scope: migrate", so the contract is visible from the start | Day 1 change (idea) |
 | End of a Day 1 career | A transfer code to carry into Day 2 | Day 1 change (idea) |
 | Mr Paperclip's lines | A few that only land on Day 2 ("That's a change request.") | Day 1 change (idea) |
+| Mr Paperclip's lines | Coy hints that you work alone and write nothing down ("Keep somebody else in the loop? No? Cool.") | Day 1 change (idea) |
 | The temp asks, stalls, goes unonboarded and quits | He was never taught; your runbooks make him capable | Already in Day 1 |
 | Runbooks upgrade; Runbooks as an AI Agent foundation | Your written-down knowledge is what makes the AI safe | Already in Day 1 |
 | Energy drains as you do everything | The hero drain | Already in Day 1 |
