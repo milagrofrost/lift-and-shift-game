@@ -166,6 +166,8 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 | Mr Paperclip's lines | A few that only land on Day 2 ("That's a change request.") | Day 1 change (idea) |
 | Mr Paperclip's lines | Coy hints that you work alone and write nothing down ("Keep somebody else in the loop? No? Cool.") | Day 1 change (idea) |
 | The temp asks, stalls, goes unonboarded and quits | He was never taught; your runbooks make him capable | Already in Day 1 |
+| The temp comes in to help you | You come in to help him: the stage's switch | Already in Day 1 |
+| The temp is good at tickets, then quits | Thanking him keeps him longer; on Day 2 he grows | Day 1 change (idea) |
 | Runbooks upgrade; Runbooks as an AI Agent foundation | Your written-down knowledge is what makes the AI safe | Already in Day 1 |
 | Energy drains as you do everything | The hero drain | Already in Day 1 |
 | "Junior Consultant (pretending)" to "Living Legend"; the résumé file | The bluff that became a legend; Day 2 opens at the top | Already in Day 1 |
@@ -197,6 +199,7 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 - You aren't the first: several employees before you did Day 1 and never took it to Day 2.
 - Day 1 was a consulting contract scoped to "migrate"; Day 2's contract adds "sustainable without us".
 - Your arc: you bluffed in on Day 1, became the Living Legend alone, and it went to your head. Day 1 reports are all "me"; Day 2 reports come to credit the people you worked with (candidate: the voice reflects how you played).
+- Stage 1's switch: on Day 1 the temp came to help you; on Day 2 you come to help him. The rulebook is icons and stamps he learns by watching you, not text. The crypto miner moves to the VP's stage (candidate).
 - Your guardrail family is **pass it on**: the hero who works alone learns to write things down, trust people and share the load. The temp's uselessness on Day 1 was partly yours.
 - Priorities: the MoSCoW sort in ROADMAP.md (13 November). Where it disagrees with an older entry here, the sort is newer.
 

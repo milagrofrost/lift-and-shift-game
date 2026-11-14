@@ -27,6 +27,7 @@ Small changes to the current game, each on its own branch and PR. Day 1 must sta
 - [ ] Red flashing cloud servers stamped *out of scope* as you leave a client.
 - [ ] "Scope: migrate" on the client card or briefing.
 - [ ] A transfer code at the end of a Day 1 career.
+- [ ] Thanking the temp adds a few seconds to his shift.
 
 ### Balance and testing
 - [ ] Build a better playtest bot. The current one rarely gets past client 2, so later clients, freezes and managers are unmeasured.
@@ -277,6 +278,36 @@ The guardrails you collect are associated with **the temp, your boss (the manage
 - **Knock-on changes to the story bible:**
   - Client 2 (wires and isolation) folds into the temp's access family, or becomes the "you" stage.
   - Finale guardrails change: the temp from isolation to access and intake; the manager from scoped permissions and freezes to change; the VP from approval gate to budget authority; you stay monitoring and verification.
+
+#### Stage 1: meeting the temp (brainstorm, 13 November 2026)
+**The switch: on Day 1 he came in to help you. On Day 2 you come in to help him.** That inversion is the stage.
+
+**What Day 1 taught the player about him:** you call him in when the game allows, he's slow to start, he's good at tickets, closes a few fast, maybe fixes a thing, and quits after 10–15 seconds. *Wow, what a help.* He actually was: he closed tickets and probably stopped some escalations. You just wish he'd stay longer, and you decide temps are useless.
+
+**What Day 2 reveals:** he's good at tickets because tickets are the only direction he's ever been given. He isn't useless; he's directionless. Ruled only by user requests, everything spirals. He needs guidance on what's acceptable and what isn't: the power to say no, the power to choose.
+
+**Design goal: as few words as Day 1.** Day 1 works on circles going orange and red and bars filling up. This stage should read the same way. No server metrics, no consoles full of text.
+
+**Meeting him, emotionally (riffs, open):**
+- **Watch first.** You come down the stairs and he's closing tickets faster than you could. First beat: *oh, he's actually good at this.*
+- **Then see him drown.** Day 1's five-slot queue fills, and a stress cue rises over him (sweat, a shaking hand, the Day 1 orange-to-red circle).
+- **Rubber-stamping is a symptom, not laziness.** The more overwhelmed he is, the faster he stamps APPROVED on everything. The player rethinks Day 1's "useless temp" without being told.
+
+**The rulebook as stamps, not text:**
+- Each ticket shows three or four icons: 👤 owner (or ❓), 💳 budget code (or ✖), ⏳ expiry (or ∞), 🔑 admin requested.
+- **You teach by doing it once in front of him.** Bounce a ticket with ❓ owner while he watches, and he learns that stamp. Knowledge transfer as a mechanic, and your "pass it on" guardrail with zero reading. Mr Paperclip can snark beside it; the rule itself is an icon.
+- **The power to say no.** His desk gains a red BOUNCE stamp next to APPROVED, and his posture changes the first time he uses it.
+
+**Recognizing him and keeping him:**
+- **Thank him.** A tap on the temp is a small "nice work": a little less stress, a little longer shift. Recognition is a verb.
+- **Take the bad one off his plate.** Grab the absurd ticket he can't handle; he watches what you do and handles the next one himself.
+- **He stays longer.** Day 1's 10–15 seconds stretch as his confidence grows.
+
+**Not a prison.** He isn't locked in; the ticket bell just never stops. Freed, the bell stops running his life: the lights go off and he walks upstairs and goes home.
+
+**The crypto miner moves to the VP's stage.** The VP has no reason to run from savings unless the waste is his: his GPU demo for the CEO, a pet project, the miner itself. Your cost-cutting finds his stuff, and his budget guardrail means owning a number with his name on it.
+
+**Day 1 change (idea):** thanking the temp adds a few seconds to his shift. Plants the idea before Day 2 pays it off.
 
 #### Your guardrail: pass it on (brainstorm, 13 November 2026)
 **Supersedes "operations: seeing and verifying" as your family.** Logs, monitoring and tested recovery stay useful, but they belong to everyone. Your guardrail is the one only you can put on yourself.
