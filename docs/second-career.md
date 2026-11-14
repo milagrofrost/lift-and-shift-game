@@ -173,6 +173,11 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 | "Junior Consultant (pretending)" to "Living Legend"; the résumé file | The bluff that became a legend; Day 2 opens at the top | Already in Day 1 |
 | Share posts and About the author: humble-brag, all "me" | Day 2 reports credit the people you worked with | Already in Day 1 |
 | Client review | Late-career praise: "They asked for you by name." | Day 1 change (idea) |
+| The manager answers email, guards the door, calls freezes | Taking the heat and removing obstacles: his strength, already shown | Already in Day 1 |
+| The manager's "just looking" breaks servers | Looking without touching: he reads patterns instead of poking boxes | Already in Day 1 |
+| "I used to be technical, you know." | He lost it; you faked it and gained it (the mirror) | Already in Day 1 |
+| The manager's shame walk grows per break; Blameless Postmortems upgrade | Bringing him back without blame | Already in Day 1 |
+| VPs hunt you directly | The manager translates their frustration into defined work | Already in Day 1 (the absence) |
 
 ## 7. The ending
 
@@ -200,6 +205,7 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 - Day 1 was a consulting contract scoped to "migrate"; Day 2's contract adds "sustainable without us".
 - Your arc: you bluffed in on Day 1, became the Living Legend alone, and it went to your head. Day 1 reports are all "me"; Day 2 reports come to credit the people you worked with (candidate: the voice reflects how you played).
 - Stage 1's switch: on Day 1 the temp came to help you; on Day 2 you come to help him. The rulebook is icons and stamps he learns by watching you, not text. The crypto miner moves to the VP's stage (candidate).
+- The manager's superpower is translation: he knows systems, work and the business, and turns frustration into defined work for his team. His "just looking" becomes looking without touching (patterns, not commands). A bad CAB is a candidate overcorrection beat (candidate, 14 November; still thinking).
 - Your guardrail family is **pass it on**: the hero who works alone learns to write things down, trust people and share the load. The temp's uselessness on Day 1 was partly yours.
 - Priorities: the MoSCoW sort in ROADMAP.md (13 November). Where it disagrees with an older entry here, the sort is newer.
 
