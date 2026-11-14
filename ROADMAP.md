@@ -17,6 +17,17 @@ Ideas and loose ends. Nothing here is a commitment.
 - [ ] Decide whether the donut shop music should ramp with trouble like the other songs.
 - [ ] Decide whether the Mover Bot should leave a lane free when you only have one.
 
+### Day 1 changes that set up Day 2
+Small changes to the current game, each on its own branch and PR. Day 1 must stay complete on its own. Details are in "Your arc" and the Day 1 ↔ Day 2 ledger in docs/second-career.md.
+- [ ] **Mr Paperclip's coy hints** that you work alone and write nothing down. Draft lines are in "Your arc" below. Low dose; more often from Partner up.
+- [ ] Optional: one quiet carrier for players who never buy him (the tutorial's senior paperclip, or the manager asking "Did you write that down anywhere?").
+- [ ] The tutorial's Day 0 wink ("Paperclip Supply Co. · Day 0" and the finish line).
+- [ ] Late-career praise in the client review ("They asked for you by name.").
+- [ ] The terminal résumé growing more impressive, and slightly more true, as you climb.
+- [ ] Red flashing cloud servers stamped *out of scope* as you leave a client.
+- [ ] "Scope: migrate" on the client card or briefing.
+- [ ] A transfer code at the end of a Day 1 career.
+
 ### Balance and testing
 - [ ] Build a better playtest bot. The current one rarely gets past client 2, so later clients, freezes and managers are unmeasured.
 - [ ] Tune the AI Agent foundation values, uptime recovery rates, and escalation spacing from real play.
