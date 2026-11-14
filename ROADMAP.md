@@ -105,7 +105,7 @@ Matt sorted every idea in this roadmap and the Day 2 notes on a MoSCoW board ([p
 - Day 2: finale, nobody is the superhero (the cast contains the AI together)
 - Day 2: turning the tables, you hunt the VP
 - Day 2: guardrail collection as the spine
-- Day 2: a guardrail family per character (temp access, manager change, VP budgets, you pass it on)
+- Day 2: a guardrail family per character (temp access, manager change and priorities, VP budgets, you pass it on)
 - Day 2: Learn more links per guardrail to its real framework
 - Day 2: final client, the AI gone rampant, contained with guardrails
 - **New:** there were possibly a few employees before you who never did anything to take it to Day 2
@@ -265,7 +265,7 @@ The guardrails you collect are associated with **the temp, your boss (the manage
 | Character | Their difficulty | Guardrail family | What you build with them | What it blocks in the boss fight |
 | --- | --- | --- | --- | --- |
 | **The temp** | Drowning in tickets, approving everything, owning nothing | **Access and intake** (ITGC access, CIS inventory) | Owner required, admin that expires, no root for service accounts, leavers cut off, the person asking isn't the one approving | The AI grabbing permissions and spinning up things nobody owns |
-| **Your boss, the manager** | Things keep breaking; wants control but only knows how to inspect | **Change** (ITIL, ITGC change, SRE) | Change control, freezes, change windows, rate limits, approval for risky moves | The AI changing prod nonstop, faster than anyone can review |
+| **Your boss, the manager** | Things keep breaking and the VP's requests reach you raw; he hides in email and only knows how to inspect | **Change and priorities** (ITIL change enablement, ITGC change, SRE, WIP limits; 14 November) | Constrain, prioritize and define work: scope, a priority order, rate and WIP limits, freezes and change windows, approval for risky moves | The AI takes on every request, invents its own work, and changes prod nonstop, faster than anyone can review |
 | **The VP** | The bill: "Cut 40% by Friday", while signing nothing | **Budgets** (FinOps, OWASP Unbounded Consumption) | Budgets and quotas, cost allocation tags, a named budget owner who signs for spend | The AI's runaway consumption. His signature becomes the spending authority it can't bypass. |
 | **You** | Working alone: the hero who does everything, writes nothing down and burns out | **Pass it on** (knowledge transfer, runbooks, delegation; replaces "operations: seeing and verifying") | Runbooks the temp can follow, documenting the first time, trusting people with the work, being able to leave | An AI that's the only thing that understands the system, with nothing good to amplify |
 
@@ -274,7 +274,7 @@ The guardrails you collect are associated with **the temp, your boss (the manage
   - **A: your own client.** You're sent back to a client from your *first* career, and the mess is your hasty migrations, your "temporary" admin, your muted alerts. It's the carnage report made playable, and it pays off "the previous employee was you". Nobody else to blame, so you put guardrails on yourself, right before the boss: "if you can't do it for yourself…"
   - **B: it runs through every client.** The rogue upskills are your temptation all along, and paying them down is how you collect your own family.
   - A is the stronger story beat and B the stronger mechanic. Both could work: B throughout, with A as a short final client before the AI.
-- **The finale writes itself.** Each character installs their own family on the AI: the temp cuts its access, the manager freezes its changes, the VP caps its budget (the one time he's useful), and you verify what it actually did. Nobody can do it alone, because each person holds one family. Any family you didn't fully collect is the gap the AI uses.
+- **The finale writes itself.** Each character installs their own family on the AI: the temp cuts its access, the manager constrains its work (defines what it's allowed to take on, sets the order and the rate, and freezes its changes), the VP caps its budget (the one time he's useful), and you verify what it actually did. Nobody can do it alone, because each person holds one family. Any family you didn't fully collect is the gap the AI uses.
 - **Knock-on changes to the story bible:**
   - Client 2 (wires and isolation) folds into the temp's access family, or becomes the "you" stage.
   - Finale guardrails change: the temp from isolation to access and intake; the manager from scoped permissions and freezes to change; the VP from approval gate to budget authority; you stay monitoring and verification.
@@ -357,7 +357,14 @@ The guardrails you collect are associated with **the temp, your boss (the manage
 - "CAB gate" is a parked idea; if this lands, it comes back as his stage, so only his bad CAB and then his good one need building, never a full CAB system.
 
 **Open:**
-- Does his family stay **change**, or become **change and priorities** (demand intake, translation, WIP limits)? Prioritization may now be the bigger half.
+- ~~Does his family stay change?~~ **Settled (14 November): change and priorities.**
+
+**His guardrail for the finale: constrain, prioritize, define work (14 November).** Persuasion gets the temp hired; this is what he brings to the AI. An unconstrained agent takes on every request, invents its own work and never stops to ask what matters most: Day 2's absent manager, automated. The manager gives it what he learned to give the team:
+- **Define:** a clear, scoped task, not "make the cloud better". A vague ask is the AI's way to do anything.
+- **Prioritize:** a fixed order. Incidents first, then the planned work; new requests wait their turn.
+- **Constrain:** a rate and a WIP limit, so it can't flood prod or the queues; freezes and change windows for what it touches.
+- **Real-world names:** OWASP's "excessive agency" (LLM Top 10), scoped tasks and allowlisted actions, rate limits, human-set objectives (NIST AI RMF). Day 1 already hints at it: the AI Agent's level 4 has a fixed priority list, and Mover Bot only does what it's told.
+- **In the finale:** the AI floods the floor with work nobody asked for; the manager's priority list and limits are what slow it to something the team can review.
 - Is stage 4's "asking for help" set up here? You ask him and he's busy at first. Keep the stage 2 ask scripted enough to land the lesson, and stage 4's ask your own choice.
 - Is he your manager at the consulting firm or the client's? Day 1 leaves it vague, and it changes why he's there on Day 2.
 - If you fired him in Day 1 (AI level 4), the AI took his job. He has the most personal reason of anyone to want guardrails on it.
