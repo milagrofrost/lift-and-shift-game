@@ -61,7 +61,8 @@ These hold at every client, so the variety stays coherent.
 6. **No violence.** Chases corner people; zombies don't bite; the ending's noise is ambiguous.
 7. **Each client is its own experience.** Long or short, data center or mini-game.
 8. **Two-way continuity with Day 1.** As Day 2 grows, keep looking for consistencies and new connections back to Day 1. Either side can change: Day 1 gameplay can shift a little to set up Day 2, and Day 2 can bend to honour what Day 1 already does. Every Day 2 idea should be checked for what it echoes in Day 1. Day 1 must stay complete and playable on its own; changes to it follow AGENTS.md (own branch, tests, docs). See "Day 1 ↔ Day 2 ledger" in section 6.
-9. **The game's existing rules still apply:** cosmetic effects never use game randomness, sound respects the settings, and reduced motion is covered.
+9. **Show, don't tell.** The player should slowly understand their own part in the mess on Day 2, from what they see. Nobody says "you were the problem".
+10. **The game's existing rules still apply:** cosmetic effects never use game randomness, sound respects the settings, and reduced motion is covered.
 
 ## 3. Shape of the career
 
@@ -166,6 +167,9 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 | The temp asks, stalls, goes unonboarded and quits | He was never taught; your runbooks make him capable | Already in Day 1 |
 | Runbooks upgrade; Runbooks as an AI Agent foundation | Your written-down knowledge is what makes the AI safe | Already in Day 1 |
 | Energy drains as you do everything | The hero drain | Already in Day 1 |
+| "Junior Consultant (pretending)" to "Living Legend"; the résumé file | The bluff that became a legend; Day 2 opens at the top | Already in Day 1 |
+| Share posts and About the author: humble-brag, all "me" | Day 2 reports credit the people you worked with | Already in Day 1 |
+| Client review | Late-career praise: "They asked for you by name." | Day 1 change (idea) |
 
 ## 7. The ending
 
@@ -191,6 +195,7 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 - Controlling line: *If we can't put guardrails on ourselves, we can't put them on our AI.*
 - You aren't the first: several employees before you did Day 1 and never took it to Day 2.
 - Day 1 was a consulting contract scoped to "migrate"; Day 2's contract adds "sustainable without us".
+- Your arc: you bluffed in on Day 1, became the Living Legend alone, and it went to your head. Day 1 reports are all "me"; Day 2 reports come to credit the people you worked with (candidate: the voice reflects how you played).
 - Your guardrail family is **pass it on**: the hero who works alone learns to write things down, trust people and share the load. The temp's uselessness on Day 1 was partly yours.
 - Priorities: the MoSCoW sort in ROADMAP.md (13 November). Where it disagrees with an older entry here, the sort is newer.
 

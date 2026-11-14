@@ -271,6 +271,25 @@ The guardrails you collect are associated with **the temp, your boss (the manage
 
 **Real-world names:** bus factor, knowledge transfer, runbooks and documentation, delegation, mentoring and onboarding, toil limits, sustainable on-call; "hero culture" as the anti-pattern.
 
+#### Your arc: the bluff, the legend, and who gets the credit (brainstorm, 13 November 2026)
+**Day 1's résumé lie stays. It's the start of the arc, not a contradiction.**
+1. **You bluffed your way in.** Junior Consultant (pretending).
+2. **Then you figured it out, alone, every time.** You're an absolute superstar: clients love you and your work, you get the hard projects, and the title ladder is the rise, all the way to Living Legend.
+3. **It went to your head.** You never brought anybody into your world or your process. Nobody taught you, and you turned out fine. *"I figured it out. Why can't they?"*
+4. **Day 2 opens at the top, in shambles.** The Living Legend is called back. *What happened? I had Patch Bot, the AI agent, all the best practices.* You installed them and handed over nothing. Nobody knew how they worked, so when one broke or felt too restrictive, people routed around it. That's why the client's upskills are broken (see "Don't discard the first career's upskills").
+
+**Don't spell it out.** The player should slowly understand on Day 2, from what they see, not from a speech. Nobody says "you were the problem".
+
+**The reports carry the arc.** Day 1 already speaks in humble-brag: the share posts spin every outcome, retirement says "Nobody ever found out about the resume", and the About the author page is a humble-brag post. On Day 1 every report is about *me*: I figured it out; I got fired, and here's the spin; look at my successes. On Day 2 the reports start to change voice. The player acknowledges the people they worked with: their work, their effort and their ability.
+- **Riff: the post's voice reflects how you played.** Pass it on (runbooks the temp follows, guardrails the manager and VP own) and the Day 2 end report and share post credit them by name: "The temp ran the rulebook for six months without me." Hero your way through and the post slides back into "I". The "I"/"we" balance is the verdict, never stated.
+- **Riff: a "Thanks to" section** appears on Day 2 reports and fills only with what you actually handed over.
+- Share posts keep the existing rule: real stats, fixed choices, never free text.
+
+**Small Day 1 touches that would set it up (Day 1 changes, own branch):**
+- Late-career praise in the client review ("They asked for you by name.").
+- Mr Paperclip noticing you never write anything down.
+- The terminal résumé growing more impressive, and slightly more true, as you climb.
+
 #### Carrying first-career skills into the second career (brainstorm, 13 November 2026)
 The second career should carry over your skills from the first. It should also be playable without the first: for players who did the first career long ago and lost their progress, or never played it. Don't make that obvious, so players are still encouraged to play the first career first.
 - **The carnage report is the doorway.** The prologue already opens on the previous employee's carnage report, where Mr Paperclip is the only thing you can pick. It does double duty:
