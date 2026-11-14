@@ -57,7 +57,7 @@ These hold at every client, so the variety stays coherent.
 2. **Found by investigation.** Surprises (the stairway, the hole in the wall) are revealed by the player's own habits, never by progress alone.
 3. **Real rooms, surreal edges.** The technical rooms tell the operational truth; the hallway and the surprise places carry the strangeness.
 4. **Cause and effect stay readable,** however strange the place. Darkness means missing knowledge, not an unreadable screen.
-5. **Losing is soft.** You lose something but progress stays done. (Joe's meeting was the candidate form; the MoSCoW sort put it in Won't, so the form is open.)
+5. **Losing is soft.** You lose something but progress stays done. (Being pulled into a meeting was the candidate form; the MoSCoW sort put it in Won't, so the form is open.)
 6. **No violence.** Chases corner people; zombies don't bite; the ending's noise is ambiguous.
 7. **Each client is its own experience.** Long or short, data center or mini-game.
 8. **Two-way continuity with Day 1.** As Day 2 grows, keep looking for consistencies and new connections back to Day 1. Either side can change: Day 1 gameplay can shift a little to set up Day 2, and Day 2 can bend to honour what Day 1 already does. Every Day 2 idea should be checked for what it echoes in Day 1. Day 1 must stay complete and playable on its own; changes to it follow AGENTS.md (own branch, tests, docs). See "Day 1 ↔ Day 2 ledger" in section 6.
@@ -108,7 +108,6 @@ Notes on the grid:
 | **The manager** | Interrupts, freezes, inspects | Their own client, with a deeper role | Things to look under control | To trust the team instead of inspecting it | **Proposed: change.** Change control and freezes: the manager freezes the AI's changes (earlier idea: scoped permissions and freezes) |
 | **The VP** | Hunts you through the hallway | Recurring in a new guise each client; you hunt him | To not hear bad news | To own a decision | **Proposed: budget authority.** The VP finally owns a number: his signature is the spending cap the AI can't bypass (earlier idea: the approval gate) |
 | **The AI** | Your agent, then your replacement | Rampant, hallucinating, no guardrails | Control | Boundaries | Ends contained: a narrow, accountable tool |
-| **Joe** | | Owner of the soft fail state's endless meeting | A quick sync | | **Riff, proposed:** the rate limit. Drag the AI into a meeting with Joe and it slows to a crawl |
 | **Zombies, the forgotten contractor** | | Hallway and basement color | | | None; they're flavor |
 
 The guardrail column is the main proposal for cohesion. It makes "nobody is the superhero" playable: each character *is* a guardrail, and each client is where you learn what they can do.
@@ -133,7 +132,6 @@ Every setup should pay off. Anything without a payoff is a loose end, or a candi
 | The sandbox beach | Client 4 | The honeypot that traps the AI |
 | The FinOps scan | First career | Becomes the AI's intrusion scan hunting you |
 | The VP in a new guise every client | Clients 1–4 | His absence in the finale, then the walk-in |
-| Meetings with Joe | Every soft fail | Joe as the AI's rate limiter (riff) |
 | The cycle and the boot screen | Both careers | Cloud-first news, then black |
 
 ### Day 1 ↔ Day 2 ledger
@@ -193,7 +191,7 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 - Priorities: the MoSCoW sort in ROADMAP.md (13 November). Where it disagrees with an older entry here, the sort is newer.
 
 **Candidate**
-- Pulled into a meeting with Joe as the fail state.
+- Pulled into a meeting as the fail state.
 - The scream test, wire tracing and the shut-down verb.
 - Rogue upskills, as loans you can pay down.
 - The reverse VP chase, and its payoffs (decisions, budget, invoices).

@@ -115,7 +115,7 @@ Matt sorted every idea in this roadmap and the Day 2 notes on a MoSCoW board ([p
 - Day 1 game: saved sessions; Chaos Monkey; daily client; CAB gate on client 3; two-player co-op; better playtest bot; late-game tension; dedicated game servers (moved up from "Probably not")
 
 **Won't have, this time (26)**
-- Day 2: cloud-first email ending; losing softly in Joe's meeting; Day 3; a Day 0 card after the ending
+- Day 2: cloud-first email ending; losing softly in a meeting; Day 3; a Day 0 card after the ending
 - Basement: firefighter → police gear
 - Clients and places: dentist and daycare hallways
 - Back pocket: Schrödinger's backup; certificate expiry; watermelon metrics; shadow AI; bus factor; alert fatigue; MFA fatigue; end-of-life software; SaaS sprawl; data retention; software supply chain; sustainability
@@ -136,7 +136,7 @@ These are the raw notes. [docs/second-career.md](docs/second-career.md) is the s
   - **Day 1 is the project.** You react, doing what you must to keep the servers from burning, and above all you migrate to the cloud, your primary objective. You win by finishing. Then the project ends and you leave.
   - **Day 2 is operations.** You create processes so things can be maintained long term, not just for a project or a season. You win by building something that keeps working when you leave.
   - It explains why Day 2 exists: every client rotted *because* Day 1 was a project. The project team rolled off, nobody owned the "run" part, and the practices decayed. **Projects end; operations don't.**
-- **We got roped in on Day 1.** Day 0 (design and planning) never existed in our lifetime: the decision was made in a meeting you weren't invited to, and you show up on Day 1 to a deadline, a full ticket queue and servers already on fire. Day 2 starts the same way: you're called back after the client already decided what went wrong. Day 0 is where the VP lives (probably in a meeting with Joe), a quiet reason he has to own a number in Day 2. Flavor, not a mechanic; a candidate line for Day 2's opening: *"Day 0 happened in a meeting you weren't invited to."*
+- **We got roped in on Day 1.** Day 0 (design and planning) never existed in our lifetime: the decision was made in a meeting you weren't invited to, and you show up on Day 1 to a deadline, a full ticket queue and servers already on fire. Day 2 starts the same way: you're called back after the client already decided what went wrong. Day 0 is where the VP lives, a quiet reason he has to own a number in Day 2. Flavor, not a mechanic; a candidate line for Day 2's opening: *"Day 0 happened in a meeting you weren't invited to."*
 - **The tutorial gets a Day 0 wink.** It's still called "Tutorials" in the menu, but Day 0 slips in once you're inside: the one day where someone explains things, nothing burns unless it's staged, and every cutover succeeds. Planned touches (a small change to the real game, its own branch and pull request):
   - The tutorial's client card reads *Paperclip Supply Co. · Day 0*.
   - The finish screen: *"That was Day 0. Tomorrow is Day 1, and nobody will explain anything."*
@@ -303,7 +303,7 @@ The AI mitigations are the same controls as for people, which supports the thesi
 | Separation of duties (four eyes): whoever asks isn't whoever approves | ITGC, SOX | 1, the temp stops self-approving | Approving its own actions |
 | Isolation and blast radius | Zero Trust, CIS 12 | 2, wires | Reaching everything from anywhere |
 | Change control and freezes | ITIL, ITGC change | 3, the manager | Changing prod nonstop |
-| Rate limits and error budgets | SRE | 3, or Joe's meetings | Acting faster than anyone can review |
+| Rate limits and error budgets | SRE | 3 | Acting faster than anyone can review |
 | Human approval for high-impact actions | EU AI Act, OWASP Excessive Agency | 4, the VP signs | Acting with no one accountable |
 | Sandboxes with expiry | Well-Architected, lifecycle policies | 4, the beach | Experimenting in prod; keeping things forever |
 | Audit logs and monitoring | CIS 8, NIST Detect | Every client | Doing things nobody can see |
@@ -573,8 +573,7 @@ That's his guardrail, and it plants "guardrails, not a kill switch" in client 1 
 ### Losing softly: the second career's fail state
 The player already proved they can play this game. The second career should be less stressful and more enjoyable: no getting fired and restarting the whole career. In game terms, this is the **fail state** and its **death penalty**: what counts as "dying", where you **respawn**, and what you lose.
 - **Inspiration:** dungeon crawlers, where you fall in the dungeon, return to a spawn point, and lose something, but keep your progress.
-- **Candidate "death": pulled into a meeting.** When things get too much (energy runs out, the uptime budget is gone, or you're overwhelmed in the basement), you don't die and aren't fired. Someone pulls you into a meeting: "Quick sync with Joe?" It is never quick. The screen cuts away, time passes, and you come back at your desk (the spawn point).
-- **Joe** could become a recurring character: the person whose meetings are where productivity goes to die.
+- **Candidate "death": pulled into a meeting.** When things get too much (energy runs out, the uptime budget is gone, or you're overwhelmed in the basement), you don't die and aren't fired. Someone pulls you into a "quick sync". It is never quick. The screen cuts away, time passes, and you come back at your desk (the spawn point).
 - **What you might lose (candidates, pick one or two):**
   - **Time.** The floor keeps running while you're in the meeting, so incidents grow. This is the most natural penalty.
   - **Something you were carrying.** A server, or your evidence for the VP, is left where you went down and you have to walk back for it (a classic dungeon-crawler retrieval run).
