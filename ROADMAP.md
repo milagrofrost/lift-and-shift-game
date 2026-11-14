@@ -285,6 +285,38 @@ The skills gained and learned in the first career shouldn't be thrown away. Eith
   - Do players who never bought an upskill in their first career meet it for the first time here?
   - How does the old school (no-AI) first career carry into the boss stage?
 
+### Back pocket: might-haves from IT management and DevOps (brainstorm, 13 November 2026)
+Not must-haves. These are topics the guardrail families don't cover yet, kept here in case a stage needs material. ⭐ marks the strongest fits.
+
+| Avenue | The joke or situation | Guardrail it teaches | Likely owner |
+| --- | --- | --- | --- |
+| ⭐ The same fire every day | Same rack burns every day at 10am; Day 1 douses it, Day 2 asks why | Problem management: fix the root cause (ITIL) | Manager or you |
+| ⭐ Schrödinger's backup | Backups "succeed" nightly; nobody ever restored one; restore day finds them empty or encrypted | Restore drills, immutable copies, RTO/RPO (links to the parked game day idea) | You |
+| ⭐ The help desk reset call | "It's the CEO, I lost my phone, reset my MFA." The temp says yes | Verify callers through a second channel | Temp |
+| ⭐ Certificate and domain expiry | Everything works until Tuesday, then nothing does (echoes Day 1 licences) | Track expiry, renew automatically | You |
+| ⭐ Watermelon metrics and Goodhart's law | All-green dashboard, furious users; the temp closes tickets without fixing them; callback to Redefine "Uptime" | Measure from the user's side (SLOs) | You or VP |
+| ⭐ Shadow AI | Staff paste customer data into random chatbots | Approved tools, data rules (sets up the boss) | Temp |
+| ⭐ The auditor | Wants evidence, not safety; screenshot-driven compliance | Guardrails that log their own evidence | Optional fifth character or visitor |
+| Bus factor | "Only Dave knows payroll" and Dave is on a beach; in Day 1, you were Dave | Shared knowledge, docs, pairing | You or temp |
+| Alert fatigue | Pager at 3am for a disk at 81%, so everyone mutes it | Only actionable alerts page anyone | You |
+| Hero culture and burnout | Ties to the heroics trap | On-call rotation, real handoffs | You |
+| Onboarding | Day 1's never-onboarded temp at the door | Joiner process, not just leavers | Temp |
+| MFA fatigue | Push, push, push until someone taps Approve | Number matching, limits | Temp |
+| Secrets in the wiki | "passwords (DO NOT SHARE)" | Secrets vault, rotate what leaked | Temp |
+| The mystery cron job | Kill a "zombie" server, payroll fails Friday | Ownership and dependency mapping (basement trap ticket?) | Manager |
+| End-of-life software | Server 2008 still running because "it works" | Lifecycle and upgrade planning | Manager |
+| Vendor licence audit | An auditor says you owe $2M in back licences | Licence tracking | VP |
+| SaaS sprawl | Forty tools on corporate cards, three do the same thing | Procurement and ownership | VP |
+| Data retention | Keep everything forever; logs cost more than the app; personal data in test | Retention and classification | VP or you |
+| Region outage | The provider goes down, not you | Continuity planning | You |
+| Supply chain | An unpinned dependency changes overnight | Pinning, scanning, SBOM | Manager |
+| Feature flags and canaries | A kill switch per feature, the good kind (unlike "Deny everything") | Gradual release | Manager |
+| "It's always DNS" and the firewall | Rule 4,812: "temp, remove later" (2014) | Rule review and expiry | Temp or you |
+| Platform engineering | Paved road beats policing every request; where the temp could end up | Golden paths | Temp |
+| Sustainability | The idle GPU fleet is a carbon bill too (may read as preachy) | Right-sizing | VP |
+
+If only three: the same fire every day (Day 2's thesis as a mechanic), Schrödinger's backup (a "six months later" reveal) and the help desk reset call (the most Papers, Please moment).
+
 ### The strange familiar: small cracks first
 The cheapest way in is an otherwise normal second career with a few cracks. The tools still work, but the organization's explanation stops making sense. Your competence from the first career is what lets you notice. The company insists it doesn't remember you.
 - Mr Paperclip almost recognizes you: "Your predecessor used to do that. Same face, too. Anyway."
