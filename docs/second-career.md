@@ -178,6 +178,8 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 | "I used to be technical, you know." | He lost it; you faked it and gained it (the mirror) | Already in Day 1 |
 | The manager's shame walk grows per break; Blameless Postmortems upgrade | Bringing him back without blame | Already in Day 1 |
 | VPs hunt you directly | The manager translates their frustration into defined work | Already in Day 1 (the absence) |
+| "Unplanned work ate N points" of next sprint | The manager protects planned work: priorities, WIP limits, "not yet" | Already in Day 1 |
+| The manager guards the door against users, never the VP | He stops the VP with a priority list, not his body | Already in Day 1 |
 
 ## 7. The ending
 
@@ -206,6 +208,7 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 - Your arc: you bluffed in on Day 1, became the Living Legend alone, and it went to your head. Day 1 reports are all "me"; Day 2 reports come to credit the people you worked with (candidate: the voice reflects how you played).
 - Stage 1's switch: on Day 1 the temp came to help you; on Day 2 you come to help him. The rulebook is icons and stamps he learns by watching you, not text. The crypto miner moves to the VP's stage (candidate).
 - The manager's superpower is translation: he knows systems, work and the business, and turns frustration into defined work for his team. His "just looking" becomes looking without touching (patterns, not commands). A bad CAB is a candidate overcorrection beat (candidate, 14 November; still thinking).
+- The manager's other superpower is prioritization: on Day 2 people want new things while things burn, the VP comes to you directly, and the manager is absent at his email. He learns, like the temp, to stop reacting and start planning: the temp says no to bad requests, the manager says not yet to good ones (candidate, 14 November).
 - Your guardrail family is **pass it on**: the hero who works alone learns to write things down, trust people and share the load. The temp's uselessness on Day 1 was partly yours.
 - Priorities: the MoSCoW sort in ROADMAP.md (13 November). Where it disagrees with an older entry here, the sort is newer.
 

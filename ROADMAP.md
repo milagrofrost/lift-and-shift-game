@@ -317,6 +317,16 @@ The guardrails you collect are associated with **the temp, your boss (the manage
 - **Takes the heat:** difficult customers, upper management. Not by martyring himself, but by **translating frustration into defined work** for his team.
 - **Stays connected** with the team all the time, not only when he needs something.
 
+**His other superpower: prioritization (14 November, later the same day).** Done well, the manager's job has broad effects across the whole environment. He limits the kind of work the team takes on, keeps you on the highest-priority tasks, and **defends you to the requesters when you don't do the low-priority ones**. He buys breathing room to improve the existing systems while letting new requests in at a controlled rate. Translation and prioritization are one job: turn the noise into defined work, then decide what goes first and what waits.
+
+- **Why Day 1 can't show it:** on Day 1 nobody asks you for anything new. You maintain and migrate; no one wants new servers built. Without demand there's nothing to prioritize, so there's no opposite to reverse.
+- **Day 2 adds the demand.** People want to keep spinning up new things while things are already on fire. The VP comes to you directly: "You need to get this done." The manager is at his email desk and never leaves it. He isn't prioritizing, he isn't helping you prioritize, and he isn't giving you the power to prioritize. He's absent.
+- **You ask him for help.** The first few times: "No, I'm busy." Somewhere along the way he learns what the temp learns: **stop reacting, start planning and organizing the work.**
+- **The pair with the temp.** The temp gains the power to say **no** to bad requests (one ticket at a time). The manager gains the power to say **not yet** to good ones (the whole flow of work). Both stop being run by whatever arrives next.
+- **Day 1 already teaches the cost.** Between clients, "Unplanned work ate N points" of next sprint's capacity (escalations, red alerts, failed audits, a VP catching you), and Learn more says "unplanned work is the enemy of planned work". Day 2's manager is the person who protects the planned work. Day 1's door guard blocks hallway users but never the VP; on Day 2 he stops the VP with a priority list, not his body.
+- **Shape (open, as few words as Day 1):** new requests could come through his door at a rate he controls, a little like Day 1's five-slot queue. A request the VP brings straight to you could be sent to him instead, and the VP heads to his office. A visible "next sprint" pile could show what's waiting, so saying "not yet" doesn't mean it's lost.
+- **Real-world names:** work-in-progress (WIP) limits, intake and demand management, the backlog and its owner, protecting the team from interruptions. *The Phoenix Project* is the classic telling, and Day 1's unplanned-work line already nods to it.
+
 **What Day 1 already shows, and what it doesn't:**
 - **Already there:** taking the heat and removing obstacles. He answers the important email, guards the door at level 3 ("Not now, Gary!", "Book a meeting!") and calls freezes in outages. Upgrading him in Day 1 is already a small self-improvement arc in which he starts fighting for you. *Possibly too much, too early*; open whether to hold some back.
 - **Already there:** staying connected. He chats in the hallway ("How are the kids?"). Day 1 has no "only shows up when he needs something" version of him to reverse.
@@ -336,7 +346,8 @@ The guardrails you collect are associated with **the temp, your boss (the manage
 - "CAB gate" is a parked idea; if this lands, it comes back as his stage, so only his bad CAB and then his good one need building, never a full CAB system.
 
 **Open:**
-- Does his family stay **change**, or become **change and translation** (demand intake: turning asks into defined work)?
+- Does his family stay **change**, or become **change and priorities** (demand intake, translation, WIP limits)? Prioritization may now be the bigger half.
+- Is stage 4's "asking for help" set up here? You ask him and he's busy at first. Keep the stage 2 ask scripted enough to land the lesson, and stage 4's ask your own choice.
 - Is he your manager at the consulting firm or the client's? Day 1 leaves it vague, and it changes why he's there on Day 2.
 - If you fired him in Day 1 (AI level 4), the AI took his job. He has the most personal reason of anyone to want guardrails on it.
 - **Day 1 change ideas:** one more "just looking" line ("Do I need a ticket for this? Nah."); owning Blameless Postmortems shortens his shame walk a little.
