@@ -85,6 +85,44 @@ Late-game AI was a disaster on a 10-client career with no Patch Bot: patching sa
 - Paid loot boxes, unless the joke is that it contains an invoice.
 - Dedicated game servers for two-player games.
 
+## MoSCoW sort (13 November 2026)
+Matt sorted every idea in this roadmap and the Day 2 notes on a MoSCoW board ([private board](https://claude.ai/artifact/HhPwZ8SkKqsqBsSzrc3uDU)). This is a priority snapshot, not a commitment; the sections below keep the detail.
+
+**Must have (8)**
+- Day 2: character progression (no one → the temp → the manager → the VP → the AI)
+- Day 2: finale, nobody is the superhero (the cast contains the AI together)
+- Day 2: turning the tables, you hunt the VP
+- Day 2: guardrail collection as the spine
+- Day 2: a guardrail family per character (temp access, manager change, VP budgets, you operations)
+- Day 2: Learn more links per guardrail to its real framework
+- Day 2: final client, the AI gone rampant, contained with guardrails
+- **New:** there were possibly a few employees before you who never did anything to take it to Day 2
+
+**Should have (13)**
+- Day 2: the heroics trap; strange familiar, small cracks; persuasion through results; the tutorial's Day 0 wink
+- Basement: the reveal; breaking the temp's bonds; don't be the department of no
+- Guardrails and skills: résumé point budget; transfer code from Day 1; CAB jokes via Mr Paperclip
+- AI boss: hallucinations you can see
+- Back pocket: platform engineering
+- **New:** a nod to the "it's always DNS" trope
+
+**Could have (42)**
+- Day 2: carnage report opening; the previous employee was you; "six months later" check; the VP in a new guise each client
+- Basement: darkness that brightens; the temp's ticket, server rhythm; unplugging the ticket system; Mr Paperclip's rulebook; Papers, Please checkpoint; scream test; tracing the wires; done means one floor; two bars (answered vs prevented)
+- Guardrails and skills: your own Day 1 client returns; Day 1 upskills badly implemented; rogue upskills as shortcuts
+- Clients and places: the sandbox beach; digging in the sand; leaving the cloud; placement decisions; hospital zombies; honeypot for the AI; your old agent as a narrow ally; the intrusion scan hunts you
+- Back pocket: the same fire every day; the help desk reset call; the auditor; onboarding; secrets in the wiki; the mystery cron job; vendor licence audit; region outage; feature flags and canaries; "it's always DNS" and the firewall
+- Day 1 game: saved sessions; Chaos Monkey; daily client; CAB gate on client 3; two-player co-op; better playtest bot; late-game tension; dedicated game servers (moved up from "Probably not")
+
+**Won't have, this time (26)**
+- Day 2: cloud-first email ending; losing softly in Joe's meeting; Day 3; a Day 0 card after the ending
+- Basement: firefighter → police gear
+- Clients and places: dentist and daycare hallways
+- Back pocket: Schrödinger's backup; certificate expiry; watermelon metrics; shadow AI; bus factor; alert fatigue; MFA fatigue; end-of-life software; SaaS sprawl; data retention; software supply chain; sustainability
+- Day 1 game: résumé lies and permanent unlocks; achievements as bad performance reviews; more odd clients; vendor swag loot crates; "days since last incident" streak; daily login rewards; paid loot boxes
+
+**What the sort says:** the Musts are all Day 2's skeleton: the cast, the guardrails and the AI finale. Most of the basement prototype's mechanics landed in Could, so the basement is a candidate first stage rather than the spine. The cloud-first loop ending is out, which leaves the ending to the team-up.
+
 ## Day 2, the second career: return, reassess, and the strange familiar (brainstorm, 11 November 2026)
 
 Planning notes only. Nothing here is implemented or a settled specification. Where an idea was replaced during the brainstorm, it is marked **superseded** so it isn't mistaken for a live option.
