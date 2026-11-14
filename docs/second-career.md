@@ -18,6 +18,8 @@ The intention and theme are settled. The small things that get there are still o
 
 > *If we can't put guardrails on ourselves, we can't put them on our AI.*
 
+**Why Day 2 exists:** on Day 1 you were a consultant, and the contract said "migrate". You kept the fires down during the migration, then left for the next client with the cloud side already flashing red. The client never bought "and run it" either: no hypercare, no handover, nobody to own it. Several consulting firms before you did the same. Day 2's contract is the first to say "make it sustainable without us". On Day 1 they pay you to finish; on Day 2 they pay you to make yourself unnecessary. (Detail: "Why Day 1 ended that way" in ROADMAP.md.)
+
 **Fixed points** (the Musts from the MoSCoW sort in [ROADMAP.md](../ROADMAP.md)):
 - Character progression: no one → the temp → the manager → the VP → the AI.
 - Guardrail collection is the spine, with one family per character: the temp's access and intake, the manager's change, the VP's budgets, your operations.
@@ -25,7 +27,7 @@ The intention and theme are settled. The small things that get there are still o
 - You hunt the VP: the tables turn.
 - The final client is the AI gone rampant, contained with guardrails, not a kill switch.
 - Nobody is the superhero: the cast contains it together, and the team-up is playable.
-- You aren't the first. A few employees before you did Day 1 and never took it to Day 2. Many people did Day 1; nobody did Day 2. That makes you different from them, not a hero.
+- You aren't the first. A few employees before you, the consultants before you, did Day 1 and never took it to Day 2. Many people did Day 1; nobody did Day 2. That makes you different from them, not a hero.
 
 **Three tests for everything still open.** A mechanic, place or joke earns a spot as structure if it:
 1. **Teaches a guardrail by letting you feel its absence first.** The temp rubber-stamping tickets passes.
@@ -156,6 +158,7 @@ Every setup should pay off. Anything without a payoff is a loose end, or a candi
 - Intent (13 November): Day 2 turns a project into something that lasts; the fixed points and three tests are in "Intent" at the top.
 - Controlling line: *If we can't put guardrails on ourselves, we can't put them on our AI.*
 - You aren't the first: several employees before you did Day 1 and never took it to Day 2.
+- Day 1 was a consulting contract scoped to "migrate"; Day 2's contract adds "sustainable without us".
 - Priorities: the MoSCoW sort in ROADMAP.md (13 November). Where it disagrees with an older entry here, the sort is newer.
 
 **Candidate**

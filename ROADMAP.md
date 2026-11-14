@@ -150,6 +150,23 @@ These are the raw notes. [docs/second-career.md](docs/second-career.md) is the s
 - **The heroics trap.** If you personally firefight everything, the client looks great while you're there and collapses after the time skip. Being indispensable is the failure mode. It ties to "No one fixes it alone" and to the cycle's question, "Why does it need me to keep doing this?": because you never built the process.
 - **The boss.** An AI with no Day 2 processes is a project that never ends; the guardrails are what turn it into something you can operate.
 
+### Why Day 1 ended that way: the contract said "migrate" (13 November 2026)
+**Matt's framing:** on Day 1 you work for a consulting company. The contract was the migration, nothing more. You kept the on-prem servers from catching fire during the migration, and when it was done, poof, you were gone to the next client. Things could be flashing red and leaking on the cloud side; that wasn't what you were hired for. The client didn't think to put "how do we sustain this" in the contract either, so it's partly their own mistake. By the time you're out, most end screens should have some red flashing servers on the cloud side.
+
+- **The game already supports it.** A developing leak or warning doesn't block finishing a client; only an outage or active breach does. You can already walk out with the cloud side flashing.
+- **Real-world terms:**
+  - **Statement of work (SOW):** said "migrate", not "run".
+  - **No hypercare:** the weeks of post-go-live support that's often in the contract, or cut to save money.
+  - **No handover to operations:** no knowledge transfer, runbooks, training or named owner.
+  - **Build vs. run:** the project team builds; someone else is supposed to run it, and nobody hired them.
+  - **Shared fault:** the consultants delivered exactly what was in scope; the client never bought sustainment.
+- **What it gives Day 2:**
+  - **"The employees before you" are the consultants before you.** Several firms each did their Day 1 and left. A stack of old SOWs in a drawer: each says "migrate", none says "run".
+  - **The contract is the frame.** Day 2's engagement is different: the client learned (or got burned) and wrote in "and make it sustainable without us". That's the win condition, and the "six months later" check is the contract's acceptance test.
+  - **Day 1's exit gets a sting.** The end-of-client review could show the red flashing cloud servers as you walk out, stamped *out of scope*, a callback to the existing "Not my problem" screen. (Day 1 change; its own branch if wanted.)
+  - **Mr Paperclip lines:** "That's a change request." / "Hypercare: 0 days." / "Per the SOW, this fire is a them problem."
+  - **Theme:** on Day 1 they pay you to finish; on Day 2 they pay you to make yourself unnecessary.
+
 ### The thesis
 - **Realism in the server rooms, surrealism in the hallway.** The brainstorm started from wanting reality to distort, moving away from the learning game, and ended at realistic placement decisions. The reconciliation: the technical rooms keep telling the operational truth (cause and effect stay teachable), while the hallway, the one place that carries the client's personality, is where things get eerie and silly.
 - **Every client is a different experience.** Unlike the first career, second-career clients don't need to be consistent. Each one starts on the familiar map and then hides its own surprise off it: a stairway down, a hole in the wall. Some clients are long and detailed, some are quick mini-games, and they don't all have to be about maintaining a data center. Straying from the original theme is the point of a second run. The teaching still holds inside each one: cause and effect stay understandable, however strange the place.
