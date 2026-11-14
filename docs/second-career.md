@@ -57,10 +57,11 @@ These hold at every client, so the variety stays coherent.
 2. **Found by investigation.** Surprises (the stairway, the hole in the wall) are revealed by the player's own habits, never by progress alone.
 3. **Real rooms, surreal edges.** The technical rooms tell the operational truth; the hallway and the surprise places carry the strangeness.
 4. **Cause and effect stay readable,** however strange the place. Darkness means missing knowledge, not an unreadable screen.
-5. **Losing is soft.** You get pulled into a meeting with Joe and come back at your desk; progress stays done.
+5. **Losing is soft.** You lose something but progress stays done. (Joe's meeting was the candidate form; the MoSCoW sort put it in Won't, so the form is open.)
 6. **No violence.** Chases corner people; zombies don't bite; the ending's noise is ambiguous.
 7. **Each client is its own experience.** Long or short, data center or mini-game.
-8. **The game's existing rules still apply:** cosmetic effects never use game randomness, sound respects the settings, and reduced motion is covered.
+8. **Two-way continuity with Day 1.** As Day 2 grows, keep looking for consistencies and new connections back to Day 1. Either side can change: Day 1 gameplay can shift a little to set up Day 2, and Day 2 can bend to honour what Day 1 already does. Every Day 2 idea should be checked for what it echoes in Day 1. Day 1 must stay complete and playable on its own; changes to it follow AGENTS.md (own branch, tests, docs). See "Day 1 ↔ Day 2 ledger" in section 6.
+9. **The game's existing rules still apply:** cosmetic effects never use game randomness, sound respects the settings, and reduced motion is covered.
 
 ## 3. Shape of the career
 
@@ -134,6 +135,36 @@ Every setup should pay off. Anything without a payoff is a loose end, or a candi
 | The VP in a new guise every client | Clients 1–4 | His absence in the finale, then the walk-in |
 | Meetings with Joe | Every soft fail | Joe as the AI's rate limiter (riff) |
 | The cycle and the boot screen | Both careers | Cloud-first news, then black |
+
+### Day 1 ↔ Day 2 ledger
+
+The running list for world rule 8. **Already in Day 1** means it exists today and Day 2 can lean on it. **Day 1 change** means a small change to Day 1 that would set up Day 2; each needs its own branch and must keep Day 1 standalone.
+
+| Day 1 | Day 2 connection | Kind |
+| --- | --- | --- |
+| Leaks and warnings don't block finishing a client | You leave with the cloud side flashing; Day 2 clients are what rotted | Already in Day 1 |
+| Migrate-only engagement; you leave for the next client | The consultants before you; Day 2's contract says "sustainable without us" | Already in Day 1 (story) |
+| "Not my problem" and the resignation carnage report | Day 2's opening carnage report; the "out of scope" stamp | Already in Day 1 |
+| Mr Paperclip, a 2-point perk | Forced on you for all of Day 2; his rulebook | Already in Day 1 |
+| The temp (one in ten never onboarded; one question per shift) | The basement temp, rubber-stamping; onboarding | Already in Day 1 |
+| Emergency freeze | Unplugging the ticket system | Already in Day 1 |
+| Badge readers; VPs denied, calling Bob | You hunt the VP; the manager locks the AI out | Already in Day 1 |
+| Red-alert slow-mo on hunting VPs | The reverse chase | Already in Day 1 |
+| Hidden "?" servers and investigating | The stairway reveal; inventory guardrails | Already in Day 1 |
+| Upgrades (Self-Service Portal, Policy as Code, SIEM…) | Found badly implemented; fixing them collects guardrails | Already in Day 1 |
+| AI Agent "amplifies existing practices"; foundations | The boss; guardrails are the foundations it never had | Already in Day 1 |
+| Manager freezes and inspections | The manager's change family | Already in Day 1 |
+| FinOps scan; VP budget pressure | The AI's intrusion scan; the VP's budget family | Already in Day 1 |
+| Restore points | Tested recovery | Already in Day 1 |
+| Obsolete and outsourced endings; the LaS OS boot screen | The cycle; "Why does it need me to keep doing this?" | Already in Day 1 |
+| Old school flag | The boss accounts for a career with no AI | Already in Day 1 |
+| Report share codes | The transfer code | Already in Day 1 (pattern) |
+| Learn more links per upgrade | Learn more links per guardrail | Already in Day 1 (pattern) |
+| The tutorial | The Day 0 wink | Day 1 change (planned) |
+| End-of-client review | Red flashing cloud servers stamped *out of scope* as you leave | Day 1 change (idea) |
+| Client card or briefing | "Scope: migrate", so the contract is visible from the start | Day 1 change (idea) |
+| End of a Day 1 career | A transfer code to carry into Day 2 | Day 1 change (idea) |
+| Mr Paperclip's lines | A few that only land on Day 2 ("That's a change request.") | Day 1 change (idea) |
 
 ## 7. The ending
 
