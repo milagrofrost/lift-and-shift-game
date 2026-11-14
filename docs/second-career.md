@@ -22,7 +22,7 @@ The intention and theme are settled. The small things that get there are still o
 
 **Fixed points** (the Musts from the MoSCoW sort in [ROADMAP.md](../ROADMAP.md)):
 - Character progression: no one → the temp → the manager → the VP → the AI.
-- Guardrail collection is the spine, with one family per character: the temp's access and intake, the manager's change, the VP's budgets, your operations.
+- Guardrail collection is the spine, with one family per character: the temp's access and intake, the manager's change, the VP's budgets, and yours: pass it on (stop being the only one who can do the work).
 - Each guardrail links to the real framework it comes from (Learn more).
 - You hunt the VP: the tables turn.
 - The final client is the AI gone rampant, contained with guardrails, not a kill switch.
@@ -102,7 +102,7 @@ Notes on the grid:
 
 | Character | First career | In the second career | Wants | Needs | Finale contribution (proposed guardrail) |
 | --- | --- | --- | --- | --- | --- |
-| **You** | Hero who migrated everything | Called back to clean up | To be proven right | To stop being the only one who fixes things | **Monitoring and verification:** checking what the AI claims against what it did. **Proposed:** your guardrail family is operations (logs, monitoring, tested recovery, paying down rogue upskills), possibly with a stage of your own: a client from your first career |
+| **You** | Hero who migrated everything | Called back to clean up | To be proven right | To stop being the only one who fixes things | **Pass it on:** you're no longer the only one who knows how, so the team can contain the AI. Your guardrail family is knowledge transfer: runbooks, documenting the first time, trusting people with the work. Your stage and the temp's are one client seen from both sides (see "Your guardrail: pass it on" in ROADMAP.md) |
 | **Mr Paperclip** | Optional backseat driver, wrong at the fire | Forced on you in the prologue; with you all career. **Proposed:** snarky but useful; his guidance on which requests are legitimate becomes the rulebook | Credit | (He doesn't change; the job changes around him. Process was wrong at the fire and is right at the checkpoint.) | **The change ticket.** "You should put a change ticket in" stops the AI's next move, the payoff of the rulebook he wrote in client 1 |
 | **The temp** | Short-shift helper | Still "temporary" after years; their own client. **Proposed:** found in client 1's basement, "managing" Shadow IT by rubber-stamping every ticket, freed as you sort the queue | To finally be hired | To be recognized for what they know | **Proposed: access and intake.** They know every request and who made it, so they cut the AI's access (earlier idea: isolation, knowing which wires to cut) |
 | **The manager** | Interrupts, freezes, inspects | Their own client, with a deeper role | Things to look under control | To trust the team instead of inspecting it | **Proposed: change.** Change control and freezes: the manager freezes the AI's changes (earlier idea: scoped permissions and freezes) |
@@ -163,6 +163,9 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 | Client card or briefing | "Scope: migrate", so the contract is visible from the start | Day 1 change (idea) |
 | End of a Day 1 career | A transfer code to carry into Day 2 | Day 1 change (idea) |
 | Mr Paperclip's lines | A few that only land on Day 2 ("That's a change request.") | Day 1 change (idea) |
+| The temp asks, stalls, goes unonboarded and quits | He was never taught; your runbooks make him capable | Already in Day 1 |
+| Runbooks upgrade; Runbooks as an AI Agent foundation | Your written-down knowledge is what makes the AI safe | Already in Day 1 |
+| Energy drains as you do everything | The hero drain | Already in Day 1 |
 
 ## 7. The ending
 
@@ -188,6 +191,7 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 - Controlling line: *If we can't put guardrails on ourselves, we can't put them on our AI.*
 - You aren't the first: several employees before you did Day 1 and never took it to Day 2.
 - Day 1 was a consulting contract scoped to "migrate"; Day 2's contract adds "sustainable without us".
+- Your guardrail family is **pass it on**: the hero who works alone learns to write things down, trust people and share the load. The temp's uselessness on Day 1 was partly yours.
 - Priorities: the MoSCoW sort in ROADMAP.md (13 November). Where it disagrees with an older entry here, the sort is newer.
 
 **Candidate**
@@ -207,7 +211,7 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 - The VP signs the gate, then delivers the sting.
 - Day 2 is won by what keeps working without you: a "six months later" time skip at the end of each client, and the heroics trap (firefight everything yourself and the client collapses once you leave).
 - The guardrail collection: each client teaches a guardrail family (draft: ITGC's access, change and operations, plus budgets), gleaned from established frameworks (CIS Controls, NIST CSF 2.0, ITGC, ITIL, SRE, FinOps; OWASP LLM Top 10 and NIST AI RMF for the boss). The finale applies them to the AI.
-- Each guardrail family belongs to a character: the temp (access and intake), the manager (change), the VP (budgets), and you (operations: seeing and verifying). At each one's stage you help them with their difficulty using the guardrails that fit their role, and in the finale each installs their family on the AI.
+- Each guardrail family belongs to a character: the temp (access and intake), the manager (change), the VP (budgets), and you (pass it on; replaced "operations: seeing and verifying" on 13 November). At each one's stage you help them with their difficulty using the guardrails that fit their role, and in the finale each installs their family on the AI.
 - First-career skills carry over through the prologue's carnage report; without a first-career record, you write a résumé from a point budget sized like a solid first career, and a transfer code protects against lost progress.
 - First-career upskills return implemented poorly (a self-service portal that auto-approves everything, policy as code in audit-only mode); fixing them restores them as guardrails.
 

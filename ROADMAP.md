@@ -93,7 +93,7 @@ Matt sorted every idea in this roadmap and the Day 2 notes on a MoSCoW board ([p
 - Day 2: finale, nobody is the superhero (the cast contains the AI together)
 - Day 2: turning the tables, you hunt the VP
 - Day 2: guardrail collection as the spine
-- Day 2: a guardrail family per character (temp access, manager change, VP budgets, you operations)
+- Day 2: a guardrail family per character (temp access, manager change, VP budgets, you pass it on)
 - Day 2: Learn more links per guardrail to its real framework
 - Day 2: final client, the AI gone rampant, contained with guardrails
 - **New:** there were possibly a few employees before you who never did anything to take it to Day 2
@@ -237,7 +237,7 @@ The guardrails you collect are associated with **the temp, your boss (the manage
 | **The temp** | Drowning in tickets, approving everything, owning nothing | **Access and intake** (ITGC access, CIS inventory) | Owner required, admin that expires, no root for service accounts, leavers cut off, the person asking isn't the one approving | The AI grabbing permissions and spinning up things nobody owns |
 | **Your boss, the manager** | Things keep breaking; wants control but only knows how to inspect | **Change** (ITIL, ITGC change, SRE) | Change control, freezes, change windows, rate limits, approval for risky moves | The AI changing prod nonstop, faster than anyone can review |
 | **The VP** | The bill: "Cut 40% by Friday", while signing nothing | **Budgets** (FinOps, OWASP Unbounded Consumption) | Budgets and quotas, cost allocation tags, a named budget owner who signs for spend | The AI's runaway consumption. His signature becomes the spending authority it can't bypass. |
-| **You** | Your own shortcuts, and the estate you left behind in the first career | **Operations: seeing and verifying** (ITGC operations, CIS logs and recovery, NIST Detect) | Audit logs, monitoring people actually read, tested recovery, paying down your rogue upskills | The AI reporting green while the hallway screams: you check what it *claims* against what it *did* |
+| **You** | Working alone: the hero who does everything, writes nothing down and burns out | **Pass it on** (knowledge transfer, runbooks, delegation; replaces "operations: seeing and verifying") | Runbooks the temp can follow, documenting the first time, trusting people with the work, being able to leave | An AI that's the only thing that understands the system, with nothing good to amplify |
 
 - **The VP's guardrail is budget authority**, more specific than the earlier "approval gate": he finally has to own a number. It's a better revenge plot than a signature, too: you make the VP do FinOps.
 - **"Yourself" as a stage (two options, possibly both):**
@@ -248,6 +248,28 @@ The guardrails you collect are associated with **the temp, your boss (the manage
 - **Knock-on changes to the story bible:**
   - Client 2 (wires and isolation) folds into the temp's access family, or becomes the "you" stage.
   - Finale guardrails change: the temp from isolation to access and intake; the manager from scoped permissions and freezes to change; the VP from approval gate to budget authority; you stay monitoring and verification.
+
+#### Your guardrail: pass it on (brainstorm, 13 November 2026)
+**Supersedes "operations: seeing and verifying" as your family.** Logs, monitoring and tested recovery stay useful, but they belong to everyone. Your guardrail is the one only you can put on yourself.
+
+**Your arc, from inside your head.** You work alone. It's your default. You don't rely on anybody, and anybody in your way is an inconvenience. You're the superhero, and for a while it works: you know how, you're curious, you figure things out. But it wears you out, and it isn't sustainable. Worse, it's a trap: if you never write down what you did, nobody else can do it, so you do everything, forever. People call that job security. It's a cage. And if you're gone, or the system grows too big for one person, it's too late to hand it off, because nobody has ever done what you do. You set yourself up for failure.
+
+**What you learn on Day 2:** rely on people. Trust them to do the work, and when they're willing, empower them. Most people can't do the work without guidance: runbooks, direction, someone being there. When you do something new, track it, log it and write it down so the next person can do it. Pass knowledge on through collaboration, not by expecting people to figure it out alone. Not everyone has your drive, curiosity or experience, especially when they're new, and you have to account for that.
+
+**The temp, seen again.** On Day 1 the temp looks useless: one question per shift, one in ten never onboarded, and he quits. From the hero's side, temps are useless. From the temp's side, he's the lowest-paid person in the building with no stake in the game. Nobody taught him anything, and you were too busy doing your own thing to help, so he got frustrated and left. *Why did he leave? I was doing this just fine.* **The temp's uselessness was partly yours.** Day 1 already sets this up; Day 2 pays it off.
+
+**Your stage and the temp's are one client, seen from both sides.** In the basement the temp rubber-stamps every ticket because nobody ever gave him rules. Mr Paperclip's rulebook is a **runbook**: what you write down so someone else can do the work. Freeing the temp *is* your guardrail. You write it down, hand it over and trust him.
+
+**Mechanic sketches (open):**
+- **First time, write it down.** Solve a new kind of problem and you can stop to document it, which costs time. Then the temp can handle that kind. Skip it, and only you ever can.
+- **The hero drain.** Doing everything yourself works, and it's faster at first, but you wear down (Day 1's energy). The temp, ignored, gets frustrated and quits, as in Day 1.
+- **Guidance, not assumptions.** Left alone, the temp stalls; pointed at a runbook and checked in on, he grows. His competence is what you invested in him.
+- **The test is that you can leave.** On Day 1 you left by running to the next client. On Day 2 you win by taking a vacation and nothing breaks: the beach, for you this time. The "six months later" check made personal.
+- **Mr Paperclip, useful for once:** "You could fix it again. Or you could write it down and never fix it again."
+
+**Why it matters for the AI.** Day 1's AI Agent amplifies existing practices, and Runbooks is literally one of its foundations. A hero who never wrote anything down leaves the AI nothing good to amplify. What you share with the temp is what makes the AI safe: your guardrail on yourself becomes the AI's guardrail. In the finale, the team can contain the AI because you're no longer the only one who knows how.
+
+**Real-world names:** bus factor, knowledge transfer, runbooks and documentation, delegation, mentoring and onboarding, toil limits, sustainable on-call; "hero culture" as the anti-pattern.
 
 #### Carrying first-career skills into the second career (brainstorm, 13 November 2026)
 The second career should carry over your skills from the first. It should also be playable without the first: for players who did the first career long ago and lost their progress, or never played it. Don't make that obvious, so players are still encouraged to play the first career first.
