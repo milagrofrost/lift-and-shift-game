@@ -100,7 +100,7 @@ Late-game AI was a disaster on a 10-client career with no Patch Bot: patching sa
 Matt sorted every idea in this roadmap and the Day 2 notes on a MoSCoW board ([private board](https://claude.ai/artifact/HhPwZ8SkKqsqBsSzrc3uDU)). This is a priority snapshot, not a commitment; the sections below keep the detail.
 
 **Must have (8)**
-- Day 2: character progression (no one → the temp → the manager → the VP → the AI)
+- Day 2: character progression (the temp → the manager → the VP → you alone → everyone vs. the AI; updated after the sort)
 - Day 2: finale, nobody is the superhero (the cast contains the AI together)
 - Day 2: turning the tables, you hunt the VP
 - Day 2: guardrail collection as the spine
@@ -199,6 +199,24 @@ These are the raw notes. [docs/second-career.md](docs/second-career.md) is the s
 - Open: whether his lines change for the second career (he's seen this before too), and how he reacts to each client's surprise place.
 
 ### Character progression across the second career (brainstorm)
+**Update, 13 November 2026: five stages (leaning; gameplay open).** Supersedes "no one" as the first stage.
+
+| Stage | Who | What happens | Guardrail family |
+| --- | --- | --- | --- |
+| 1 | **The temp** | Rubber-stamping every ticket | Access and intake: the rulebook, which is your runbook |
+| 2 | **The manager** | Things keep breaking; he only knows how to inspect | Change |
+| 3 | **The VP** | The bill, while signing nothing | Budgets |
+| 4 | **You, alone** | You try to do everything yourself and fail: a perpetual fixing hell without governance or process. You learn you can't do it all. | Pass it on: asking for help |
+| 5 | **Everyone vs. the AI** | Putting it all together: you bring in the temp, the manager and the VP, and use their guardrails to run the systems long term | All four |
+
+- **Stage 4 teaches, stage 5 implements** (chosen over merging stage 4 with the AI, so the lesson and the test are separate).
+- **Riffs for stage 4 (open):**
+  - Make asking for help your choice, never a scripted loss: available from the start and unprompted. A player who insists on going solo can keep grinding while the floor gets worse. Mr Paperclip, coy: "You know you have their numbers, right?"
+  - Make the hell readable: the same fire every day. Your Day 1 tools are there at full power and you still can't keep up, because nothing prevents anything.
+  - Reverse Day 1: there, VPs call Bob to get past you; here, you call them.
+  - The win is the "six months later" check holding with the team running things.
+- **Open:** how either stage actually plays. Stage 4 might end when you call for help, or might carry straight into stage 5.
+
 Each stage or client is an opportunity to spend more time with one of the game's major recurring characters. The rough progression is **no one → the temp → the manager → the VP → the AI bot**, with room for additional stages or characters in between. This is a direction to explore, not a fixed client count or order.
 
 - **First, no one.** Establish the player's return and the strange familiarity of the world without making a major character the focus.

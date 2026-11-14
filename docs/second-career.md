@@ -21,7 +21,7 @@ The intention and theme are settled. The small things that get there are still o
 **Why Day 2 exists:** on Day 1 you were a consultant, and the contract said "migrate". You kept the fires down during the migration, then left for the next client with the cloud side already flashing red. The client never bought "and run it" either: no hypercare, no handover, nobody to own it. Several consulting firms before you did the same. Day 2's contract is the first to say "make it sustainable without us". On Day 1 they pay you to finish; on Day 2 they pay you to make yourself unnecessary. (Detail: "Why Day 1 ended that way" in ROADMAP.md.)
 
 **Fixed points** (the Musts from the MoSCoW sort in [ROADMAP.md](../ROADMAP.md)):
-- Character progression: no one → the temp → the manager → the VP → the AI.
+- Five stages: the temp → the manager → the VP → you, alone (you learn you can't do it all and ask for help) → everyone vs. the AI (putting it all together). Gameplay for each is open.
 - Guardrail collection is the spine, with one family per character: the temp's access and intake, the manager's change, the VP's budgets, and yours: pass it on (stop being the only one who can do the work).
 - Each guardrail links to the real framework it comes from (Learn more).
 - You hunt the VP: the tables turn.
@@ -184,7 +184,7 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 
 **Decided**
 - Second-career clients vary; each is its own experience on the familiar map.
-- Character progression: no one → temp → manager → VP → AI, with room for stages between.
+- Five stages (13 November, leaning): temp → manager → VP → you alone → everyone vs. the AI. Stage 4 teaches asking for help; stage 5 implements it. Replaced "no one → temp → manager → VP → AI".
 - Finale: the cast contains the AI together; the win is guardrails, not destruction.
 - The prologue: the broken carnage report forces you to pick Mr Paperclip.
 - Client 1's surprise is the Shadow IT basement.
