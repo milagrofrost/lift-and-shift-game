@@ -357,6 +357,13 @@ The guardrails you collect are associated with **the temp, your boss (the manage
 - "CAB gate" is a parked idea; if this lands, it comes back as his stage, so only his bad CAB and then his good one need building, never a full CAB system.
 
 **Open:**
+**Where his priorities come from: the company's goals (14 November).** The CEO, CTO or VP sets the company's goals, ideally once a year: what we're aiming for, and what everyone is measured against at the end of the year, for reviews and bonuses. The manager's job is to translate those into what they mean for *this* team: what we prioritize and what we don't. He doesn't invent priorities; he turns the ones he's given into work.
+- **It's his persuasion method.** He doesn't tell the VP no; he holds up the VP's own goals. "You said this year is about cutting cost. This request adds cost. Which one do you want?" The options-not-refusal pitch, made with the VP's words.
+- **It sets up the VP's stage.** The VP's stated goals and his actual requests don't match (cost cutting on the poster, a GPU demo for the CEO on his desk). The VP's arc can be about owning the gap.
+- **Shown with few words:** the year's goals as three icons on the wall (say 💰 cost, ⏱ uptime, 🚀 new things). Each request card shows which goal it serves, or none. The manager's job is tagging, ordering and pushing back on the untagged ones.
+- **For the AI:** handed the company goal with nothing in between, an AI optimizes it literally ("cut cost": turn off prod). The manager's translation into scoped, prioritized team work is the guardrail between a goal and an action.
+- **Real-world names:** cascading goals, OKRs, strategy-to-execution alignment, the annual review.
+
 - ~~Does his family stay change?~~ **Settled (14 November): change and priorities.**
 
 **His guardrail for the finale: constrain, prioritize, define work (14 November).** Persuasion gets the temp hired; this is what he brings to the AI. An unconstrained agent takes on every request, invents its own work and never stops to ask what matters most: Day 2's absent manager, automated. The manager gives it what he learned to give the team:

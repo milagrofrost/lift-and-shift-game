@@ -181,6 +181,7 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 | "Unplanned work ate N points" of next sprint | The manager protects planned work: priorities, WIP limits, "not yet" | Already in Day 1 |
 | The manager guards the door against users, never the VP | He stops the VP with a priority list, not his body | Already in Day 1 |
 | The temp's label `TEMP · NAME · 12s` counts down to him leaving | Made full-time: "TEMP" and the countdown vanish, only his name stays | Already in Day 1 |
+| End-of-client review: stars, sprint points, a report card | The year-end review against the company's goals; the manager turns those goals into the team's priorities | Already in Day 1 (pattern) |
 
 ## 7. The ending
 
@@ -212,6 +213,7 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 - The manager's other superpower is prioritization: on Day 2 people want new things while things burn, the VP comes to you directly, and the manager is absent at his email. He learns, like the temp, to stop reacting and start planning: the temp says no to bad requests, the manager says not yet to good ones (candidate, 14 November).
 - The manager can't say no to the VP; he lays out the options and the risk (persuasion, not refusal). His payoff is headcount, above all **making the temp full-time**, which you can't do because you can't hire. It links stages 1, 2 and 3 (candidate, 14 November).
 - The manager's family is **change and priorities**: constrain, prioritize and define work. In the finale he scopes the AI's tasks, sets their order and rate, and freezes its changes (14 November; replaces "the manager freezes its changes").
+- The manager's priorities come from the company's yearly goals (set by the CEO, CTO or VP, measured at review and bonus time). He translates them into what this team does and doesn't do, and uses the VP's own goals as his persuasion ("you said cost; this adds cost"). The gap between the VP's stated goals and his requests sets up the VP's stage (candidate, 14 November).
 - Your guardrail family is **pass it on**: the hero who works alone learns to write things down, trust people and share the load. The temp's uselessness on Day 1 was partly yours.
 - Priorities: the MoSCoW sort in ROADMAP.md (13 November). Where it disagrees with an older entry here, the sort is newer.
 
