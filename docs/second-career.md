@@ -10,6 +10,30 @@ This is the organizing layer for the second-career brainstorm. The raw notes, wi
 - **Proposed:** a suggestion made while organizing this document, to accept, change or reject.
 - **Parked:** kept for later; don't develop yet.
 
+## Intent (firm, 13 November 2026)
+
+The intention and theme are settled. The small things that get there are still open. Read the rest of this document through this page.
+
+**What Day 2 is about:** turning a project into something that lasts. You come back to clients that were left at Day 1, by you or by the employees before you, none of whom ever took it to Day 2. With each person who's struggling (the temp, your manager, the VP, yourself), you discover the guardrails that would have helped them. In the end those guardrails, installed by everyone together, are what contain the AI.
+
+> *If we can't put guardrails on ourselves, we can't put them on our AI.*
+
+**Fixed points** (the Musts from the MoSCoW sort in [ROADMAP.md](../ROADMAP.md)):
+- Character progression: no one → the temp → the manager → the VP → the AI.
+- Guardrail collection is the spine, with one family per character: the temp's access and intake, the manager's change, the VP's budgets, your operations.
+- Each guardrail links to the real framework it comes from (Learn more).
+- You hunt the VP: the tables turn.
+- The final client is the AI gone rampant, contained with guardrails, not a kill switch.
+- Nobody is the superhero: the cast contains it together, and the team-up is playable.
+- You aren't the first. A few employees before you did Day 1 and never took it to Day 2. Many people did Day 1; nobody did Day 2. That makes you different from them, not a hero.
+
+**Three tests for everything still open.** A mechanic, place or joke earns a spot as structure if it:
+1. **Teaches a guardrail by letting you feel its absence first.** The temp rubber-stamping tickets passes.
+2. **Belongs to one character's struggle.** If it doesn't sit with the temp, the manager, the VP or you, it's flavour, not structure.
+3. **Pays off in the finale.** A guardrail that's never used against the AI is a side quest.
+
+**Still in the air:** how each stage plays. The basement, the beach, the ticket rhythm, the rulebook, the time skip and the fail state are candidate ways to tell each character's story. A prototype only has to show that one of them feels right.
+
 ## 1. Controlling idea
 
 **Proposed:** *No one fixes it alone.*
@@ -129,6 +153,10 @@ Every setup should pay off. Anything without a payoff is a loose end, or a candi
 - The ending line and the hard cut to black.
 - Naming: Day 1 (the first career) and Day 2 (the second). The tutorial stays "Tutorials" with a Day 0 wink inside it.
 - Soft fail direction: no restarting the whole career.
+- Intent (13 November): Day 2 turns a project into something that lasts; the fixed points and three tests are in "Intent" at the top.
+- Controlling line: *If we can't put guardrails on ourselves, we can't put them on our AI.*
+- You aren't the first: several employees before you did Day 1 and never took it to Day 2.
+- Priorities: the MoSCoW sort in ROADMAP.md (13 November). Where it disagrees with an older entry here, the sort is newer.
 
 **Candidate**
 - Pulled into a meeting with Joe as the fail state.
