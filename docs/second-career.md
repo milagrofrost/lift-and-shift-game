@@ -63,6 +63,7 @@ These hold at every client, so the variety stays coherent.
 8. **Two-way continuity with Day 1.** As Day 2 grows, keep looking for consistencies and new connections back to Day 1. Either side can change: Day 1 gameplay can shift a little to set up Day 2, and Day 2 can bend to honour what Day 1 already does. Every Day 2 idea should be checked for what it echoes in Day 1. Day 1 must stay complete and playable on its own; changes to it follow AGENTS.md (own branch, tests, docs). See "Day 1 ↔ Day 2 ledger" in section 6.
 9. **Show, don't tell.** The player should slowly understand their own part in the mess on Day 2, from what they see. Nobody says "you were the problem".
 10. **The game's existing rules still apply:** cosmetic effects never use game randomness, sound respects the settings, and reduced motion is covered.
+11. **Everyone means well.** Nobody in Day 2 is a villain, the VP included. People look selfish because they can't see the whole situation, and nobody has shown them why they keep hitting a wall. Each stage helps someone see it.
 
 ## 3. Shape of the career
 
@@ -181,6 +182,8 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 | "Unplanned work ate N points" of next sprint | The manager protects planned work: priorities, WIP limits, "not yet" | Already in Day 1 |
 | The manager guards the door against users, never the VP | He stops the VP with a priority list, not his body | Already in Day 1 |
 | The temp's label `TEMP · NAME · 12s` counts down to him leaving | Made full-time: "TEMP" and the countdown vanish, only his name stays | Already in Day 1 |
+| Badge Access Audit denies the VP; he calls Bob or piggybacks through | The VP works around every blocker; his workarounds are Day 2's mess | Already in Day 1 |
+| Running costs on the report; FinOps approvals | Showback: the VP sees his own bill, with his name on it | Already in Day 1 |
 | End-of-client review: stars, sprint points, a report card | The year-end review against the company's goals; the manager turns those goals into the team's priorities | Already in Day 1 (pattern) |
 
 ## 7. The ending
@@ -214,6 +217,8 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 - The manager can't say no to the VP; he lays out the options and the risk (persuasion, not refusal). His payoff is headcount, above all **making the temp full-time**, which you can't do because you can't hire. It links stages 1, 2 and 3 (candidate, 14 November).
 - The manager's family is **change and priorities**: constrain, prioritize and define work. In the finale he scopes the AI's tasks, sets their order and rate, and freezes its changes (14 November; replaces "the manager freezes its changes").
 - The manager's priorities come from the company's yearly goals (set by the CEO, CTO or VP, measured at review and bonus time). He translates them into what this team does and doesn't do, and uses the VP's own goals as his persuasion ("you said cost; this adds cost"). The gap between the VP's stated goals and his requests sets up the VP's stage (candidate, 14 November).
+- Everyone means well: people look selfish because they can't see the whole situation, and nobody has shown them why they keep hitting a wall (world rule 11; 14 November).
+- The VP's stage starts with him half on board via the manager. Open threads: show him his own bill (showback), his workarounds are the others' mess, a "yes" lane (a capped, expiring sandbox), his own boss, and his first signature making the temp full-time (candidate, 14 November).
 - Your guardrail family is **pass it on**: the hero who works alone learns to write things down, trust people and share the load. The temp's uselessness on Day 1 was partly yours.
 - Priorities: the MoSCoW sort in ROADMAP.md (13 November). Where it disagrees with an older entry here, the sort is newer.
 
