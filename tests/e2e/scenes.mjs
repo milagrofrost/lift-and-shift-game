@@ -46,6 +46,10 @@ export const SCENES = [
     stand(S, {x: 480, y: 120}); for (let k = 0; k < 5; k++) G.update(0.05);`, mode: 'play'},
   {name: '12-end', build: `fresh(); G.showEnd('uptime');`, mode: 'end'},
   {name: '13-how-to-play', build: `G.setLogLv(1); G.titleScreen(); document.querySelector('[data-act=howto]').click();`},
+  {name: '15-pipeline-jam', build: `const S = fresh(); S.upgrades.pipeline = 2; const i = known(S), a = S.racks[i]; S.racks[i] = null;
+    S.pipe = [{a, t: 0, dur: 6, lane: 0, brk: 0.4}]; G.tickPipeline(5); document.getElementById('toasts').innerHTML = '';
+    stand(S, {x: 480, y: 240}); tick();`, mode: 'play', touch: {fix: ['UNJAM', true], grab: null},
+    hint: {key: 'Hold E: repair pipeline', touch: 'Hold UNJAM: repair pipeline'}},
   {name: '14-hands-on', build: `G.setLogLv(1); G.titleScreen(); document.querySelector('[data-act=tut]').click(); document.querySelector('[data-act=handson]').click();`},
 ];
 
