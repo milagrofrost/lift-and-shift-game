@@ -136,6 +136,20 @@ body{font-family:var(--f-body)}
 .hardcore b{color:var(--ink)}
 .post{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;font-size:14px}
 .post p{margin:0}
+.mail{flex:none;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:14px}
+.mail .mtop{display:flex;align-items:center;gap:6px;padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+.mail .mtop i{width:9px;height:9px;border-radius:50%;background:var(--line);flex:none}
+.mail .mtop span{margin-left:6px;white-space:nowrap}
+.mail header{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;padding:12px 16px;border-bottom:1px solid var(--line);font-size:13px}
+.mail header b{color:var(--muted);font-weight:500}
+.mail header .subj{grid-column:1/-1;font-family:var(--f-display);font-size:18px;font-weight:700;color:var(--ink);margin-bottom:6px}
+.mail .flag{color:var(--danger);font-size:12px;font-weight:600}
+.mail .body{padding:14px 16px;display:flex;flex-direction:column;gap:10px;line-height:1.5}
+.mail .body p{margin:0;max-width:none}
+.mail ol,.mail ul{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:4px}
+.mail .ps{font-style:italic}
+.mail .sig{color:var(--muted);font-size:13px}
+.mail .sig small{display:block;font-size:11.5px;font-style:italic;margin-top:6px}
 .post header{display:flex;gap:10px;align-items:flex-start}
 .post header p{font-size:12.5px;color:var(--muted);margin:1px 0}
 .post header small{font-size:11.5px;color:var(--muted)}
@@ -556,18 +570,22 @@ const BREAK_CLIENTS=[
   {name:"Crybaby Daycare",short:"Crybaby Daycare",err:170,days:14,trait:null,contact:"Director of Naps, Crybaby Daycare",
    apps:[["Nap Schedule",0,"bronze"],["Snack Ledger",0,"silver"],["Email",0,"bronze"],["Diaper Inventory",0,"gold",20],["Parent Portal",0,"bronze"],["Tantrum Archive",1,"silver",15],["Finger Paint Gallery",0,"bronze"],["Lost Mittens",0,"bronze"]],
    hidden:[["Blankie Backup","bronze"],["Teddy Bear NAS","silver"]],
+   talk:{scale:0.72,lines:["Goo goo.","Ga ga!","Ba-ba?","Gah!","Bwah?","Pbbbt.","Mama?","Dada!"],alert:["WAH WAH WAH!","WAAAAH!","Wah! Wah! Wah!","BWAAAAH!","*sniffle* WAAAH!"],human:["MAMAAA!","DADAAA!","Wah! WAH!"]},
    quotes:["Nobody cried during the cutover. Well, one person. It was the auditor.","Nap time is now highly available.","The cloud is very soft. We approve."]},
   {name:"Just Bubbles Bar",short:"Just Bubbles Bar",err:170,days:14,trait:null,contact:"Head Bubbletender, Just Bubbles Bar",
    apps:[["Bar Tabs",0,"bronze"],["Bubble Recipes",0,"silver"],["Email",0,"bronze"],["Soap Supply Chain",0,"gold",20],["Reservations",0,"bronze"],["Wand Registry",1,"silver",15],["Happy Hour Board",0,"bronze"],["Jukebox",0,"bronze"]],
    hidden:[["Foam Machine PC","bronze"],["Bartender's Laptop","silver"]],
+   talk:{lines:["🫧","🫧🫧","🫧 🫧 🫧","🫧🫧🫧🫧","🫧?","🫧!"],alert:["🫧💥🫧","💥🫧💥","🫧🫧💥","💥💥🫧","💥💥💥"],human:["🫧❗🫧❗","❗🫧❗"]},
    quotes:["Your migration was light, airy and gone in seconds.","We asked for a drink menu. It's still just bubbles.","Everything popped exactly when it was supposed to."]},
   {name:"Training Wheels Warehouse",short:"Training Wheels",err:170,days:14,trait:null,contact:"Regional Manager (Both Wheels), Training Wheels Warehouse",
    apps:[["Order Desk",0,"bronze"],["Wheel Catalog (2 items)",0,"silver"],["Email",0,"bronze"],["Left & Right Inventory",0,"gold",20],["Returns",0,"bronze"],["Bolt Archive",1,"silver",15],["Website",0,"bronze"],["Balance Survey",0,"bronze"]],
    hidden:[["Kickstand PC","bronze"],["Owner's Spreadsheet","silver"]],
+   talk:{lines:["Don't let go!","Am I doing it?","Hold the seat!","Look, no hands!","Is it wobbly for you?"],alert:["I'm falling over!","Who took my training wheels?!","Everything's wobbly!","I scraped my server!","Don't let GO!"],human:["I want a grown-up!","Where's a grown-up?!"]},
    quotes:["We only sell training wheels, and now we do it in the cloud.","You didn't fall over once. We're so proud.","Sales are steady. Customers keep outgrowing us."]},
   {name:"Participation Trophy Outlet",short:"Trophy Outlet",err:170,days:14,trait:null,contact:"Vice President of Trying, Participation Trophy Outlet",
    apps:[["Engraving Queue",0,"bronze"],["Everyone's Names",0,"silver"],["Email",0,"bronze"],["Ribbon Ledger",0,"gold",20],["Shelf Planner",0,"bronze"],["Consolation Archive",1,"silver",15],["Website",0,"bronze"],["Polish Orders",0,"bronze"]],
    hidden:[["Back Room PC","bronze"],["Runner-Up Laptop","silver"]],
+   talk:{lines:["Everyone's a winner!","Did you get your trophy yet?","You tried, and that's what counts!","Here, take a ribbon!","Great job showing up!"],alert:["How are kids gonna know they're special?!","Someone's gonna feel left out!","Not everyone got a trophy!","The ribbons are down! THE RIBBONS!","What about the runners-up?!"],human:["Everyone deserves a human!","I want a human! Everyone gets one!"]},
    quotes:["You showed up, and that's what counts. It also worked.","Please accept this trophy for your migration.","Everybody won this cutover."]},
 ];
 const BREAK_CLIENT=()=>BREAK_CLIENTS[Math.max(0,retro("break")-1)%BREAK_CLIENTS.length];
@@ -610,6 +628,10 @@ function engagementCfg(n){
 const haz=()=>diff().haz*(1+0.08*Math.max(0,pace()-3));
 const TITLES=["Junior Consultant (pretending)","Consultant","Senior Consultant","Principal Consultant","Distinguished Consultant","Partner","Senior Partner","Managing Partner","Living Legend"];
 const careerTitle=()=>TITLES[Math.min(S.career.length,TITLES.length-1)];
+/* The firm: Lift & Shift Consulting Ltd. The VP's email before client 4 makes it an
+   AI company (old school careers included), so from then on every mention of the firm carries the AI. */
+const aiCo=()=>!!S&&!S.tut&&S.sprint>=4;
+const CO=(ai=aiCo())=>ai?{legal:"Lift & Shift AI Consulting Ltd.",trade:"Lift & Shift AI Consulting"}:{legal:"Lift & Shift Consulting Ltd.",trade:"Lift & Shift Consulting"};
 const stars=n=>"★".repeat(n)+"☆".repeat(5-n);
 /* ==== Core rules: tiers, uptime, patches, money, email, badges, security, freezes ==== */
 // restore = seconds of holding E to bring an offline server back up (never costs energy)
@@ -1056,6 +1078,14 @@ function spawnUsers(){
    A user mid-chat is frozen and can't grab you. ~15% of the time the user wants a human: they run around the
    hallway shouting for one, like a red alert, until the bots try them again (8 seconds). */
 const BOT_LINES=["Have you tried turning it off and on?","Here's a KB article!","I can help with that!","Ticket auto-resolved ✅","Is there anything else?","Let me summarize that…"];
+/* Break clients have their own hallway crowd (`talk` on the client): babies at the daycare, bubbles at the bubble bar,
+   wobbly beginners at Training Wheels, and relentless encouragement at the trophy outlet. Everyone else talks like an
+   office. Swapping the list keeps the same single pick, so the game's odds don't move. Hunting VPs are ours: they
+   always talk like a VP. */
+const crowd=()=>(client()||{}).talk||null;
+const userLines=r=>(crowd()||{}).lines||r.lines;
+const alertLines=()=>(crowd()||{}).alert||ALERT_LINES;
+const humanLines=()=>(crowd()||{}).human||HUMAN_LINES;
 const HUMAN_LINES=["I want to talk to a human!","AGENT. AGENT. AGENT.","That's not what I asked.","Representative! Representative!"];
 const FRANTIC_T=8;
 const frantic=u=>!u.hunter&&(u.frantic||0)>S.t;
@@ -1073,12 +1103,12 @@ function tickChatbots(dt){
     const u=c.tgt;
     if(u.chat!==c){
       if(u.chat){c.tgt=null;continue;} // another bot got there first; never talk over it
-      if(goTo(c,u.x+(c.x<u.x?-24:24),u.y,115,dt)||dist(c,u)<34){u.chat=c;c.chatT=0;c.need=1.6+u.rank*0.6;c.line=pick(BOT_LINES);u.line=pick(RANKS[u.rank].lines);c.swap=1.1;}
+      if(goTo(c,u.x+(c.x<u.x?-24:24),u.y,115,dt)||dist(c,u)<34){u.chat=c;c.chatT=0;c.need=1.6+u.rank*0.6;c.line=pick(BOT_LINES);u.line=pick(userLines(RANKS[u.rank]));c.swap=1.1;}
       continue;
     }
     c.chatT+=dt;c.swap-=dt;if(c.swap<=0){c.swap=1.1;c.line=pick(BOT_LINES);}
     if(c.chatT<c.need)continue;
-    if(Math.random()<0.15){u.chat=null;u.noBot=u.frantic=S.t+FRANTIC_T;u.cd=0;u.turn=0;u.shout=pick(HUMAN_LINES);u.shoutT=2.2;c.cool=1.5;}
+    if(Math.random()<0.15){u.chat=null;u.noBot=u.frantic=S.t+FRANTIC_T;u.cd=0;u.turn=0;u.shout=pick(humanLines());u.shoutT=2.2;c.cool=1.5;}
     else{u.gone=true;S.fx.push({type:"dissolve",x:u.x,y:u.y,t:0,life:0.9});fl(u,"Resolved by chatbot",C.ai);c.cool=0.8;}
     c.tgt=null;
   }
@@ -1154,7 +1184,7 @@ const TEMP_ASK=["Hey, is this the right server?","Quick question, what's a VLAN?
 function tempSay(s){S.temp.say=s;S.temp.sayT=2.6;}
 function spawnTemp(){
   const r=Math.random(),snack=modId()==="donut"||r<0.05,nobadge=!snack&&r<0.1;
-  S.temp={x:480,y:H-24,t:nobadge?TEMP_NOBADGE_TIME:30,name:pick(TEMP_NAMES),snack,nobadge,tgt:null,work:0,say:"",sayT:0,quit:false,wx:480,wy:300,wT:0};
+  S.temp={x:480,y:H-24,t:nobadge?TEMP_NOBADGE_TIME:30,name:pick(TEMP_NAMES),snack,nobadge,tgt:null,work:0,say:"",sayT:0,quit:false,wx:480,wy:300,wT:0};(S.ss.temps=S.ss.temps||[]).push(S.temp.name); // for the VP's email
   tempSay(S.temp.snack?pick(TEMP_SNACK):pick(TEMP_HI));
   toast(`🧑‍💼 The staffing agency sent ${S.temp.name}. They're here for 30 seconds to help with servers and tickets.`);
 }
@@ -1242,11 +1272,11 @@ function drawSpecials(){
 function tickShouts(dt){
   for(const u of S.users){if(u.shoutT>0)u.shoutT-=dt;
     // a user the chatbot couldn't help keeps yelling for a person
-    else if(frantic(u)&&!u.chat&&S.p.heldBy!==u&&Math.random()<dt*1.5){u.shout=pick(HUMAN_LINES);u.shoutT=1.8;}}
+    else if(frantic(u)&&!u.chat&&S.p.heldBy!==u&&Math.random()<dt*1.5){u.shout=pick(humanLines());u.shoutT=1.8;}}
   if(!S.alert)return;
   S.shoutCd=(S.shoutCd||0)-dt;
   if(S.shoutCd<=0){S.shoutCd=rand(0.6,1.4);const pool=S.users.filter(u=>!u.hunter&&!u.chat&&!(u.shoutT>0)&&S.p.heldBy!==u);
-    if(pool.length){const u=pick(pool);u.shout=pick(ALERT_LINES);u.shoutT=2.2;}}
+    if(pool.length){const u=pick(pool);u.shout=pick(alertLines());u.shoutT=2.2;}}
 }
 function drawShouts(){
   for(const u of S.users){
@@ -1474,7 +1504,7 @@ function drawAgentMarks(){
 }
 // a rumor after the first client, teasing the AI Agent that unlocks after client 3
 const RUMORS=[
-  ["Leadership just got back from a conference. Everyone kept saying 'agentic.' Brace yourself.","Priya, platform team","by the coffee machine"],
+  ["Leadership just signed up for a conference. Everyone keeps saying 'agentic.' Brace yourself.","Priya, platform team","by the coffee machine"],
   ["I saw 'AI-first' on a slide in the exec room. Twice. In bold.","Marcus, networking","in the elevator"],
   ["The CIO asked me what a token costs. I don't think they meant the subway.","Dana, finance liaison","at the printer"],
   ["Rumor is we're getting an AI teammate soon. Hope it's better at tickets than Kyle.","Sam, service desk","on the bridge call after it ended"],
@@ -1641,15 +1671,21 @@ function tickUsers(dt){
     const readingStatus=(S.alert&&S.upgrades.statuspage&&!u.hunter)||(u.hunter&&dist(P,INBOX)<85);
     if(!P.heldBy&&u.cd<=0&&P.userImm<=0&&!(P.ghost>0)&&!readingStatus&&dist(u,P)<13+playerR()){
       const r=RANKS[u.rank];
-      if(!r.hold){if(!(u.shoutT>0)){u.shout=pick(r.lines);u.shoutT=1.6;clipEv("intern");}u.cd=2;continue;} // an intern asks in passing and lets you go
+      if(!r.hold){if(!(u.shoutT>0)){u.shout=pick(userLines(r));u.shoutT=1.6;clipEv("intern");}u.cd=2;continue;} // an intern asks in passing and lets you go
       P.stun=r.hold*Math.pow(0.75,retro("office"));P.heldBy=u;sfx("held");if(!u.hunter)clipEv(r.name==="CIO"?"cio":"user");S.run.held++;S.run.heldT+=r.hold;S.ss.heldT+=r.hold;
       if(u.hunter)unplanned(0.5,"exec"); // only costs anything when the exec actually catches you
-      u.line=pick(u.hunter?HUNTER_LINES:S.alert?ALERT_LINES:frantic(u)?HUMAN_LINES:r.lines);
+      u.line=pick(u.hunter?HUNTER_LINES:S.alert?alertLines():frantic(u)?humanLines():userLines(r));
     }
   }
   S.users=S.users.filter(u=>!u.gone);
 }
 function drawUser(u){
+  const k=!u.hunter&&crowd()&&crowd().scale;
+  if(k){ctx.save();ctx.translate(u.x,u.y+17);ctx.scale(k,k);ctx.translate(-u.x,-u.y-17);}
+  drawUserBody(u,!!k);
+  if(k){ctx.restore();tx(RANKS[u.rank].name.toUpperCase(),u.x,u.y+26,8,C.muted,{font:DISP,weight:700});} // labels stay readable
+}
+function drawUserBody(u,noLabel){
   const{x,y,rank:r}=u,gray="#a9b6c0";
   ctx.fillStyle="rgba(0,0,0,.25)";ctx.beginPath();ctx.ellipse(x,y+17,13,4,0,0,7);ctx.fill();
   // body: plain gray for the intern (the generic user icon), then shirt, then suits
@@ -1667,7 +1703,7 @@ function drawUser(u){
   if(u.hunter){
     ctx.fillStyle="rgba(255,93,77,.92)";rr(x-26,y-46,52,13,3);ctx.fill();tx("NO REPLY",x,y-39.5,8,"#fff",{font:DISP,weight:700});
     tx(`${RANKS[r].name.toUpperCase()} · LOOKING FOR YOU`,x,y+26,8,C.danger,{font:DISP,weight:700});
-  }else tx(RANKS[r].name.toUpperCase(),x,y+26,8,C.muted,{font:DISP,weight:700});
+  }else if(!noLabel)tx(RANKS[r].name.toUpperCase(),x,y+26,8,C.muted,{font:DISP,weight:700});
 }
 /* ==== Floor effects: warnings, FinOps marks, celebration, alerts, energy ==== */
 function drawFx(dt){
@@ -1845,7 +1881,7 @@ function drawHoldBubble(){
 /* ==== Inbox, VPs, escalation launch, sprint capacity, desk ==== */
 const INBOX={x:480,y:62};
 function urgentEmail(){const imp=importantMail();if(imp.length)return imp.reduce((a,b)=>b.age>a.age?b:a);return S.em[0]||null;}
-function spawnHunter(){clipEv("vp");
+function spawnHunter(){clipEv("vp");S.ss.vp=(S.ss.vp||0)+1;
   // the exec shows up at whichever end of the hallway is farthest from you, then walks over
   const spot=[{x:400,y:540},{x:560,y:540},{x:400,y:130},{x:560,y:130}].sort((a,b)=>dist(b,S.p)-dist(a,S.p))[0];
   S.users.push({x:spot.x,y:spot.y,rank:Math.random()<.6?4:5,hunter:true,life:999,cd:0,line:"",vx:0,vy:0,turn:0});
@@ -3302,6 +3338,119 @@ function titleScreen(){
   </div>
   ${(()=>{let bc=0;try{bc=+(localStorage.getItem("liftshift-clients")||0);}catch(e){}return bc||best!==null?`<p style="font-size:12.5px;color:var(--muted)">${bc?`Longest career: ${bc} client${bc>1?"s":""}. `:""}${best!==null?`Best retirement: ${money(best)} total IT spend${bestN===1?", after one client. Peak job hopping.":bestN===2?", after two clients. Classic job hopper.":bestN?`, after ${bestN} clients.`:"."}`:""}</p>`:"";})()}`);
 }
+/* Day one: before the first client, the VP's welcome email lays out the whole job (it is never just the migration).
+   It shows at the start of every new career and changes nothing in the run; its button starts play. */
+// the VP's email window: the welcome email on day one and the "good job, kiddo" email before the second client
+const endDot=t=>/\.$/.test(t)?"":"."; // "Next up: Glazed & Confused Donut Co." without a second dot
+// the first VP email after you buy Badge Access Audit has a P.S. about it (only once a career)
+function badgePS(){
+  if(!lvl("badge")||S.badgeNoted)return"";
+  S.badgeNoted=true;
+  return`      <p class="ps">P.S. Do you know why I got an email about a door badge audit? Not sure what that's about. Anyway, I'll be seeing you soon if you don't answer those emails. Thanks.</p>
+`;
+}
+function vpMail(eyebrow,subj,to,cc,body,act,label,co=CO().legal.replace("&","&amp;"),ps="Sent from my phone. Please excuse brevity, typos and unreasonable expectations."){
+  mode="title";
+  show(`<div class="eyebrow">${eyebrow}</div>
+  <article class="mail" aria-label="Email from your VP">
+    <div class="mtop" aria-hidden="true"><i></i><i></i><i></i><span>Inbox (1)</span></div>
+    <header>
+      <div class="subj">${subj}</div>
+      <b>From</b><span>The VP of Strategic Synergies <span class="flag">❗ High importance</span></span>
+      <b>To</b><span>${AVATAR} ${to}</span>
+      <b>Cc</b><span>${cc}</span>
+    </header>
+    <div class="body">
+${body}${act==="onward"?badgePS():""}
+      <div class="sig">The VP of Strategic Synergies<br>${co}<small>${ps}</small></div>
+    </div>
+  </article>
+  <div class="row"><button class="btn" data-act="${act}">${label}</button></div>`);
+}
+function welcomeMail(){
+  vpMail("Day one · 1 unread message","Welcome aboard! 🎉 (action required)","You (new hire)","All Staff, HR, Legal (just in case)",`      <p>Hi,</p>
+      <p>Congratulations on being hired at <b>Lift &amp; Shift Consulting Ltd.</b>! We heard so many great things about you through your résumé. I'm sure you were very truthful and honest in it.</p>
+      <p>Your first task: migrate <b>${client().name}</b>'s servers to the cloud. Do well on this one and we'll get you into harder and harder migrations with each client after it.</p>
+      <p>Your priorities (all of them are priority 1):</p>
+      <ol>
+        <li><b>Migrate</b> everything from on-premises to the cloud.</li>
+        <li><b>Keep servers patched.</b> Let them go unpatched and they fail their audits.</li>
+        <li><b>Keep an eye on tickets.</b> Fall behind and they escalate, and escalations end in fires and outages.</li>
+        <li><b>Keep up with email.</b> If you don't, I'll come looking for you.</li>
+        <li><b>Watch the cloud too.</b> Servers up there start leaking, and if they leak too much, that's a breach.</li>
+      </ol>
+      <p>So yeah, just do all that. Super easy. I'm totally not asking a lot of you. It's just the basic stuff, right?</p>
+      <p>Thanks so much. Good luck, and don't get fired.</p>`,"hired","Get to work");
+}
+/* Before the second client the VP writes again: a flat "you got it done, thanks, now do the next one", with a line on
+   each thing that crossed their desk last client. It only reads what that client recorded (`mailRecap`). */
+const nOf=(n,one,many)=>`${n===1?"one":n===2?"two":n===3?"three":n} ${n===1?one:many}`;
+function mailRecap(ss){
+  const L=[],why=ss.why||{},caught=Math.round((why.exec||0)/0.5),vp=Math.max(ss.vp||0,caught),fails=Math.max(0,(ss.att||0)-(ss.mig||0)),temps=[...new Set(ss.temps||[])];
+  L.push(ss.esc?`I count ${nOf(ss.esc,"ticket escalation","ticket escalations")}. Escalations start fires. I'd prefer the servers not be on fire.`:"No ticket escalations. Nothing caught fire on my watch. Keep it that way.");
+  L.push(caught?`I had to come find you ${caught===1?"once":nOf(caught,"time","times")}. I don't enjoy the walk.`:vp?"I came looking for you about your inbox and you got away. Noted.":"Your inbox never once made me leave my office. Appreciated.");
+  L.push(ss.lost?`${nOf(ss.lost,"server","servers")} went down. The users noticed. The users always notice.`:"Nothing went down. Don't let it go to your head.");
+  L.push(fails?`${nOf(fails,"cutover","cutovers")} didn't come up in the cloud. Maybe move the easy ones first next time.`:"Every cutover came up on the first try. Suspicious, but fine.");
+  if(ss.audits)L.push(`${nOf(ss.audits,"server","servers")} failed audit. The auditors send their regards.`);
+  if(ss.breaches)L.push(`${nOf(ss.breaches,"breach","breaches")} in the cloud. Legal knows your name now.`);
+  if(temps.length)L.push(`You're welcome for the temp${temps.length>1?"s":""} (${temps.join(", ")}). Sorry they don't stick around long. We pay a fair wage, supposedly. We just can't seem to keep temps around here, for some reason.`);
+  return L.map(l=>l[0].toUpperCase()+l.slice(1));
+}
+function nextMail(prev,prevName){
+  vpMail(`Client ${S.sprint} · 1 unread message`,"RE: Welcome aboard! (good job, I guess)","You","Your manager, HR (for your file)",`      <p>Good job, kiddo. <b>${prevName}</b> is in the cloud.</p>
+      <p>Hopefully you improved yourself between the last client and now. You're going to need it, because it only gets harder from here.</p>
+      <p>A few things crossed my desk:</p>
+      <ul>${mailRecap(prev).map(l=>`<li>${l}</li>`).join("")}</ul>
+      <p>Anyway, you got it done. Thanks. Keep being a rock star. Next up: <b>${client().name}</b>${endDot(client().name)} Go.</p>
+`,"onward","Fine. Next client.");
+}
+/* Before the third client: the clients call you a unicorn, and the VP won't let any of them keep you after go-live,
+   because what happens after the migration isn't in the contract. (It sets up Day 2.) Then the CEO is sending the VP
+   to an AI conference, which leads into the AI Agent arriving after this client; old school careers get a plain one. */
+function unicornMail(prevName){
+  const first=S.career[0]&&S.career[0].name;
+  vpMail(`Client ${S.sprint} · 1 unread message`,"FW: FW: RE: Client feedback 🦄","You","The CEO (FYI)",`      <p>Forwarding some client feedback. <b>${prevName}</b> called you, and I quote, "an absolute unicorn."${first&&first!==prevName?` <b>${first}</b> said the same thing.`:""} Clients love you on a migration.</p>
+      <p>They keep asking if they can keep you around after go-live. I said no. You're too valuable to sit around watching servers that are already in the cloud. I need you on the next one, and the one after that. So keep doing that.</p>
+      <p>What happens after the migration isn't our problem. It's not in the contract. Runbooks, handoff, who knows how the thing you built actually works: that's the client's job. I'm sure they'll be fine.</p>
+      <p>(They called again this morning. I let it go to voicemail.)</p>
+      <p>Unrelated: the CEO is sending me to ${S.noAI?"a conference this week. Something about synergy":"an AI conference this week"}. I don't really want to go, but the CEO insists. So we'll see what happens with that.</p>
+      <p>And no, you're not off the hook for email while I'm away. I've lined up a substitute VP. They know where your desk is.</p>
+      <p>Next up: <b>${client().name}</b>${endDot(client().name)} Go be a unicorn.</p>
+`,"onward","🦄 Next client.");
+}
+/* Before the fourth client, the last personal email: the VP is back from the AI conference and the company is an AI
+   company now. Careers with AI are told to shove it in everywhere, guardrails later. Old school careers get a pass,
+   as a unicorn, with a warning that it means working twice as hard. */
+/* Before the fifth client, the last email of the series: the job is a loop now, so the VP signs off to lead something
+   absurd with AI in it, but you're still not off the hook for email. After the donut shop, it's about the sugar rush. */
+// shown before stage 5, so it follows the donut shop (stage 4) even when a break pushed it back
+function lastMail(prevName,prevDonut){
+  const mgr=lvl("manager")>0;
+  vpMail(`Client ${S.sprint} · 1 unread message`,"Last one from me (probably)","You","Nobody. Enjoy it.",`${prevDonut?`      <p><b>${prevName}</b> sent their feedback, I think. It was mostly exclamation points. Those people had an unlimited supply of donuts and coffee, and they were absolutely buzzing. Honestly, so are you. I saw you in the hallway: glazed, yet wide open eyes. Blink sometimes.</p>
+`:`      <p><b>${prevName}</b> sent their feedback. It was positive, I think. Clients have stopped surprising me. So have you, in a good way.</p>
+`}      <p>This is my last email like this. You're doing great, or at least things are getting done, and from up here those look the same. You know the drill: migrate it, patch it, close the tickets, don't let anything leak. Repeat until retirement. You do plan on retiring here, right? Don't ever leave us.</p>
+      <p>Also, a few of your old clients keep calling. Something about the unicorn magic you left in their environments slowly fading away, and things that used to just work running into issues. Again, not our problem. It's not in the contract. But it's nice to have returning customers, right?</p>
+      <p>I'm moving on to other priorities. The CEO has me leading our new flagship initiative: AI-powered paperclips. They clip. With AI. Don't ask me what the AI does yet. We're still figuring that out.</p>
+      <p>${S.bossFired?"I hear you fired your manager and the AI agent does that job now. Bold. If your inbox fills up, I'm still coming for you, not the robot.":mgr?"And no, your manager answering your email doesn't count as you answering it. If the inbox fills up, I'm coming for you, not them.":"That doesn't mean you're off the hook for email. Let that inbox fill up and I'll be seeing you."}</p>
+      <p>Next up: <b>${client().name}</b>${endDot(client().name)} You know what to do.</p>
+`,"onward","Close email. Back to work.");
+}
+function aiMail(){
+  const owns=lvl("agent")>0,co="Lift &amp; Shift <b>AI</b> Consulting Ltd.";
+  if(S.noAI)return vpMail(`Client ${S.sprint} · 1 unread message`,"Re: AI (and you)","You","Your manager",`      <p>I'm back from the conference. Turns out it was about AI. OMG. AI is amazing. The CEO and I agree: we need to use it everywhere. We're Lift &amp; Shift AI Consulting Ltd. now. Same company. Better name.</p>
+      <p>That said, I know you have reservations about AI, and I totally get that. I could tell from day one you weren't going to be up for it. You still call the cloud "someone else's computer." You're a bit of a Luddite, and that's okay.</p>
+      <p>Here's the thing: you're a unicorn. So if you can get through these migrations without AI and still be that unicorn, go for it. We'll let you do your own thing.</p>
+      <p>Just know that means working twice as hard now. Everyone else gets a robot. You get a keyboard and a thermos.</p>
+      <p>Next up: <b>${client().name}</b>${endDot(client().name)} Go be a hand-crafted, artisanal unicorn.</p>
+`,"onward","☕ Next client. By hand.",co,"Sent from my phone. Drafted by AI, which I know you'd hate.");
+  vpMail(`Client ${S.sprint} · 1 unread message`,"OMG 🤖✨🚀 AI","You","The CEO, Everyone, The AI Agent",`      <p>OMG. AI is amazing.</p>
+      <p>I'm back from the conference and I agree with the CEO 100%: we need to use this everywhere. Effective immediately, we're an AI company. We are now <b>Lift &amp; Shift AI Consulting Ltd.</b> Same company, same name, basically. The new logo is in progress. The new logo is also AI.</p>
+      <p>You absolutely need to start using AI for our migrations and for keeping things running. I don't really care how it's done, as long as it's done with AI.</p>
+      <p>I've heard the concerns. Guardrails. Security. Token costs. "Who reviews what it changes?" All valid. Let's set all of that aside for now and just focus on getting it to work for us. We'll circle back on guardrails.</p>
+      <p>We need to shove it in there, and we need to shove it in now. ${owns?"I see you already picked up the AI Agent. This is why you're my unicorn.":"I see you didn't pick up the AI Agent in your last improvement sprint. I'm going to assume that was a typo."}</p>
+      <p>Next up: <b>${client().name}</b>${endDot(client().name)} Go be an AI-powered unicorn. 🦄🤖</p>
+`,"onward","🤖 Next client. With AI.",co,"Sent from my phone. This email was written by AI. Isn't it amazing?");
+}
 const TUT=[
   {i:"📦",t:"Your job",b:"The client's server room is on the left, the cloud is on the right, and the hallway is in between. Walk to a rack, press <kbd>Space</kbd> to pick up the app, carry it to the cloud, stand on an empty cloud slot, and press <kbd>Space</kbd> to drop it in. Move with <kbd>WASD</kbd> or the arrow keys.",tip:"An engagement ends when the server room is empty. There's no clock that cuts you off."},
   {i:"🎲",t:"Bronze first",b:"Every rack shows its odds of coming up in the cloud. Bronze is easy. Gold starts around 15%. Each bronze you move raises silver's odds, and moving bronze and silver raises gold's, up to 100%.",tip:"If a cutover fails, the app sits offline in the cloud. Hold <kbd>E</kbd> to retry, or hold <kbd>Space</kbd> to roll it back."},
@@ -3962,14 +4111,14 @@ const shareCount=(n,w)=>`${n} ${w}${n===1?"":"s"}`;
 // every outcome gets the same treatment: the post is spin, the stats are real
 const SHARE_SPIN={
   retired:{
-    li:[f=>`I'm humbled and honored to announce that after ${shareCount(f.n,"client")}, I am retiring as ${f.role} at Lift & Shift Consulting.`,
+    li:[f=>`I'm humbled and honored to announce that after ${shareCount(f.n,"client")}, I am retiring as ${f.role} at ${CO(f.ai).trade}.`,
         f=>`${shareCount(f.n,"client")}. One resume that was, let's say, aspirational. Today I retire as ${f.role}.`],
     short:[f=>`Retired as ${f.role} after ${shareCount(f.n,"client")}. Nobody ever found out about the resume.`,
            f=>`${shareCount(f.n,"client")} in the cloud. Retired as ${f.role}. Thought leadership available on request.`],
   },
   fired:{
     li:[f=>`Some personal news: after a candid conversation with ${f.who}, I'm excited to pursue new opportunities.`,
-        f=>`They say every ending is a new beginning. Security walked me to this one personally. Thank you, ${f.client}.`],
+        f=>`They say every ending is a new beginning. Security walked me to this one personally. Thank you, ${f.client}${endDot(f.client)}`],
     short:[f=>`Thrilled to announce I'm exploring new opportunities, effective immediately, at the request of ${f.who}.`,
            f=>`My badge and I have decided to go our separate ways. ${f.client} has been informed.`],
   },
@@ -3980,13 +4129,13 @@ const SHARE_SPIN={
            f=>`No AI, all process. So much process that a vendor runs it now.`],
   },
   obsolete:{
-    li:[f=>`Some personal news: after ${shareCount(f.n,"client")}, I have successfully automated my role at Lift & Shift Consulting out of existence.`,
+    li:[f=>`Some personal news: after ${shareCount(f.n,"client")}, I have successfully automated my role at ${CO(f.ai).trade} out of existence.`,
         f=>`I'm proud to announce that the AI agent I onboarded is now doing my job. It explained why to leadership in a rich tapestry of convincing emails.`],
     short:[f=>`Automated myself out of a job after ${shareCount(f.n,"client")}. Leadership calls it a success story.`,
            f=>`The AI ran a whole migration without me, then ran my exit interview. Open to work.`],
   },
   resigned:{
-    li:[f=>`After careful consideration and one more page at 3am, I've decided to step away from ${f.client}.`,
+    li:[f=>`After careful consideration and one more page at 3am, I've decided to step away from ${f.client}${endDot(f.client)}`,
         f=>`I'm proud to share that I have given ${f.client} zero weeks' notice.`],
     short:[f=>`Stepped away from ${f.client} to focus on the donut place.`,
            f=>`Gave ${f.client} zero weeks' notice. Please forward all future tickets to the chatbot.`],
@@ -3995,13 +4144,13 @@ const SHARE_SPIN={
 const SHARE_LESSONS=["Here's what a server fire taught me about leadership:\n\nNothing. It was a fire.","My biggest takeaway? Patch your servers. Also, believe in yourself.","People ask how I stay so calm during an outage. I don't. I just type louder."];
 function shareFacts(outcome,extra){
   const t=runStats(),n=S.career.length;
-  const f={outcome,n,avg:n?S.career.reduce((s,c)=>s+c.stars,0)/n:0,role:careerTitle(),client:client().name,mig:t.mig,lost:t.lost,spend:S.budget,dev:!!S.dev,restores:BK.used,...extra};
+  const f={outcome,ai:aiCo(),n,avg:n?S.career.reduce((s,c)=>s+c.stars,0)/n:0,role:careerTitle(),client:client().name,mig:t.mig,lost:t.lost,spend:S.budget,dev:!!S.dev,restores:BK.used,...extra};
   f.url=`${SHARE_URL}/r/${shareCode(f)}`;
   return f;
 }
 // numbers and fixed choices only; functions/_lib/report.js turns this back into the report page and preview image
 function shareCode(f){
-  return[f.o,Math.max(0,TITLES.indexOf(f.role)),Math.min(f.n,999),Math.round(f.avg*10),Math.min(f.mig,9999),clamp(Math.round(f.spend),-9999999,9999999)+0,f.dev?1:f.restores?2:0,f.x||0].join("_");
+  return[f.o,Math.max(0,TITLES.indexOf(f.role)),Math.min(f.n,999),Math.round(f.avg*10),Math.min(f.mig,9999),clamp(Math.round(f.spend),-9999999,9999999)+0,f.dev?1:f.restores?2:0,f.x||0,f.ai?1:0].join("_");
 }
 function shareStats(f){
   return[`☁️ ${shareCount(f.mig,"app")} migrated to the cloud`,f.n?`⭐ ${f.avg.toFixed(1)} average client rating`:null,`💸 ${money(f.spend)} total IT spend`,`🔥 ${shareCount(f.lost,"server")} offline (learning opportunities)`].filter(Boolean).join("\n");
@@ -4040,7 +4189,7 @@ function shareDraw(c,f){
   const bg=g.createLinearGradient(0,0,0,W);bg.addColorStop(0,"#152634");bg.addColorStop(1,"#0e1a23");g.fillStyle=bg;g.fillRect(0,0,W,W);
   g.fillStyle="#ffb547";g.fillRect(0,0,W,14);g.textBaseline="alphabetic";g.textAlign="left";
   let tx=M;if(SHARE.logo){g.drawImage(SHARE.logo,M,52,120,120);tx=M+144;}
-  g.fillStyle="#e7eef3";g.font=`700 42px ${DISP}`;g.fillText("LIFT & SHIFT CONSULTING",tx,108);
+  g.fillStyle="#e7eef3";g.font=`700 42px ${DISP}`;g.fillText(CO(f.ai).trade.toUpperCase(),tx,108);
   g.fillStyle="#8ea5b4";g.font=`400 30px ${BODY}`;g.fillText("End-of-career performance review",tx,152);
   // the headline shrinks until it and the subtitle both clear the stat tiles
   g.font=`400 36px ${BODY}`;const subs=shareWrap(g,f.sub,W-M*2).slice(0,2);
@@ -4223,7 +4372,7 @@ function verdict(s){
   return["Legendary disaster","They're naming the post-mortem after you."];
 }
 function letter(t){
-  const to=pick(["Dear Managing Partner,","To the Partners of Lift & Shift Consulting LLC,","Dear Head of Delivery,",`To whoever is on call at ${client().name},`,"Hi Linda,"]);
+  const to=pick(["Dear Managing Partner,",`To the Partners of ${CO().legal}`+",","Dear VP of Strategic Synergies,","Dear Head of Delivery,",`To whoever is on call at ${client().name},`,"Hi Linda,"]);
   const open=pick(["Please accept this letter as formal notice of my resignation, effective immediately.","I am writing to let you know that I quit. Effective now. Like, right now.","After careful consideration and one more page at 3am, I am resigning.","Consider this my two weeks' notice, minus the two weeks."]);
   const gold=[...S.racks,...S.cloud].find(a=>a&&a.tier==="gold");
   const pool=[
@@ -4553,8 +4702,10 @@ ov.addEventListener("click",e=>{
   if(b.dataset.diff){setDifficulty(b.dataset.diff,false);return titleScreen();}
   const a=b.dataset.act;
   if(a==="restorelog"){devShow();BK.open=true;bkRender();}
-  else if(a==="start"){newRun();toast(`${diffLabel()} career. First client: ${client().name}. Grab an app and carry it right.`);silentTip();play();}
-  else if(a==="next"){startSprint(S.sprint+1);toast(`New client: ${client().name}. Your tools came with you.`);play();}
+  else if(a==="start"){newRun();welcomeMail();}
+  else if(a==="hired"){toast(`${diffLabel()} career. First client: ${client().name}${endDot(client().name)} Grab an app and carry it right.`);silentTip();play();}
+  else if(a==="next"){const prev=S.ss,prevName=client().name,prevDonut=modId()==="donut";startSprint(S.sprint+1);if(S.sprint===2)nextMail(prev,prevName);else if(S.sprint===3)unicornMail(prevName);else if(S.sprint===4)aiMail();else if(S.sprint>=5&&stage(S.sprint)===5&&!isBreak(S.sprint))lastMail(prevName,prevDonut);else{toast(`New client: ${client().name}${endDot(client().name)} Your tools came with you.`);play();}}
+  else if(a==="onward"){toast(`New client: ${client().name}${endDot(client().name)} Your tools came with you.`);play();}
   else if(a==="resume")play();
   else if(a==="silentplay"){setSilentPlay(!AU.loud);audio();b.outerHTML=silentBtn();ov.querySelector('[data-act=silentplay]').focus();}
   else if(a==="loglevel"){setLogLevel(LOGLV+1);b.outerHTML=logLevelBtn();ov.querySelector('[data-act=loglevel]').focus();}
@@ -4565,7 +4716,7 @@ ov.addEventListener("click",e=>{
   else if(a==="oldcredits")rollCredits(true);
   else if(a==="fireboss"){if(lvl("agent")>=4&&lvl("manager")&&!S.bossFired){S.bossFired=true;S.mgr=null;sfx("fired");S.offers=S.offers.filter(id=>id!=="manager");}review();}
   else if(a==="reroll")reroll();
-  else if(a==="restart"){newRun();toast(`New career (${diffLabel()}). First client: ${client().name}.`);play();}
+  else if(a==="restart"){newRun();welcomeMail();}
   else if(a==="menu"){newRun();titleScreen();}
   else if(a==="tut")tutorial(0);
   else if(a==="handson")handsOn();
@@ -4577,7 +4728,7 @@ ov.addEventListener("click",e=>{
   else if(a==="learn")learnMore();
   else if(a==="author")aboutAuthor();
   else if(a==="quit"||a==="reletter")resign();
-  else if(a==="again"){newRun();toast(`New career (${diffLabel()}). First client: ${client().name}.`);play();}
+  else if(a==="again"){newRun();welcomeMail();}
 });
 
 /* ==== Main loop ==== */

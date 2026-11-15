@@ -6,13 +6,14 @@ export const VERDICTS = ["Meets expectations", "Needs improvement", "Performance
 const FIRED = {u: "SLA blown", c: "Failed compliance", b: "Breached"};
 const FINE = ["Results not audited. The auditors have been through enough.", "Self-assessed with admin access.", "Restored from backup. It was planned, apparently."];
 
-// outcome_role_clients_rating×10_migrated_spend_fineprint_verdict, e.g. r_3_2_35_23_-412_0_0
+// outcome_role_clients_rating×10_migrated_spend_fineprint_verdict[_ai], e.g. r_3_2_35_23_-412_0_0_1
+// ai (optional, added later so older links still work): 1 once the firm became Lift & Shift AI Consulting
 export function parseCode(code) {
-  const m = /^([rucbqox])_(\d)_(\d{1,3})_(\d{1,2})_(\d{1,4})_(-?\d{1,7})_([0-2])_([0-4])$/.exec(String(code));
+  const m = /^([rucbqox])_(\d)_(\d{1,3})_(\d{1,2})_(\d{1,4})_(-?\d{1,7})_([0-2])_([0-4])(?:_([01]))?$/.exec(String(code));
   if (!m) return null;
-  const [, outcome, role, n, avg, mig, spend, fine, verdict] = m;
+  const [, outcome, role, n, avg, mig, spend, fine, verdict, ai] = m;
   if (+role >= TITLES.length || +avg > 50) return null;
-  return {outcome, role: +role, n: +n, avg: +avg / 10, mig: +mig, spend: +spend, fine: +fine, verdict: +verdict};
+  return {outcome, role: +role, n: +n, avg: +avg / 10, mig: +mig, spend: +spend, fine: +fine, verdict: +verdict, ai: ai === "1"};
 }
 
 export function describe(r) {
@@ -23,7 +24,7 @@ export function describe(r) {
   else if (r.outcome === "q") { head = "Pursuing other opportunities"; sub = `Exit interview: ${VERDICTS[r.verdict]}.`; }
   else { head = "Open to work"; sub = `Official reason: ${FIRED[r.outcome]}. Nobody needs to know that part.`; }
   const money = `${r.spend < 0 ? "-" : ""}$${Math.abs(r.spend)}k`;
-  return {head, sub, money, clients: String(r.n), migrated: String(r.mig), rating: r.n ? `${r.avg.toFixed(1)}/5` : "N/A", fine: FINE[r.fine]};
+  return {head, sub, money, clients: String(r.n), migrated: String(r.mig), rating: r.n ? `${r.avg.toFixed(1)}/5` : "N/A", fine: FINE[r.fine], company: r.ai ? "Lift & Shift AI Consulting" : "Lift & Shift Consulting"};
 }
 
 /* ---------- preview image: a dependency-free indexed PNG drawn with a 5×7 pixel font ---------- */
@@ -63,7 +64,7 @@ export async function renderCard(d) {
     }
   };
   rect(0, 0, W, 12, AMBER);
-  text("Lift & Shift Consulting", M, 44, 5, INK);
+  text(d.company || "Lift & Shift Consulting", M, 44, 5, INK);
   text("End-of-career performance review", M, 94, 3, MUTED);
   let s = 11, lines; do { s--; lines = wrap(d.head, s, W - M * 2); } while ((lines.length > 2 || Math.max(...lines.map(l => textWidth(l, s))) > W - M * 2) && s > 3);
   const lh = s * 9; let y = 150; for (const l of lines) { text(l, M, y, s, AMBER); y += lh; }

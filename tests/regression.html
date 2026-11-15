@@ -29,7 +29,7 @@
    Results: the page title becomes "PASS n/n" or "FAIL k/n", and window.__RESULTS holds the details. */
 const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
-const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
+const NAMES = ("aiCo,CO,letter,rumorBlock,RUMORS,crowd,userLines,alertLines,humanLines,BREAK_CLIENTS,welcomeMail,mailRecap,unicornMail,aiMail,lastMail,spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "K,keyHint,TOUCH,fixWord,grabWord,setSilentPlay,silentBtn,HAS_SESSION,AU,toastsCover,FIX_WORDS,rollbackTarget,tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
   "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},get LOGLV(){return LOGLV},setLogLv:v=>{LOGLV=v},setMode:m=>{mode=m},' +
@@ -73,6 +73,90 @@ test("every inline script parses", () => {
 
 
 /* ---------- hands-on tutorial ---------- */
+test("a new career opens on the VP's welcome email; Get to work starts play, and the email changes nothing", () => {
+  const doc = W.document; G.newRun(); G.titleScreen();
+  doc.querySelector('[data-act="start"]').click();
+  const mail = doc.querySelector(".mail"), text = mail ? mail.textContent : "";
+  check(G.mode === "title" && mail, "Start new career did not open the welcome email");
+  check(text.includes(G.CLIENTS[0].name), "the welcome email does not name the first client");
+  for (const w of ["Lift & Shift Consulting Ltd.", "résumé", "Migrate", "patched", "tickets", "come looking for you", "breach", "don't get fired"]) check(text.includes(w), `the welcome email lost "${w}"`);
+  const S = G.S, before = JSON.stringify(S), random = W.Math.random; W.Math.random = () => { throw new Error("the welcome email consumes RNG"); };
+  try { G.welcomeMail(); check(JSON.stringify(G.S) === before && G.S === S, "the welcome email changed the run"); } finally { W.Math.random = random; }
+  check(doc.activeElement && doc.activeElement.dataset.act === "hired", "Get to work is not focused");
+  doc.querySelector('[data-act="hired"]').click();
+  check(G.mode === "play" && G.S === S && G.S.sprint === 1, "Get to work did not start the same career");
+  G.showEnd("uptime"); doc.querySelector('[data-act="again"]').click();
+  check(G.mode === "title" && doc.querySelector('[data-act="hired"]'), "Play again skipped the welcome email");
+  doc.querySelector('[data-act="hired"]').click(); check(G.mode === "play", "Play again never started");
+});
+test("before client 2 the VP's email recaps the last client from what it recorded; client 3 hears they are a unicorn; client 4 gets the AI email (or the old school one); client 5 gets the last one; later clients go straight in", () => {
+  const doc = W.document;
+  const clean = G.mailRecap({esc: 0, why: {}, lost: 0, att: 4, mig: 4, audits: 0, breaches: 0}).join(" ");
+  check(/No ticket escalations/.test(clean) && /never once made me leave/.test(clean) && /Nothing went down/.test(clean) && /first try/.test(clean) && !/temp|audit|breach/i.test(clean), "a clean client got the wrong recap: " + clean);
+  const rough = G.mailRecap({esc: 2, why: {exec: 1}, vp: 3, lost: 1, att: 6, mig: 4, audits: 3, breaches: 1, temps: ["Kyle", "Kyle"]}).join(" ");
+  for (const w of ["two ticket escalations", "two times", "One server went down", "Two cutovers", "Three servers failed audit", "One breach", "temp (Kyle)", "fair wage"]) check(rough.includes(w), `a rough client's recap lost "${w}": ${rough}`);
+  check(/got away/.test(G.mailRecap({vp: 1, why: {}}).join(" ")), "a VP you outran is not mentioned");
+  const S = fresh(), name = G.CLIENTS[0].name; S.ss.esc = 1; S.ss.vp = 1; S.ss.human = 1;
+  G.spawnTemp(); check(S.ss.temps && S.ss.temps.includes(S.temp.name), "the temp's name was not recorded");
+  S.career = [{name, days: 1, stars: 4, late: 0}]; G.finishEngagement(); doc.querySelector('[data-act="next"]').click();
+  const mail = doc.querySelector(".mail"), text = mail ? mail.textContent : "";
+  check(G.mode === "title" && G.S.sprint === 2 && mail && text.includes("Good job, kiddo") && text.includes(name) && text.includes(G.CLIENTS[1].name) && text.includes("one ticket escalation") && text.includes("You're welcome for the temp"), "no recap email before client 2");
+  check(doc.activeElement && doc.activeElement.dataset.act === "onward", "the email's button is not focused");
+  doc.querySelector('[data-act="onward"]').click(); check(G.mode === "play" && G.S.sprint === 2, "the email did not start client 2");
+  G.S.ss.human = 1; G.finishEngagement(); doc.querySelector('[data-act="next"]').click();
+  const t3 = (doc.querySelector(".mail") || {}).textContent || "";
+  check(G.mode === "title" && G.S.sprint === 3 && t3.includes("absolute unicorn") && t3.includes("not in the contract") && t3.includes("AI conference") && t3.includes(G.CLIENTS[1].name) && t3.includes(name), "no unicorn email before client 3: " + t3.slice(0, 120));
+  doc.querySelector('[data-act="onward"]').click(); check(G.mode === "play" && G.S.sprint === 3, "the unicorn email did not start client 3");
+  G.S.noAI = true; G.S.sprint = 2; G.unicornMail("X"); check(!doc.querySelector(".mail").textContent.includes("AI"), "old school heard about the AI conference"); G.S.noAI = false; G.S.sprint = 3; G.setMode("play");
+  G.S.ss.human = 1; G.finishEngagement(); doc.querySelector('[data-act="next"]').click(); const t4 = (doc.querySelector(".mail") || {}).textContent || "";
+  check(G.mode === "title" && G.S.sprint === 4 && t4.includes("OMG") && t4.includes("guardrails") && t4.includes("Lift & Shift AI Consulting Ltd.") && t4.includes("assume that was a typo"), "no AI email before client 4: " + t4.slice(0, 120));
+  G.S.upgrades.agent = 1; G.aiMail(); check(doc.querySelector(".mail").textContent.includes("already picked up the AI Agent"), "the AI email missed that you own the agent");
+  G.S.noAI = true; G.aiMail(); const o4 = doc.querySelector(".mail").textContent; G.S.noAI = false; G.S.upgrades.agent = 0;
+  check(o4.includes("reservations about AI") && o4.includes("Luddite") && o4.includes("twice as hard") && !o4.includes("guardrails"), "old school got the wrong AI email");
+  doc.querySelector('[data-act="onward"]').click(); check(G.mode === "play" && G.S.sprint === 4, "the AI email did not start client 4");
+  G.S.ss.human = 1; G.finishEngagement(); doc.querySelector('[data-act="next"]').click(); const t5 = (doc.querySelector(".mail") || {}).textContent || "";
+  check(G.mode === "title" && G.S.sprint === 5 && t5.includes("Last one from me") && t5.includes("glazed, yet wide open eyes") && t5.includes("AI-powered paperclips") && t5.includes("off the hook for email") && !t5.includes("badge audit"), "no last email before client 5: " + t5.slice(0, 120));
+  G.S.upgrades.manager = 1; G.lastMail("Somewhere", false); const m5 = doc.querySelector(".mail").textContent;
+  check(!m5.includes("wide open eyes") && m5.includes("your manager answering your email doesn't count"), "the last email ignored the manager or the client");
+  G.S.upgrades.manager = 0; G.S.upgrades.badge = 1; G.lastMail("Somewhere", false); check(doc.querySelector(".mail").textContent.includes("door badge audit"), "no P.S. after buying Badge Access Audit");
+  G.lastMail("Somewhere", false); check(!doc.querySelector(".mail").textContent.includes("door badge audit"), "the badge P.S. came back a second time");
+  G.welcomeMail(); check(!doc.querySelector(".mail").textContent.includes("badge audit"), "the welcome email has a badge P.S.");
+  doc.querySelector('[data-act="hired"]').click(); check(G.mode === "play" && G.S.sprint === 5, "the last email did not start client 5");
+  G.S.ss.human = 1; G.finishEngagement(); doc.querySelector('[data-act="next"]').click(); check(G.mode === "play" && G.S.sprint === 6 && !doc.querySelector(".mail"), "client 6 got an email too");
+  // a break client before the donut shop pushes the last email back so it still follows the donut shop
+  const B = fresh(); B.breaks = [4]; G.startSprint(4); B.ss.human = 1; G.finishEngagement(); doc.querySelector('[data-act="next"]').click();
+  check(G.mode === "play" && G.S.sprint === 5 && G.S.mod && G.S.mod.id === "donut" && !doc.querySelector(".mail"), "an email came before the donut shop after a break");
+  G.S.ss.human = 1; G.finishEngagement(); doc.querySelector('[data-act="next"]').click();
+  const tb = (doc.querySelector(".mail") || {}).textContent || "";
+  check(G.mode === "title" && G.S.sprint === 6 && tb.includes("Last one from me") && tb.includes("wide open eyes"), "after a break, the last email missed the donut shop");
+  doc.querySelector('[data-act="onward"]').click();
+});
+test("break clients have their own hallway crowd: babies, bubbles, wobblers and trophies; everyone else talks like an office", () => {
+  const S = fresh(); const intern = G.RANKS[0];
+  check(!G.crowd() && G.userLines(intern) === intern.lines && G.alertLines().includes("Think of my stocks!") && G.humanLines()[0] === "I want to talk to a human!", "a normal client lost its office crowd");
+  const want = [["Crybaby Daycare", "Goo goo.", "WAH WAH WAH!", 0.72], ["Just Bubbles Bar", "🫧", "🫧💥🫧", 0], ["Training Wheels Warehouse", "Don't let go!", "I'm falling over!", 0], ["Participation Trophy Outlet", "Did you get your trophy yet?", "How are kids gonna know they're special?!", 0]];
+  want.forEach(([name, line, alert, scale], i) => {
+    G.newRun(); G.S.breaks = [2]; G.S.retro.break = i + 1; G.startSprint(2);
+    const c = G.crowd();
+    check(G.S.sprint === 2 && G.BREAK_CLIENTS[i].name === name && c, name + " has no crowd");
+    check(G.userLines(intern).includes(line) && G.userLines(G.RANKS[5]).includes(line) && G.alertLines().includes(alert) && G.humanLines().length, name + " talks like an office");
+    check((c.scale || 0) === scale, name + " users are the wrong size");
+  });
+  check(G.alertLines().every(l => l.length <= 45), "a trophy shout is too long for a hallway bubble");
+});
+test("the firm becomes Lift & Shift AI Consulting at the VP's AI email (client 4), everywhere it is named", () => {
+  const S = fresh();
+  check(!G.aiCo() && G.CO().legal === "Lift & Shift Consulting Ltd." && G.CO().trade === "Lift & Shift Consulting", "the firm is an AI company too early");
+  G.welcomeMail(); check(W.document.querySelector(".mail .sig").textContent.includes("Lift & Shift Consulting Ltd.") && !W.document.querySelector(".mail").textContent.includes("Paperclip Consulting"), "day one signature is wrong");
+  S.sprint = 3; check(!G.aiCo(), "renamed before the AI email");
+  S.sprint = 4; check(G.aiCo() && G.CO().legal === "Lift & Shift AI Consulting Ltd." && G.CO().trade === "Lift & Shift AI Consulting", "not renamed at client 4");
+  G.aiMail(); check(W.document.querySelector(".mail .sig").textContent.includes("Lift & Shift AI Consulting Ltd."), "the AI email's signature kept the old trading name");
+  S.noAI = true; S.sprint = 5; G.lastMail("X", false); check(W.document.querySelector(".mail .sig").textContent.includes("Lift & Shift AI Consulting Ltd."), "old school's last email kept the old name"); S.noAI = false;
+  let all = ""; for (let i = 0; i < 80; i++) all += G.letter({});
+  check(!all.includes("LLC") && all.includes("To the Partners of Lift & Shift AI Consulting Ltd.,") && all.includes("Dear VP of Strategic Synergies,"), "the letter names the wrong firm or never writes to the VP");
+  check(!G.RUMORS.some(([q]) => /got back from a conference/.test(q)), "a rumor still says leadership is back from the conference before the VP goes");
+  S.sprint = 1; S.tut = {i: 0}; S.sprint = 9; check(!G.aiCo(), "the tutorial firm became an AI company"); S.tut = null;
+});
 test("Tutorials keeps hands-on beside Main menu on every page", () => {
   G.newRun();G.titleScreen();check(!W.document.querySelector('[data-act="handson"]'),"hands-on still crowds main menu");
   for(let i=0;i<G.TUT.length;i++){
@@ -1304,6 +1388,11 @@ test("report links stay in step with the game and reject anything but numbers", 
   const f = G.shareFacts("fired", {o: "c", head: "Open to work", sub: "x", who: "y"}), r = REPORT.parseCode(G.shareCode(f));
   check(r && r.outcome === "c" && r.n === 2 && r.avg === 3.5 && r.mig === 23 && r.spend === -412, `round trip gave ${JSON.stringify(r)}`);
   check(REPORT.describe(r).head === "Open to work" && REPORT.describe(r).sub.includes("Failed compliance"), "fired report lost its reason");
+  check(!f.ai && r.ai === false && REPORT.describe(r).company === "Lift & Shift Consulting", "a pre-AI report took the AI name");
+  S.sprint = 4; const fa = G.shareFacts("fired", {o: "c", head: "Open to work", sub: "x", who: "y"}), ra = REPORT.parseCode(G.shareCode(fa));
+  check(fa.ai && ra && ra.ai && REPORT.describe(ra).company === "Lift & Shift AI Consulting" && G.sharePostText("linkedin", {...fa, outcome: "retired"}, 0).includes("Lift & Shift AI Consulting"), "a report after the AI email kept the old name");
+  check(REPORT.parseCode("r_3_2_35_23_-412_0_0") && !REPORT.parseCode("r_3_2_35_23_-412_0_0").ai && REPORT.parseCode("r_3_2_35_23_-412_0_0_2") === null, "older links broke, or a bad AI flag got through");
+  S.sprint = 1;
   for (const bad of ["", "r_9_1_1_1_1_0_0", "r_0_1_51_1_1_0_0", "z_0_1_1_1_1_0_0", "r_0_1_1_1_1_0_0<script>", "hello_world"]) check(REPORT.parseCode(bad) === null, `accepted ${bad}`);
   for (const code of ["r_8_999_50_9999_-9999999_2_0", "u_0_0_0_0_0_0_0", "c_0_0_0_0_0_0_0", "b_0_0_0_0_0_0_0", "q_0_0_0_0_0_0_4", "o_0_0_0_0_0_0_0", "x_0_0_0_0_0_0_0"]) check(!/undefined|NaN/.test(JSON.stringify(REPORT.describe(REPORT.parseCode(code)))), `hole in ${code}`);
 });

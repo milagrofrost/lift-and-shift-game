@@ -34,7 +34,7 @@ async function career({diff="normal",skill="expert",seed=1,maxClients=8,preset=n
   for(let k=0;k<400&&!W.__G;k++)await new Promise(r=>setTimeout(r,25));
   if(!W.__G){f.remove();throw new Error("the game did not start in the bot's frame");}
   const G=W.__G,P={...SKILL[skill],...(over||{})},ORDER=pri||PRI,rnd=rng(seed*7919+13);W.Math.random=rnd;
-  G.setDiff(diff);W.document.querySelector('[data-act=start]').click();
+  G.setDiff(diff);W.document.querySelector('[data-act=start]').click();W.document.querySelector('[data-act=hired]')?.click(); // the VP's welcome email (main may not have it yet)
   const K=G.keys;let S=G.S();
   if(preset)preset(G,S);
   const RX=i=>72+(i%3)*105,RY=i=>100+Math.floor(i/3)*116,SX=i=>652+(i%4)*80,SY=i=>100+Math.floor(i/4)*116,zone=x=>x<360?0:x<600?1:2;
@@ -130,7 +130,8 @@ async function career({diff="normal",skill="expert",seed=1,maxClients=8,preset=n
       if(S.career.length>=maxClients||S.obsolete||S.outsourced){out.end={retired:true,clients:S.career.length,obsolete:!!S.obsolete,outsourced:!!S.outsourced};break;}
       if(!preset)shop();
       out.clients[out.clients.length-1].ups=Object.entries(S.upgrades).filter(e=>e[1]).map(([k,v])=>v===true?k:k+v).join(",");
-      W.document.querySelector('[data-act=next]').click();tgt=null;cSteps=0;S=G.S();if(preset)preset(G,S,true);cs=newCs();
+      W.document.querySelector('[data-act=next]').click();W.document.querySelector('[data-act=onward]')?.click(); // the VP's email before client 2
+      tgt=null;cSteps=0;S=G.S();if(preset)preset(G,S,true);cs=newCs();
     }else if(md==="end"){
       S=G.S();const h=W.document.querySelector(".card h2");
       out.end={fired:h?h.textContent:"?",client:S.sprint-(S.breaks||[]).filter(b=>b<S.sprint).length,brk:(S.breaks||[]).includes(S.sprint),t:Math.round(S.time),up:+(S.err/S.errMax).toFixed(2),sec:Math.round(S.security),secLoss:JSON.stringify(S.secLoss),audits:S.ss.audits,breaches:S.ss.breaches,lost:S.ss.lost,esc:S.ss.esc,eLow:Math.round(cs.eLow),apps:S.totalApps,left:S.racks.filter(Boolean).length+S.wave.length};
