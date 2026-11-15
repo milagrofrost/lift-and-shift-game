@@ -147,5 +147,12 @@ Add `--project=desktop-*` or `--project=phone-*` to the first test command to ru
 
 ## Limits
 
+The jobs that run WebKit (the three browser checks in CI, and the live-site smoke test) are pinned to
+`ubuntu-24.04`. GitHub moved `ubuntu-latest` to Ubuntu 26.04 in November 2026, and the WebKit build that
+Playwright 1.64 downloads still links against Ubuntu 24.04's ICU (`libicudata.so.74`), so on 26.04 it exits before
+opening a page ("browserType.launch: Target page, context or browser has been closed"). Move them back to
+`ubuntu-latest` once a Playwright upgrade supports 26.04. The other jobs only use Chromium or no browser and stay on
+`ubuntu-latest`.
+
 Emulated phones aren't real iPhones: the silent switch, `navigator.audioSession`, Home Screen mode, safe areas and
 real touch feel still need a device. Screenshots are evidence to look at; nothing compares them pixel by pixel yet.

@@ -23,7 +23,8 @@ env:
 jobs:
   smoke:
     name: Smoke test las.milagrofrost.com
-    runs-on: ubuntu-latest
+    # Playwright 1.64's WebKit needs Ubuntu 24.04's ICU (libicu74); ubuntu-latest is now 26.04 (libicu78)
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
