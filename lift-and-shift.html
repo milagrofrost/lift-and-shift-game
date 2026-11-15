@@ -701,7 +701,7 @@ function tickFreeze(dt){
 const UPGRADES=[
   {id:"freezecharge",name:"Emergency Freeze Window",icon:"❄",cost:3,desc:"One charge: press F or click Freeze to pause users, arrivals and incident spread for 12 seconds. Repurchase after use. Extends an active freeze, up to 30 seconds."},
   {id:"terraform",name:"Terraform the cloud",icon:"⚙️",cost:8,desc:"Infrastructure as code. Retrying a failed cutover takes 1–2 seconds instead of 3–8, and consistent builds give every cutover +10% odds. Idle environments get torn down, so cloud apps cost 10% less to run."},
-  {id:"moverbot",name:"Mover Bot",icon:"🦾",cost:8,desc:"Moves on-prem apps to the cloud by itself and finds a free cloud slot on its own. Slow but steady. Once you have a CI/CD pipeline it only uses the pipeline and waits for a free lane."},
+  {id:"moverbot",name:"Mover Bot",icon:"🦾",cost:8,desc:"Moves on-prem apps to the cloud by itself and finds a free cloud slot on its own. Slow but steady. Once you have a CI/CD pipeline it only uses the pipeline and waits for a free lane (a jammed lane stays busy until someone repairs it)."},
   {id:"patchbot",name:"Patch Bot",icon:"🤖",cost:4,max:3,desc:"Walks the server room patching the most overdue app. It doesn't fight fires; that's your job. Success rate 50% at level 1, 66% at level 2, 90% at level 3, and each level walks faster. A failed patch leaves an automation error you have to fix by hand, unless an AI Agent trusted with that server tier gets there first."},
   {id:"finops",name:"FinOps Dashboard",icon:"📊",cost:5,desc:"A blue scan sweeps the cloud every 20–25 seconds and flags about a third of the apps with a green $. Tap E on one (or hold E and walk past several) to approve it: that app costs 19% less to run, and it can be flagged once more for another 11%. Egress fees drop 30% and license renewals cost 25% less. An AI agent at any level approves them too."},
   {id:"runbooks",name:"Runbooks",icon:"📄",cost:3,desc:"Patching and firefighting cost 40% less energy, and fires go out faster."},
@@ -716,7 +716,7 @@ const UPGRADES=[
   {id:"suppress",name:"Fire Suppression",icon:"🧯",cost:2,max:3,desc:"On-prem fires grow 20% slower per level."},
   {id:"portal",name:"Self-Service Portal",icon:"🙋",cost:2,max:3,desc:"Users reset their own passwords. 15% fewer tickets per level."},
   {id:"autopatch",name:"Cloud Auto-Patching",icon:"🩹",cost:5,sec:true,desc:"Cloud apps get patched automatically, so they never drift into riskier states, and new leaks are 20% less likely, and cloud apps cost 10% less to run. Covered apps show a green shield."},
-  {id:"pipeline",name:"CI/CD Pipeline",icon:"🏭",cost:5,max:3,desc:"Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud. No walking: about 6 seconds (3 with Terraform), with +10% odds from automated tests. Each level adds a lane, so more jobs can run at once."},
+  {id:"pipeline",name:"CI/CD Pipeline",icon:"🏭",cost:5,max:3,desc:"Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud. No walking: about 6 seconds (3 with Terraform), with +10% odds from automated tests. It is flaky: 85–90% of sends jam partway across, and the server sits on the belt, offline, until you stand on the conveyor and hold E to repair it (a level 3+ AI agent can too). Each level adds a lane, so more jobs can run at once; every lane jams on its own."},
   {id:"bluegreen",name:"Blue-Green Cutovers",icon:"🔀",cost:6,desc:"Run old and new side by side. You carry a see-through copy while the original stays live in its rack, so moving it costs no downtime. The original still takes fires and escalations, and if it goes offline the copy is canceled. Failed cloud deployments stay gray; hold E there to retry."},
   {id:"spin",name:"Redefine \"Uptime\"",icon:"🎤",cost:3,max:3,desc:"Leadership skills. That outage was a \"planned degradation event.\" Your uptime recovers faster and can recover further: up to 65%, 80%, then 95% of the budget. Migrations also cost 20% less uptime per level."},
   {id:"statuspage",name:"Status Page",icon:"📣",cost:3,desc:"During a red alert, users check the status page instead of grabbing you. (Execs you ignored still come find you.)"},
@@ -1317,7 +1317,7 @@ const agentLvl=()=>Math.max(1,Math.min(4,lvl("agent")));
 const AGENT_SPEED=[300,300,340,380,420],agentSpeed=()=>AGENT_SPEED[agentLvl()];
 const atRack=a=>({x:RACKS[a.slot].x,y:RACKS[a.slot].y+44}),atSlot=i=>({x:SLOTS[i].x,y:SLOTS[i].y+38});
 const retryable=a=>a&&(a.down||a.staged)&&!(a.staged&&a.orig.down);
-/* Priorities: level 4 answers incidents first. Then the queues, once either is at least half full.
+/* Priorities: level 4 answers incidents first; level 3 and up then repairs a jammed pipeline. Then the queues, once either is at least half full.
    Below that it goes looking for fixes on-prem and in the cloud, then clears whatever is left in the queues. */
 function agentPick(){
   const L=agentLvl(),imp=importantMail(),racks=S.racks.filter(a=>a&&!a.hidden&&!a.down&&a.fire===0);
@@ -1327,6 +1327,8 @@ function agentPick(){
     const fi=S.racks.filter(a=>a&&!a.hidden&&!a.down&&a.fire>0).sort((p,q)=>q.fire-p.fire)[0];if(fi)return{kind:"fire",a:fi,...atRack(fi)};
     const c=S.cloud.findIndex(retryable);if(c>=0)return{kind:"cutover",a:S.cloud[c],i:c,...atSlot(c)};
   }
+  // level 3 and up can repair a jammed pipeline (after level 4's incidents); below that it's yours
+  if(L>=3){const pj=S.pipe.find(jammed);if(pj)return{kind:"unjam",pj,a:pj.a,x:pipeX(pj),y:laneY(pj.lane)};}
   const tkF=S.tk.length/ticketLimit(),emF=imp.length/inboxLimit();
   if(Math.max(tkF,emF)>=0.5)return tkF>=emF?{kind:"ticket",x:480,y:470}:{kind:"email",x:480,y:98};
   const leaks=S.cloud.map((a,i)=>a&&a.leakOn&&!a.breach&&!a.down&&agentCanTouch(a)?{a,i}:null).filter(Boolean).sort((p,q)=>q.a.leak-p.a.leak);
@@ -1350,7 +1352,8 @@ function agentPick(){
 const TIER_ORDER={bronze:0,silver:1,gold:2};
 // hands-on jobs with a fixed amount of work and no odds to roll (a failed cutover still rolls the cutover itself)
 const AGENT_WORK={discover:{need:()=>discoverTime(),say:"investigating"},restore:{need:a=>TIER[a.tier].restore*Math.pow(0.8,retro("firedrill")),say:"restoring"},
-  contain:{need:()=>containTime(),say:"containing"},rightsize:{need:()=>0.6,say:"approving"},cutover:{need:a=>cloudRebuild(a.tier),say:"redeploying"},fire:{need:()=>1,say:"firefighting"}};
+  contain:{need:()=>containTime(),say:"containing"},rightsize:{need:()=>0.6,say:"approving"},cutover:{need:a=>cloudRebuild(a.tier),say:"redeploying"},fire:{need:()=>1,say:"firefighting"},
+  unjam:{need:()=>PIPE_FIX,say:"repairing pipeline"}};
 function agentValid(j){
   if(j.kind==="repair")return agentDamageRemains(j);
   if(j.kind==="discover")return S.racks[j.a.slot]===j.a&&j.a.hidden;
@@ -1358,6 +1361,7 @@ function agentValid(j){
   if(j.kind==="fire")return validRack(j.a)&&!j.a.down&&j.a.fire>0;
   if(j.kind==="contain")return S.cloud[j.i]===j.a&&j.a.breach&&!j.a.down;
   if(j.kind==="cutover")return S.cloud[j.i]===j.a&&retryable(j.a);
+  if(j.kind==="unjam")return S.pipe.includes(j.pj)&&jammed(j.pj);
   if(j.kind==="rightsize")return S.cloud[j.i]===j.a&&j.a.rsTag;
   if(j.kind==="leak")return S.cloud[j.i]===j.a&&j.a.leakOn&&!j.a.breach;
   if(j.kind==="patch")return S.racks[j.a.slot]===j.a&&!j.a.covered&&!j.a.down&&j.a.fire===0;
@@ -1397,6 +1401,7 @@ function agentDoWork(j,dt,G){
   if(j.kind==="fire"){const r=(S.upgrades.runbooks&&modId()!=="vacation")?75:48;a.fire-=r*dt;A.ext={a,t:S.t};A.work=Math.min(0.99,1-a.fire/100);if(a.fire>0)return;a.fire=0;}
   else if(j.kind==="discover"){a.disc=(a.disc||0)+dt;a.discT=S.t;A.work=a.disc/W.need(a);if(a.disc<W.need(a))return;}
   else if(j.kind==="rightsize"){j.w=(j.w||0)+dt;A.work=j.w/W.need(a);if(j.w<W.need(a))return;}
+  else if(j.kind==="unjam"){j.pj.fix=(j.pj.fix||0)+dt;A.work=j.pj.fix/PIPE_FIX;if(j.pj.fix<PIPE_FIX)return;}
   else{a.prog+=dt;A.work=a.prog/W.need(a);if(a.prog<W.need(a))return;a.prog=0;}
   spend("ai",G.cost);const st=S.ss.ai;st.n++;st.cost+=G.cost;
   const pos={x:A.x,y:A.y-10};fl(pos,`🪙 ${(G.tok*rand(0.8,1.2)).toFixed(1)}k tokens · −$${G.cost.toFixed(1)}k`,C.ok);
@@ -1405,6 +1410,7 @@ function agentDoWork(j,dt,G){
   else if(j.kind==="discover"){sfx("discover");revealApp(a,true);}
   else if(j.kind==="restore"){sfx("online");noteRestored(a);a.down=false;a.timer=Math.max(a.timer,a.maxT*0.5);fl(RACKS[a.slot],"🧠 Back online",C.ok);}
   else if(j.kind==="rightsize")approveSavings(a,j.i,"agent");
+  else if(j.kind==="unjam")unjam(j.pj,"agent");
   else if(j.kind==="contain"){sfx("sealed");a.age=0;a.breach=false;a.leak=0;a.grace=6;fl(SLOTS[j.i],"🧠 Breach contained",C.ok);}
   else{const p=successChance(a.tier);
     if(Math.random()<p){noteRestored(a);activateCloud(a);cutoverOK(a);sfx("migrateOK");fl(SLOTS[j.i],"🧠 Cutover complete",C.ok);}
@@ -2235,14 +2241,44 @@ function sendToPipeline(){
   const lane=freePipelineLane();
   if(lane<0){fl(P,"All pipeline lanes are busy",C.amber,1,"✖");return;}
   humanWork();if(!S.upgrades.bluegreen)S.racks[g.slot]=null;if(g.touchT==null)g.touchT=S.time;
-  S.pipe.push({a:g,t:0,dur:pipeDur(),lane});sfx("grab");fl(RACKS[g.slot],"🏭 Into the pipeline",C.leak,2);
+  S.pipe.push(pipeJob(g,lane));sfx("grab");fl(RACKS[g.slot],"🏭 Into the pipeline",C.leak,2);
+}
+/* The pipeline is flaky by design. Every send rolls once: 85–90% of them jam partway across, and the lane stops dead
+   with its server stuck on the belt. It is still "in the pipeline" for every other rule (migration burn unless it's
+   a blue-green copy, paused license, escalation identity, cancel-if-the-original-dies). Someone has to stand on that
+   conveyor and hold E: you, or a level 3+ AI agent. Temps, Patch Bot and Mover Bot can't; freezes don't; no upgrade
+   changes the odds, and each lane jams on its own. Progress on a repair is kept if you let go. */
+const PIPE_BREAK_LO=0.85,PIPE_BREAK_HI=0.90,PIPE_FIX=2.5,PIPE_X0=322,PIPE_X1=640,PIPE_REACH=20;
+const laneY=k=>236+k*44;
+function pipeJob(a,lane,byBot){
+  const j={a,t:0,dur:pipeDur(),lane};if(byBot)j.byBot=true;
+  if(Math.random()<rand(PIPE_BREAK_LO,PIPE_BREAK_HI))j.brk=rand(0.25,0.7); // where on the belt it will jam
+  return j;
+}
+const pipeX=j=>PIPE_X0+(PIPE_X1-PIPE_X0)*Math.min(1,j.t/j.dur);
+const jammed=j=>!!j&&j.brk!=null&&j.t>=j.brk*j.dur;
+function unjam(j,who){
+  j.brk=null;j.fix=0;sfx("online");
+  fl({x:pipeX(j),y:laneY(j.lane)-26},who==="agent"?"🧠 Pipeline repaired":"🔧 Pipeline repaired",C.ok);
 }
 function tickPipeline(dt){
   for(const j of S.pipe){
+    if(j.brk!=null){const at=j.brk*j.dur;
+      if(j.t<at)j.t=Math.min(at,j.t+dt);
+      if(j.t>=at){if(!j.jamSaid){j.jamSaid=true;sfx("migrateFail");fl({x:pipeX(j),y:laneY(j.lane)-26},"⚠ Pipeline jammed",C.danger);clipEv("jam");
+          if(!S.jamTip){S.jamTip=true;toast(`🏭 The pipeline jammed with ${j.a.name} on it. Stand on the conveyor and hold E to repair it.`);}}
+        continue;}}
     if(j.t<j.dur)j.t+=dt;
     if(j.t>=j.dur){const i=nearestEmptySlot(606,280);if(i<0)continue;j.done=true;migrate(j.a,i,!!j.byBot,0.10);}
   }
   S.pipe=S.pipe.filter(j=>!j.done);
+}
+// the jammed lane under you (anywhere along the belt), nearest first
+function jamUnder(p){
+  let best=null,bd=PIPE_REACH+1;
+  if(p.x<PIPE_X0||p.x>PIPE_X1)return null;
+  for(const j of S.pipe){if(!jammed(j))continue;const d=Math.abs(p.y-laneY(j.lane));if(d<bd){bd=d;best=j;}}
+  return best?{j:best,d:bd}:null;
 }
 function onpremCost(base){let c=base;if(S.upgrades.runbooks&&modId()!=="vacation")c*=0.6;if(modId()==="vacation")c*=1.3;return c;}
 function cloudCost(base){return modId()==="vacation"?base*1.3:base;}
@@ -2259,6 +2295,7 @@ function fixTarget(){
     if(a.down||a.staged){take({kind:"cloudrestore",a,i,pos:SLOTS[i],key:"c"+i},d);return;}
     if(a.breach)take({kind:"breach",a,i,pos:SLOTS[i],key:"b"+i},d);
     else if(a.leakOn)take({kind:"leak",a,i,pos:SLOTS[i],key:"l"+i},d);});
+  {const u=jamUnder(P);if(u)take({kind:"unjam",j:u.j,a:u.j.a,pos:{x:pipeX(u.j),y:laneY(u.j.lane)},key:"u"+u.j.lane},u.d);}
   if(S.tk.length){const d=dist(P,DESK);if(d<75)take({kind:"ticket",t:S.tk[0],pos:DESK,key:"desk"},d);}
   if(S.em.length){const d=dist(P,INBOX);if(d<75)take({kind:"email",m:urgentEmail(),pos:INBOX,key:"inbox"},d);}
   return best;
@@ -2298,8 +2335,8 @@ function approveNear(){
   S.cloud.forEach((a,i)=>{if(a&&a.rsTag&&dist(S.p,SLOTS[i])<RS_REACH){humanWork(true,"rightsize");approveSavings(a,i,"you");clipEv("finops");}});
 }
 /* Routine work is what a junior could do from a checklist: tickets, email, FinOps approvals, patching and inventory.
-   Everything else you do by hand (migrations, pipeline sends, rollbacks, fires, outages, leaks, breaches, cutover
-   retries, freezes, shooing the manager) is skilled work. Only the Outsourced ending reads this. */
+   Everything else you do by hand (migrations, pipeline sends, pipeline repairs, rollbacks, fires, outages, leaks,
+   breaches, cutover retries, freezes, shooing the manager) is skilled work. Only the Outsourced ending reads this. */
 const ROUTINE={ticket:1,email:1,rightsize:1,patch:1,discover:1};
 function humanWork(act=true,kind){if(S.ss){S.ss.human++;if(act){S.ss.acts++;if(ROUTINE[kind])S.ss.routine=(S.ss.routine||0)+1;}}}
 /* Outsourced: a no-AI career, from the 10th client on, where under 15% of your own actions were skilled work.
@@ -2324,6 +2361,13 @@ function doFix(dt){
     f.a.disc=(f.a.disc||0)+dt;f.a.discT=S.t;S.fixNeed=discoverTime();S.fixP=f.a.disc;
     if(f.a.disc<discoverTime())return;
     S.fixP=0;S.fixLock=true;sfx("discover");revealApp(f.a,true);
+    return;
+  }
+  if(f.kind==="unjam"){
+    // repairing a jammed pipeline lane: free like incident work, progress kept if you let go
+    f.j.fix=(f.j.fix||0)+dt;S.fixNeed=PIPE_FIX;S.fixP=f.j.fix;
+    if(f.j.fix<PIPE_FIX)return;
+    S.fixP=0;S.fixLock=true;unjam(f.j,"you");clipEv("unjam");
     return;
   }
   if(f.kind==="cloudrestore"){
@@ -2582,7 +2626,7 @@ function moverBot(b,dt,sp){
   b.work=0;const a=b.tgt;if(a.touchT==null)a.touchT=S.time;if(!S.upgrades.bluegreen)S.racks[a.slot]=null;b.tgt=null;botWork();
   // with a pipeline, the bot always sends servers down a lane; without one, it carries them
   const lane=freePipelineLane();
-  if(lane>=0){S.pipe.push({a,t:0,dur:pipeDur(),lane,byBot:true});sfx("grab");fl(p,"🦾 Into the pipeline",C.leak,2);return;}
+  if(lane>=0){S.pipe.push(pipeJob(a,lane,true));sfx("grab");fl(p,"🦾 Into the pipeline",C.leak,2);return;}
   b.carry=a;b.slot=nearestEmptySlot(606,280);
 }
 // the hint over your head. Each part has an INFO wording, a shorter WARN one, and an ERROR one only for incidents (null hides it)
@@ -2608,6 +2652,7 @@ function buildPrompt(){
     if(f){if(f.kind==="discover")say(`Hold E: investigate unknown server (${Math.max(0,discoverTime()-(f.a.disc||0)).toFixed(1)}s, free)`,"Hold E: investigate");
       else if(f.kind==="cloudrestore")say(`Hold E: retry cutover (${Math.max(0,cloudRebuild(f.a.tier)-f.a.prog).toFixed(1)}s, ${Math.round(successChance(f.a.tier)*100)}%)`,`Hold E: retry ${Math.round(successChance(f.a.tier)*100)}%`,"Hold E");
       else if(f.kind==="restore")say(`Hold E: bring back up (${Math.max(0,TIER[f.a.tier].restore*Math.pow(0.8,retro("firedrill"))-f.a.prog).toFixed(1)}s, free)`,"Hold E: restore","Hold E");
+      else if(f.kind==="unjam")say(`Hold E: repair the jammed pipeline (${Math.max(0,PIPE_FIX-(f.j.fix||0)).toFixed(1)}s, free)`,"Hold E: repair pipeline","Hold E");
       else if(f.kind==="breach")say(`Hold E: contain breach (${Math.max(0,containTime()-f.a.prog).toFixed(1)}s, free)`,"Hold E: contain","Hold E");
       else if(f.kind==="fire")say(S.energy>0.5?"Hold E: extinguish":"Hold E: extinguish (no energy, slow)","Hold E: extinguish","Hold E");
       else if(f.kind==="patch")say(`E: patch (${fixCost(f)}⚡)`,`E: patch ${fixCost(f)}⚡`);
@@ -2739,18 +2784,22 @@ function drawReaders(){
 function drawPipeline(){
   const n=pipeLanes();if(!n)return;
   for(let k=0;k<n;k++){
-    const y=236+k*44,x0=322,x1=640;
-    ctx.fillStyle="rgba(20,30,40,.85)";ctx.fillRect(x0,y-9,x1-x0,18);
-    ctx.strokeStyle="rgba(69,174,252,.55)";ctx.lineWidth=1.5;ctx.strokeRect(x0,y-9,x1-x0,18);
-    ctx.fillStyle="rgba(69,174,252,.35)";for(let cx=x0+((decoT()*40)%22);cx<x1-6;cx+=22){ctx.beginPath();ctx.moveTo(cx,y-5);ctx.lineTo(cx+6,y);ctx.lineTo(cx,y+5);ctx.closePath();ctx.fill();}
+    const y=laneY(k),x0=PIPE_X0,x1=PIPE_X1,jam=S.pipe.some(j=>j.lane===k&&jammed(j));
+    // a jammed lane stops its chevrons and gets a red, slowly pulsing outline (steady under reduced motion)
+    ctx.fillStyle=jam?"rgba(48,20,22,.9)":"rgba(20,30,40,.85)";ctx.fillRect(x0,y-9,x1-x0,18);
+    ctx.strokeStyle=jam?C.danger:"rgba(69,174,252,.55)";ctx.lineWidth=jam?2:1.5;
+    if(jam)ctx.globalAlpha=0.6+0.4*Math.abs(Math.sin(decoT()*3));ctx.strokeRect(x0,y-9,x1-x0,18);ctx.globalAlpha=1;
+    ctx.fillStyle=jam?"rgba(255,107,107,.3)":"rgba(69,174,252,.35)";for(let cx=x0+(jam?0:(decoT()*40)%22);cx<x1-6;cx+=22){ctx.beginPath();ctx.moveTo(cx,y-5);ctx.lineTo(cx+6,y);ctx.lineTo(cx,y+5);ctx.closePath();ctx.fill();}
     if(k===0)tx("CI/CD",x0+18,y-15,8,C.leak,{font:DISP,weight:700});
   }
   for(const j of S.pipe){
-    const y=236+j.lane*44,f=Math.min(1,j.t/j.dur),x=322+(640-322)*f;
+    const y=laneY(j.lane),f=Math.min(1,j.t/j.dur),x=pipeX(j);
     if(liveCopy(j.a)){ctx.globalAlpha=.45;ctx.fillStyle="#7fd4ff";rr(x-16,y-12,32,22,3);ctx.fill();ctx.globalAlpha=1;ctx.strokeStyle="#7fd4ff";ctx.lineWidth=1;rr(x-16,y-12,32,22,3);ctx.stroke();}
     else{ctx.fillStyle="#4b5560";rr(x-16,y-12,32,22,3);ctx.fill();ctx.strokeStyle="#7b8894";ctx.lineWidth=1;rr(x-16,y-12,32,22,3);ctx.stroke();tx("OFF",x,y-1,9,"#cfd8df",{font:DISP,weight:700});}
     tx(j.a.name,x,y-20,8.5,liveCopy(j.a)?C.ink:C.muted,{max:80,weight:600});
     bar(x-16,y+13,32,3,f,C.leak,"rgba(0,0,0,.4)");
+    if(jammed(j)){em("⚠️",x+20,y-10,12);tx(j.fix>0?"REPAIRING":"JAMMED",x,y+24,8,C.danger,{font:DISP,weight:700});
+      if(j.fix>0)bar(x-16,y+29,32,3,j.fix/PIPE_FIX,C.ok,"rgba(0,0,0,.4)");}
   }
 }
 /* Decorative loops (smoke, glow, pulses, glitch bars, drips) read this clock: under reduced motion it stands still,
@@ -3173,7 +3222,7 @@ function healthBars(){
 /* Touch buttons say what they'd do right now (one word, several actions can share it) and go gray when there's
    nothing to do. The button keeps its size and place; long words just get a smaller font. Gray buttons still take
    presses, so holding FIX while you walk up to something works. */
-const FIX_WORDS={discover:"PROBE",restore:"REBOOT",cloudrestore:"RETRY",breach:"SEAL",leak:"SEAL",fire:"DOUSE",patch:"PATCH",email:"REPLY",ticket:"REPLY"};
+const FIX_WORDS={discover:"PROBE",restore:"REBOOT",cloudrestore:"RETRY",breach:"SEAL",leak:"SEAL",fire:"DOUSE",unjam:"UNJAM",patch:"PATCH",email:"REPLY",ticket:"REPLY"};
 function fixWord(){
   const P=S.p,M=S.mgr;
   if(M&&M.state==="patch"&&M.work>0&&M.tgt&&dist(P,RACKS[M.tgt.slot])<80)return"SHOO";
@@ -3347,7 +3396,7 @@ const NOTES=[
   ["Patch or migrate","A patch only covers the current cycle, so every server keeps costing energy until it's migrated.","Patching old systems is technical debt: it buys time but never removes the problem. Migrating or modernizing does."],
   ["License renewals","Move licensed servers before they renew.","License true-ups and renewal dates drive real migration timelines. Missing one can cost a year of fees for software you were about to retire."],
   ["Drift and auto-patching","Cloud apps get riskier the longer they go unpatched, until you buy Cloud Auto-Patching.","Moving to the cloud doesn't make a workload secure by itself. Unpatched images and configuration drift pile up quietly, and automated patching is what keeps a growing fleet from rotting."],
-  ["CI/CD pipeline","The pipeline moves servers for you, in parallel lanes, with tests that raise the odds.","Continuous delivery automates the path to production. Runners are limited, deploys still have a window, and automated tests lower the change failure rate."],
+  ["CI/CD pipeline","The pipeline moves servers for you, in parallel lanes, with tests that raise the odds.","Continuous delivery automates the path to production. Runners are limited, deploys still have a window, and automated tests lower the change failure rate. A flaky pipeline still needs someone to unstick it, and a stuck deploy is downtime."],
   ["DORA metrics","Every review rates deployment frequency, lead time, change failure rate and time to restore.","These four metrics, from the DevOps Research and Assessment program, are how real teams measure delivery performance. Elite teams ship small changes often and recover fast."],
   ["Retrospectives","After each client you pick one fix based on what hurt.","A retro is only useful if it produces a concrete action item the team actually adopts. One change at a time, every time, compounds."],
   ["Cutover windows","Moving a server costs uptime at a quarter of its outage rate, even when it goes well.","Every migration has a maintenance window. Planned downtime is cheaper than an outage, but it still counts against your SLO, so faster, automated moves matter."],
@@ -3476,13 +3525,13 @@ function howToPlay(){
     <div><span class="ic">🧑‍💻</span><span><b>Your avatar.</b> Pick one on the main menu, or type or paste any single emoji into the box. It's only shown on your screen.</span></div>
     <div><span class="ic">👤</span><span><b>Users.</b> They wander the hallway. Bump into one and you're stuck for a "quick question." The better dressed, the longer: an analyst holds you under 2 seconds, the CIO almost 5. Interns just blurt their question as you walk past. Right after someone lets you go, and for the first 2 seconds of each client, nobody can stop you: you blink until that wears off.</span></div>
     <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Hover over (or tap) anything in "Your toolkit" to see what it does. Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. Tools you don't own yet keep turning up: the longer one goes unseen, the likelier it is to show up. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
-    <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. Once you have a pipeline, the Mover Bot only uses it and waits for a free lane; carry servers yourself to go faster. The pipeline and the Mover Bot find a free cloud slot on their own; only you have to walk to one. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at a quarter of its outage rate (blue-green moves burn none).</span></div>
+    <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. The pipeline is flaky: 85–90% of sends jam partway across and the lane stops with its server stuck on the belt, still offline and burning uptime (a blue-green copy burns none). Stand anywhere on that conveyor and hold <kbd>E</kbd> to repair it (free, about 2.5 seconds; progress is kept if you let go). A level 3+ AI Agent can repair it too; temps and bots can't, and no upgrade makes it jam less. Every lane jams on its own. Once you have a pipeline, the Mover Bot only uses it and waits for a free lane (a jammed one stays busy); carry servers yourself to go faster. The pipeline and the Mover Bot find a free cloud slot on their own; only you have to walk to one. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at a quarter of its outage rate (blue-green moves burn none).</span></div>
     <div><span class="ic">📅</span><span><b>Lease target.</b> Each client's data center lease has a target day. Going late never ends the game, but on-prem costs rise 10% per overdue day and the client's rating drops.</span></div>
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and a 4-second speed boost (you glow). 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
     <div><span class="ic">🤖</span><span><b>Patch Bot (upgrade).</b> Patches overdue servers for you, but never fights fires. Level 1 succeeds 50% of the time, level 2 66%, level 3 90%, and each level walks faster. A failed patch leaves a red AUTOMATION ERROR on the rack: patch it yourself to clear it, let an AI Agent trusted with that server tier try at its usual patching odds, or if its compliance timer runs out, the audit fails and the error resets so the bot can try again.</span></div>
     <div><span class="ic">🧠</span><span><b>AI Agent (upgrade, after client 3).</b> A fast purple agent (faster at every level) that answers email, closes tickets, patches servers and seals leaks. Every attempt costs tokens. At level 1 it only touches bronze servers and only half its work is right; the rest does nothing (while claiming success) or breaks something. It works the email and ticket queues once either is half full; otherwise it hunts for fixes on-prem and in the cloud. Level 2 adds silver servers and investigates unknown racks start to finish. Level 3 adds gold, with far better odds, and chases an escalation it caused to the server to clean it up. Level 4 adds guardrails that block harmful actions and answers incidents (fires, outages, breaches, failed cutovers), and you can fire your manager between clients. When it breaks something it apologizes and stays to try one fix, billed in tokens. If that fails, the problem is yours. It also amplifies the practices you already have. Patching improves with Patch Bot, Runbooks and Observability; tickets with Self-Service Portal and Runbooks; email with your Manager and Status Page; leaks with Policy as Code, Vulnerability Scanner and Cloud Auto-Patching. The shop shows its odds for each job and what's missing. Check its ✓ / ✗ marks.</span></div>
     <div><span class="ic">🏆</span><span><b>Automate yourself out of a job.</b> Finish a whole client without doing a single thing yourself and, after the client review the AI agent gets you fired as obsolete. That's a win. Do even one thing (hold E, grab a server, pull a freeze) and you keep your job.</span></div>
-    <div><span class="ic">🌏</span><span><b>Old school (main menu checkbox).</b> A career with no AI upskills: the AI Agent and AI Chatbots never reach the shop. From your 10th client on, if under 15% of what you do by hand is skilled work (migrating, pipeline sends, rollbacks, fires, outages, leaks, breaches, cutover retries, freezes) and the rest is checklist work (tickets, email, patching, investigating, FinOps approvals), the job gets outsourced after the review. That's a win too.</span></div>
+    <div><span class="ic">🌏</span><span><b>Old school (main menu checkbox).</b> A career with no AI upskills: the AI Agent and AI Chatbots never reach the shop. From your 10th client on, if under 15% of what you do by hand is skilled work (migrating, pipeline sends and repairs, rollbacks, fires, outages, leaks, breaches, cutover retries, freezes) and the rest is checklist work (tickets, email, patching, investigating, FinOps approvals), the job gets outsourced after the review. That's a win too.</span></div>
     <div><span class="ic">👔</span><span><b>Your manager (upgrade).</b> Level 1 answers your email, but chats with users and sometimes wanders over to look at a server. Half the time, just looking takes it offline. While they're at a server, hold E there to shoo them away. Each one they break sends them on a slow walk of shame to the inbox, and they stay out of the data center longer every time. Every level speeds up uptime recovery. Level 2 sticks to email. Level 3 also guards your doorway and shoves users out of your way as you cross the hallway.</span></div>
     <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, gets unknown racks 10–75% investigated (you finish the job), then quits. Users ignore them, 15% of their patches take a server down, some only want snacks, and some were never onboarded: their badge doesn't work, so they stand at the door and quit early. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds. <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
     <div><span class="ic">❓</span><span><b>Unknown rack.</b> The client forgot to mention these. Hold E on one to investigate (6 seconds, free) and you'll find it with a healthy timer. Hidden servers never reveal themselves through migration progress. From client 4 on they can be any tier, even gold. They may come with an expired or approaching license. Escalations can ignite unknown racks; going offline reveals them. Asset Inventory cuts investigation time to 3 seconds.</span></div>
@@ -3684,6 +3733,8 @@ const CLIP_LINES={
   fire:["Is it warm in here, or is that the server?","Stop, drop and… migrate?","Have you tried blowing on it?","Fire's just the server expressing itself.","I'm made of steel. You're on your own."],
   fireout:["Saved it. The smell is staying, though.","Fire's out. I was very brave. From over here.","No more fire. Mostly smoke now. Smoke is fine.","Exactly how I'd have done it. Exactly. Slower, though."],
   offline:["I should have stayed home.","I left a perfectly good office supply drawer for this.","My last job was holding paper together. Simpler times.","Have you tried turning it on? Just spitballing.","I'm starting to question what I put on my résumé.","Is it too late to go back to stationery?","Called it. In my head. Very loudly."],
+  jam:["The pipeline jammed. Have you tried a bigger pipeline?","Continuous delivery. Continuously delivering me anxiety.","It's not broken. It's a manual approval gate.","I always said automation was a fad.","Kick it. That's what I'd do. If I had legs."],
+  unjam:["Fixed. I'll add it to my LinkedIn.","Good as new. For this pipeline, that's not saying much.","It'll jam again. I'm saying it now so I get credit later.","See? Hands-on. Like I taught you."],
   restore:["It lives! Mostly.","Let's never speak of this.","Back online. I'll be writing the postmortem. In crayon.","Up again. Just like my anxiety.","Glad you finally took my advice."],
   alert:["AAAAAAAA.","Not the gold one. Anything but the gold one.","Is this in my job description? Checking… no.","I'm not crying. Paperclips can't cry. I'm crying.","Red alert! I'll be… over here. Shaking.","Everybody stay calm! (I am not calm.)"],
   clear:["Okay. Okay okay okay. We're fine.","I was calm the whole time. Ask anyone.","All clear. I'll take my medal now.","Phew. Anyway, as I was saying, gold first."],

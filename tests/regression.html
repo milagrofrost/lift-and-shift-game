@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "K,keyHint,TOUCH,fixWord,grabWord,setSilentPlay,silentBtn,HAS_SESSION,AU,toastsCover,FIX_WORDS,rollbackTarget,tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL,pipeJob,jammed,tickPipeline,sendToPipeline,fixTarget,unjam,jamUnder,laneY,pipeX,PIPE_FIX,PIPE_BREAK_LO,PIPE_BREAK_HI,patchBot").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},get LOGLV(){return LOGLV},setLogLv:v=>{LOGLV=v},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -367,6 +367,95 @@ test("with a pipeline the Mover Bot only uses free lanes and waits when they are
   S = fresh(); ({a, b} = atRack(S));
   G.moverBot(b, 0.05, 85);
   check(b.carry === a && S.pipe.length === 0, "bot used a pipeline that doesn't exist");
+});
+
+/* ---------- pipeline jams ---------- */
+// a pipeline with one server on lane 0, already jammed partway across
+function jamSetup({lanes = 1, bluegreen = false, tier = "gold"} = {}) {
+  const S = fresh({bluegreen}); S.upgrades.pipeline = lanes; S.bots = []; S.carry = null;
+  const a = firstRack(S); a.tier = tier; if (!bluegreen) S.racks[a.slot] = null;
+  const j = {a, t: 0, dur: 6, lane: 0, brk: 0.3}; S.pipe = [j]; G.tickPipeline(5);
+  return {S, a, j};
+}
+test("each pipeline send jams 85-90% of the time, partway across the hallway, whatever you own", () => {
+  check(G.PIPE_BREAK_LO === 0.85 && G.PIPE_BREAK_HI === 0.9, `range ${G.PIPE_BREAK_LO}-${G.PIPE_BREAK_HI}`);
+  for (const kit of [{pipeline: 1}, {pipeline: 3, terraform: true, observe: true, runbooks: true, bluegreen: true, autopatch: true, agent: 4, patchbot: 3, moverbot: true}]) {
+    const S = fresh(); Object.assign(S.upgrades, kit); seed(7);
+    let n = 0, jam = 0;
+    for (; n < 20000; n++) { const j = G.pipeJob({}, 0); if (j.brk != null) { jam++; check(j.brk >= 0.25 && j.brk <= 0.7, `jams at ${j.brk}`); } }
+    check(jam / n > 0.85 && jam / n < 0.9, `jam rate ${(jam / n).toFixed(4)} with ${Object.keys(kit).join(",")}`);
+  }
+  fresh(); fixedRandom(0.84); check(G.pipeJob({}, 0).brk != null, "a low roll did not jam");
+  fixedRandom(0.91); check(G.pipeJob({}, 0).brk == null, "a roll over 90% jammed");
+  // player and Mover Bot sends both roll
+  let S = fresh(); S.upgrades.pipeline = 1; const a = firstRack(S); standAt(S, G.RACKS[a.slot]); fixedRandom(0.5); G.sendToPipeline();
+  check(S.pipe.length === 1 && S.pipe[0].brk != null, "a player send never rolled a jam");
+  S = fresh(); S.upgrades.pipeline = 1; const b = G.mkBot("move"), c = firstRack(S), p = G.RACKS[c.slot]; b.x = p.x; b.y = p.y + 44; b.tgt = c; b.work = 0.99; S.bots = [b];
+  fixedRandom(0.5); G.moverBot(b, 0.05, 85);
+  check(S.pipe.length === 1 && S.pipe[0].byBot && S.pipe[0].brk != null, "a Mover Bot send never rolled a jam");
+});
+test("a jammed server stays stuck on the belt, burning uptime unless it is a blue-green copy", () => {
+  let {S, a, j} = jamSetup();
+  check(G.jammed(j) && near(j.t, 1.8) && S.pipe.length === 1 && !S.cloud.includes(a), `t ${j.t}, jammed ${G.jammed(j)}`);
+  G.tickPipeline(30); check(near(j.t, 1.8) && S.pipe.length === 1 && !S.cloud.includes(a), "a jammed server moved on by itself");
+  check(near(G.migrateBurn(), 0.75), `stuck gold burns ${G.migrateBurn()}`);
+  a.lic = 10; G.tickOnPrem(2); check(a.lic === 10, "license counted down while stuck in the pipeline");
+  const e0 = S.err; G.update(0.5); check(S.err < e0 && G.jammed(j), "stuck server did not drain uptime in play");
+  ({S, a, j} = jamSetup({bluegreen: true}));
+  check(G.jammed(j) && S.racks[a.slot] === a && G.migrateBurn() === 0, `blue-green stuck copy burns ${G.migrateBurn()}`);
+});
+test("you repair a jammed lane by holding E anywhere on that conveyor; it counts as skilled work", () => {
+  const {S, a, j} = jamSetup();
+  S.p.x = 480; S.p.y = G.laneY(0) + 40; G.keys.fix = false; G.doFix(0.05);
+  check(!S.fix || S.fix.kind !== "unjam", "repaired from off the belt");
+  for (const x of [330, 480, 630]) { S.p.x = x; S.p.y = G.laneY(0) + 8; G.doFix(0.05); check(S.fix && S.fix.kind === "unjam" && S.fix.j === j, `no repair target at x ${x}`); }
+  check(G.fixWord() === "UNJAM", `touch word ${G.fixWord()}`);
+  G.setLogLv(1); G.buildPrompt(); check(S.prompt.includes("Hold E: repair pipeline"), `WARN hint "${S.prompt}"`);
+  G.setLogLv(2); G.buildPrompt(); check(/Hold E: repair the jammed pipeline \(2\.5s, free\)/.test(S.prompt), `INFO hint "${S.prompt}"`);
+  G.setLogLv(0); G.buildPrompt(); check(S.prompt === "Hold E", `ERROR hint "${S.prompt}"`); G.setLogLv(1);
+  const acts = S.ss.acts, routine = S.ss.routine || 0, en = S.energy;
+  G.keys.fix = true; for (let k = 0; k < 20; k++) G.doFix(0.05);
+  G.keys.fix = false; G.doFix(0.05); check(G.jammed(j) && near(j.fix, 1, 1e-9), `progress ${j.fix} not kept`);
+  G.keys.fix = true; for (let k = 0; k < 40 && G.jammed(j); k++) G.doFix(0.05); G.keys.fix = false; G.doFix(0.05);
+  check(!G.jammed(j) && j.brk == null, "still jammed after holding E");
+  check(S.ss.acts === acts + 2 && (S.ss.routine || 0) === routine && S.energy === en, `acts ${S.ss.acts - acts}, routine ${(S.ss.routine || 0) - routine}, energy ${en - S.energy}`);
+  G.tickPipeline(10); check(!S.pipe.length && S.cloud.some(c => c && c.orig === a), "server did not carry on after the repair");
+});
+test("only a level 3+ AI agent repairs a jammed pipeline, billed like its other work", () => {
+  for (const L of [1, 2, 3, 4]) {
+    const {S, j} = jamSetup(); S.upgrades.agent = L; S.tk = []; S.em = [];
+    const pick = G.agentPick(); check(L >= 3 ? pick && pick.kind === "unjam" && pick.pj === j : !pick || pick.kind !== "unjam", `level ${L} picked ${pick && pick.kind}`);
+    if (L < 3) continue;
+    S.agent = {x: pick.x, y: pick.y, job: null, work: 0, say: "", sayT: 0, wx: 480, wy: 260, wT: 0};
+    const ai = S.cost.ai || 0, acts = S.ss.acts;
+    for (let k = 0; k < 80 && G.jammed(j); k++) G.tickAgent(0.05);
+    check(!G.jammed(j) && (S.cost.ai || 0) > ai && S.ss.ai.ok >= 1 && S.ss.acts === acts, `level ${L}: jammed ${G.jammed(j)}, billed ${(S.cost.ai || 0) - ai}`);
+  }
+  // level 4 answers incidents first
+  const {S, j} = jamSetup(); S.upgrades.agent = 4; S.tk = []; S.em = []; const r = S.racks.find(x => x && !x.hidden); r.fire = 40;
+  check(G.agentPick().kind === "fire", "level 4 skipped a fire for the pipeline");
+  r.fire = 0; check(G.agentPick().kind === "unjam" && G.agentPick().pj === j, "level 4 ignored the jam after incidents");
+});
+test("temps, Patch Bot and Mover Bot never repair a jammed pipeline", () => {
+  const {S, j} = jamSetup();
+  S.temp = {name: "Temp", x: 480, y: G.laneY(0), t: 60, work: 0, asked: true, snack: false, idle: 0, sayT: 5, wT: 1, wx: 480, wy: 400, tgt: null};
+  const pb = G.mkBot("patch"), mb = G.mkBot("move"); pb.x = mb.x = 480; pb.y = mb.y = G.laneY(0); S.bots = [pb, mb];
+  fixedRandom(0.99);
+  for (let k = 0; k < 100; k++) { G.tickTemp(0.05); G.patchBot(pb, 0.05, 85); G.moverBot(mb, 0.05, 85); }
+  check(G.jammed(j) && !j.fix && S.pipe.length === 1 && !mb.carry, `jammed ${G.jammed(j)}, fix ${j.fix}, pipe ${S.pipe.length}`);
+});
+test("every pipeline lane jams on its own", () => {
+  let S = fresh(); S.upgrades.pipeline = 3; seed(11);
+  const n = 6000, lane = [0, 0, 0]; let all = 0;
+  for (let k = 0; k < n; k++) { const js = [0, 1, 2].map(l => G.pipeJob({}, l)); js.forEach((j, l) => { if (j.brk != null) lane[l]++; }); if (js.every(j => j.brk != null)) all++; }
+  lane.forEach((c, l) => check(c / n > 0.84 && c / n < 0.91, `lane ${l} rate ${c / n}`));
+  check(all / n > 0.6 && all / n < 0.72, `all three jammed ${all / n} (independent would be about 0.67)`);
+  // repairing one lane leaves the others jammed
+  ({S} = jamSetup({lanes: 2}));
+  const j1 = {a: {name: "B", tier: "bronze", slot: 11}, t: 0, dur: 6, lane: 1, brk: 0.5}; S.pipe.push(j1); G.tickPipeline(5);
+  const j0 = S.pipe[0]; check(G.jammed(j0) && G.jammed(j1), "test setup: both lanes should be jammed");
+  S.p.x = 480; S.p.y = G.laneY(0); G.keys.fix = true; for (let k = 0; k < 60 && G.jammed(j0); k++) G.doFix(0.05); G.keys.fix = false; G.doFix(0.05);
+  check(!G.jammed(j0) && G.jammed(j1), "repairing lane 0 changed lane 1");
 });
 
 /* ---------- chatbots ---------- */

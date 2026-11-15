@@ -9,7 +9,7 @@
 // never use it to judge whether a difficulty is winnable. If the game's last line changes, update HOOK here too.
 (()=>{
 const HOOK='newRun();titleScreen();requestAnimationFrame(frame);';
-const EXPOSE='window.__G={S:()=>S,keys,update,tickCelebration,successChance,useFreeze,grab:()=>{grabPressed=true},mode:()=>mode,setDiff:d=>{DIFF=d},ticketLimit,inboxLimit,importantMail,fixCost,devSet,lvl,capNext,clientStars,agentOdds};AU.on=false;MUS.on=false;newRun();titleScreen();';
+const EXPOSE='window.__G={S:()=>S,keys,update,tickCelebration,successChance,useFreeze,grab:()=>{grabPressed=true},mode:()=>mode,setDiff:d=>{DIFF=d},ticketLimit,inboxLimit,importantMail,fixCost,devSet,lvl,capNext,clientStars,agentOdds,jammed:typeof jammed!=="undefined"?jammed:null,laneY:typeof laneY!=="undefined"?laneY:null,pipeX:typeof pipeX!=="undefined"?pipeX:null};AU.on=false;MUS.on=false;newRun();titleScreen();';
 const SKILL={
   expert:{retarget:0.25,patchAt:0.4,tkSlack:1,emSlack:1,leakAt:35,minOdds:0.6,retryMin:0.5,discoverEarly:false,shop:"plan",dodge:1.6,rush:3},
   average:{retarget:0.45,patchAt:0.35,tkSlack:1,emSlack:1,leakAt:45,minOdds:0.45,retryMin:0.4,discoverEarly:false,shop:"plan",dodge:0.8,rush:2},
@@ -60,6 +60,8 @@ async function career({diff="normal",skill="expert",seed=1,maxClients=8,preset=n
     c=cloud.find(o=>o.a.down);if(c)return{pri:7,kind:G.successChance(c.a.tier)<P.retryMin?"rollback":"hold",...C(c)};
     c=racks.find(o=>o.a.down);if(c)return{pri:6,kind:"hold",...R(c)};
     c=racks.filter(o=>o.a.fire>0&&!o.a.hidden).sort((p,q)=>q.a.fire-p.a.fire)[0];if(c)return{pri:6,kind:"hold",...R(c)};
+    // a jammed pipeline lane (games that have them): stand on the belt by the stuck server and hold E
+    if(G.jammed){const pj=S.pipe.find(G.jammed);if(pj)return{pri:6,kind:"hold",x:G.pipeX(pj),y:G.laneY(pj.lane)};}
     const left=racks.length+S.wave.length;
     if(left<=P.rush&&!S.frozen&&S.cloud.some(x=>!x)){const mv=racks.filter(o=>!o.a.hidden&&!o.a.down&&o.a.fire===0&&!S.pipe.some(j=>j.a===o.a)&&!S.cloud.some(x=>x&&x.staged&&x.orig===o.a)).map(o=>({...o,p:G.successChance(o.a.tier)})).sort((p,q)=>q.p-p.p)[0];
       if(mv&&mv.p>=P.minOdds)return{pri:5,kind:"grab",...R(mv),a:mv.a};}
