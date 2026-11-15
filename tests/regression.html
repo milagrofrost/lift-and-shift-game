@@ -461,21 +461,21 @@ function jamSetup({lanes = 1, bluegreen = false, tier = "gold"} = {}) {
   const j = {a, t: 0, dur: 6, lane: 0, brk: 0.3}; S.pipe = [j]; G.tickPipeline(5);
   return {S, a, j};
 }
-test("each pipeline send jams 85-90% of the time, partway across the hallway, whatever you own", () => {
-  check(G.PIPE_BREAK_LO === 0.85 && G.PIPE_BREAK_HI === 0.9, `range ${G.PIPE_BREAK_LO}-${G.PIPE_BREAK_HI}`);
+test("each pipeline send jams 15-20% of the time, partway across the hallway, whatever you own", () => {
+  check(G.PIPE_BREAK_LO === 0.15 && G.PIPE_BREAK_HI === 0.2, `range ${G.PIPE_BREAK_LO}-${G.PIPE_BREAK_HI}`);
   for (const kit of [{pipeline: 1}, {pipeline: 3, terraform: true, observe: true, runbooks: true, bluegreen: true, autopatch: true, agent: 4, patchbot: 3, moverbot: true}]) {
     const S = fresh(); Object.assign(S.upgrades, kit); seed(7);
     let n = 0, jam = 0;
     for (; n < 20000; n++) { const j = G.pipeJob({}, 0); if (j.brk != null) { jam++; check(j.brk >= 0.25 && j.brk <= 0.7, `jams at ${j.brk}`); } }
-    check(jam / n > 0.85 && jam / n < 0.9, `jam rate ${(jam / n).toFixed(4)} with ${Object.keys(kit).join(",")}`);
+    check(jam / n > 0.15 && jam / n < 0.2, `jam rate ${(jam / n).toFixed(4)} with ${Object.keys(kit).join(",")}`);
   }
-  fresh(); fixedRandom(0.84); check(G.pipeJob({}, 0).brk != null, "a low roll did not jam");
-  fixedRandom(0.91); check(G.pipeJob({}, 0).brk == null, "a roll over 90% jammed");
+  fresh(); fixedRandom(0.14); check(G.pipeJob({}, 0).brk != null, "a low roll did not jam");
+  fixedRandom(0.21); check(G.pipeJob({}, 0).brk == null, "a roll over 20% jammed");
   // player and Mover Bot sends both roll
-  let S = fresh(); S.upgrades.pipeline = 1; const a = firstRack(S); standAt(S, G.RACKS[a.slot]); fixedRandom(0.5); G.sendToPipeline();
+  let S = fresh(); S.upgrades.pipeline = 1; const a = firstRack(S); standAt(S, G.RACKS[a.slot]); fixedRandom(0.1); G.sendToPipeline();
   check(S.pipe.length === 1 && S.pipe[0].brk != null, "a player send never rolled a jam");
   S = fresh(); S.upgrades.pipeline = 1; const b = G.mkBot("move"), c = firstRack(S), p = G.RACKS[c.slot]; b.x = p.x; b.y = p.y + 44; b.tgt = c; b.work = 0.99; S.bots = [b];
-  fixedRandom(0.5); G.moverBot(b, 0.05, 85);
+  fixedRandom(0.1); G.moverBot(b, 0.05, 85);
   check(S.pipe.length === 1 && S.pipe[0].byBot && S.pipe[0].brk != null, "a Mover Bot send never rolled a jam");
 });
 test("a jammed server stays stuck on the belt, burning uptime unless it is a blue-green copy", () => {
@@ -532,8 +532,8 @@ test("every pipeline lane jams on its own", () => {
   let S = fresh(); S.upgrades.pipeline = 3; seed(11);
   const n = 6000, lane = [0, 0, 0]; let all = 0;
   for (let k = 0; k < n; k++) { const js = [0, 1, 2].map(l => G.pipeJob({}, l)); js.forEach((j, l) => { if (j.brk != null) lane[l]++; }); if (js.every(j => j.brk != null)) all++; }
-  lane.forEach((c, l) => check(c / n > 0.84 && c / n < 0.91, `lane ${l} rate ${c / n}`));
-  check(all / n > 0.6 && all / n < 0.72, `all three jammed ${all / n} (independent would be about 0.67)`);
+  lane.forEach((c, l) => check(c / n > 0.14 && c / n < 0.21, `lane ${l} rate ${c / n}`));
+  check(all / n > 0.002 && all / n < 0.012, `all three jammed ${all / n} (independent would be about 0.0054)`);
   // repairing one lane leaves the others jammed
   ({S} = jamSetup({lanes: 2}));
   const j1 = {a: {name: "B", tier: "bronze", slot: 11}, t: 0, dur: 6, lane: 1, brk: 0.5}; S.pipe.push(j1); G.tickPipeline(5);
