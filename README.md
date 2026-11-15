@@ -26,7 +26,7 @@ In practice nothing arrives on its own (tickets, email, users, pickups and leaks
 
 ## How it plays
 
-1. Start a career and choose a difficulty.
+1. Start a career and choose a difficulty. Your new VP's welcome email lists the whole job (migrate, patch, tickets, email, watch the cloud). It's never just the migration.
 2. Pick up applications in the on-premises room and carry them through the hallway to the cloud.
 3. Choose migration order carefully: bronze applications build experience for silver and gold cutovers.
 4. Keep BAU moving: answer email, close tickets, patch systems, contain leaks, and restore service.

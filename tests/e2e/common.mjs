@@ -63,6 +63,7 @@ export async function startCareer(page, {tap = false} = {}) {
   const click = async sel => { const el = page.locator(sel); if (tap) await el.tap(); else await el.click(); };
   await click('[data-diff=easy]');
   await click('[data-act=start]');
+  await click('[data-act=hired]'); // the VP's welcome email
   await expect.poll(() => page.evaluate(() => window.__G.mode)).toBe('play');
   // a quiet floor for the first seconds, so a hallway user can't hold the player mid-check
   await page.evaluate(() => { const S = window.__G.S; S.users = []; S.p.userImm = 30; });

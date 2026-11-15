@@ -17,7 +17,11 @@ test('the game opens and a career starts', async ({page}) => {
   await page.goto('/');
   const start = page.locator('[data-act=start]');
   await expect(start).toBeVisible();
-  if (test.info().project.use.hasTouch) await start.tap(); else await start.click();
+  const press = l => test.info().project.use.hasTouch ? l.tap() : l.click();
+  await press(start);
+  // the VP's welcome email, when the live site has it
+  const hired = page.locator('[data-act=hired]');
+  if (await hired.waitFor({timeout: 5000}).then(() => true, () => false)) await press(hired);
   await expect(page.locator('#overlay')).toBeHidden();
   await expect(page.locator('#h-sprint')).toHaveText('#1');
   // the floor keeps drawing: two snapshots of the canvas a second apart differ

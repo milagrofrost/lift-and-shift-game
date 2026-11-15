@@ -23,6 +23,7 @@ export const PRELUDE = `
 export const SCENES = [
   {name: '01-menu', build: `G.setLogLv(1); G.titleScreen();`, mode: 'title'},
   {name: '02-tutorials', build: `G.setLogLv(1); G.titleScreen(); document.querySelector('[data-act=tut]').click();`},
+  {name: '02b-welcome', build: `G.setLogLv(1); G.newRun(); G.titleScreen(); document.querySelector('[data-act=start]').click();`, mode: 'title'},
   {name: '03-start', build: `const S = fresh(); stand(S, {x: 480, y: 280}); tick();`, mode: 'play', touch: {fix: ['FIX', false], grab: ['GRAB', false]}},
   {name: '04-fire', build: `const S = fresh(); const i = known(S); S.racks[i].fire = 40; stand(S, G.RACKS[i]); tick();`,
     mode: 'play', touch: {fix: ['DOUSE', true], grab: [null, false]}, hint: {key: 'Hold E: extinguish', touch: 'Hold DOUSE: extinguish'}},

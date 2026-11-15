@@ -97,7 +97,7 @@ Check text contrast on its actual surface, especially light cloud backgrounds an
 
 ## 7. Intentional exceptions
 
-The resignation letter may use paper colours and serif type; the terminal and old-school boot may use phosphor green; credits may use cinematic scale; the author post may resemble a generic professional feed. Share images can adapt layout and contrast to export dimensions. These exceptions preserve action clarity, real statistics, readable text, and motion preferences. Do not apply their styling to ordinary gameplay controls without a reason.
+The resignation letter may use paper colours and serif type; the terminal and old-school boot may use phosphor green; credits may use cinematic scale; the author post may resemble a generic professional feed; the day-one welcome email may resemble a generic mail client (`.mail`, using the panel tokens). Share images can adapt layout and contrast to export dimensions. These exceptions preserve action clarity, real statistics, readable text, and motion preferences. Do not apply their styling to ordinary gameplay controls without a reason.
 
 ## 8. Consistency review
 
