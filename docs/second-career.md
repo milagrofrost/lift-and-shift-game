@@ -4,6 +4,15 @@ This is the organizing layer for the second-career brainstorm. The raw notes, wi
 
 **Naming (decided):** the first career is **Day 1** and the second is **Day 2**. Day 1 is the project: react, keep the servers from burning, migrate. Day 2 is operations: build processes that keep working after you leave. Older text below still says "first career" and "second career". The tutorial keeps its name but slips in a Day 0 wink ("Paperclip Supply Co. · Day 0"), because Day 0 never existed in our lifetime: we got roped in on Day 1.
 
+**The firm (decided, 15 November 2026):** you work for **Lift & Shift Consulting Ltd.** In Day 1, the VP's email before client 4 announces it is an AI company, and from then on it is **Lift & Shift AI Consulting Ltd.** Day 2 is set after the rename, so every Day 2 mention of the firm (emails, letters, reports, the carnage report, share cards) uses the AI name. Old school careers get the rename too; only their AI upskills are missing.
+
+**Day 1's VP emails (on branch `feature/welcome-email`):** the VP of Strategic Synergies writes before clients 1 to 5, then stops ("Last one from me (probably)").
+1. **Welcome:** your résumé was "very truthful and honest"; the priorities are migrate, patch, tickets, email ("I'll come looking for you") and cloud leaks; "Super easy."
+2. **"Good job, kiddo":** a flat recap of the last client from what actually happened, and "You're welcome for the temp… we can't seem to keep temps around here."
+3. **The unicorn:** clients call you "an absolute unicorn" and want to keep you after go-live; the VP says no, because what happens after the migration "isn't in the contract… that's the client's job." "(They called again this morning. I let it go to voicemail.)" The CEO sends the VP to an AI conference this week; a substitute VP covers the email chasing.
+4. **"OMG. AI is amazing":** the firm becomes Lift & Shift AI Consulting; guardrails, security and token costs are set aside ("We'll circle back on guardrails"); old school careers are excused as "a bit of a Luddite" who now works twice as hard.
+5. **The last one:** you're buzzing from the donut shop; "Repeat until retirement. You do plan on retiring here, right? Don't ever leave us." Old clients keep calling as your "unicorn magic" fades from their environments ("not our problem… nice to have returning customers, right?"). The VP moves on to lead **AI-powered paperclips**.
+
 **Status labels used below**
 - **Decided:** you've chosen it.
 - **Candidate:** a live option, not chosen.
@@ -184,6 +193,17 @@ The running list for world rule 8. **Already in Day 1** means it exists today an
 | The temp's label `TEMP · NAME · 12s` counts down to him leaving | Made full-time: "TEMP" and the countdown vanish, only his name stays | Already in Day 1 |
 | Badge Access Audit denies the VP; he calls Bob or piggybacks through | The VP works around every blocker; his workarounds are Day 2's mess | Already in Day 1 |
 | Running costs on the report; FinOps approvals | Showback: the VP sees his own bill, with his name on it | Already in Day 1 |
+| The VP's welcome email: "If you don't, I'll come looking for you" | You hunt the VP: the tables turn | Day 1 change (in `feature/welcome-email`) |
+| The unicorn email gushes even after 1-star clients; client calls go to voicemail | The VP's want: "to not hear bad news." The VP only ever forwards the good feedback | Day 1 change (in `feature/welcome-email`) |
+| "Not in the contract… that's the client's job" (unicorn email) | Day 2's contract says "sustainable without us"; the "Scope: migrate" card idea | Day 1 change (in `feature/welcome-email`) |
+| "They keep asking if they can keep you around after go-live" | "They asked for you by name" | Day 1 change (in `feature/welcome-email`) |
+| "Unicorn magic fading… nice to have returning customers, right?" (last email) | Why each Day 2 client is back: the magic wore off and nobody else knows how it works | Day 1 change (in `feature/welcome-email`) |
+| "Guardrails… let's set all of that aside. We'll circle back" (AI email) | The VP's guise "Let's circle back after the offsite"; the VP's own guardrail family (budgets) is what got set aside | Day 1 change (in `feature/welcome-email`) |
+| "Last one from me (probably)" | The finale sting: "Per my last email…" | Day 1 change (in `feature/welcome-email`) |
+| "We can't seem to keep temps around here… fair wage, supposedly" | The temp, still "temporary" after years, wants to be hired | Day 1 change (in `feature/welcome-email`) |
+| "Your manager answering your email doesn't count" (last email) | The manager takes the heat; on Day 2 he stops the VP with a priority list | Day 1 change (in `feature/welcome-email`) |
+| The VP's next project: AI-powered paperclips | **Candidate:** the finale's rampant AI is the VP's paperclip project (a nod to the "paperclip maximizer"), tying together Mr Paperclip and Paperclip Supply Co. | Day 1 change (in `feature/welcome-email`) |
+| The firm becomes Lift & Shift AI Consulting at client 4, everywhere it's named | Day 2 uses the AI name throughout; the rename is the moment the guardrails were waved away | Day 1 change (in `feature/welcome-email`) |
 | End-of-client review: stars, sprint points, a report card | The year-end review against the company's goals; the manager turns those goals into the team's priorities | Already in Day 1 (pattern) |
 
 ## 7. The ending
