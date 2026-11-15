@@ -8,6 +8,7 @@ Ideas and loose ends. Nothing here is a commitment.
 - [ ] Play with the three songs and judge how the four music stages ramp.
 - [ ] Try phone controls on more real phones: button size, see-through level, stick feel.
 - [ ] Watch max-level chatbots and the pipeline-only Mover Bot in a live round.
+- [ ] Judge the CI/CD pipeline jams (85–90% of sends, 2.5 s hand repair) over a full career: worth buying, or just toil?
 - [ ] Play engagement 5+ with the AI Agent and judge its odds with and without supporting upgrades.
 - [ ] Judge uptime recovery and the new bronze/silver/gold burn rates over a full career.
 

@@ -42,6 +42,7 @@ Always pair consequential colour with a word, symbol, shape, or progress treatme
 | Developing leak | Droplet, developing-risk bar and escalation cues | Calling it a breach before it becomes one |
 | Fire / outage / active breach / failed cutover | Explicit incident label or recognizable incident symbol plus recovery cue | Colour alone, decoration hiding progress |
 | Migration offline | `OFF` and movement/progress context | Making a planned move indistinguishable from failed cutover |
+| Jammed pipeline lane | Red lane outline, stopped chevrons, `⚠` and `JAMMED` on the stuck `OFF` server; `REPAIRING` with a green bar while someone holds E | Moving chevrons on a stopped lane, or showing where a lane will jam before it does |
 | Unknown rack | `?`, unknown/investigation state and progress | Hidden identity, tier, or future outcome |
 | Unavailable action | Muted treatment; actual disabled controls use disabled semantics | Treating gray touch actions as disabled: they still accept presses |
 
@@ -83,7 +84,7 @@ Persistent state belongs on the affected object or HUD. A progress bar shows amo
 
 Keep toast placement clear of the player's work and respect the existing ticket-queue and player-overlap rules. DEBUG moves event text into the log. ERROR/WARN/INFO verbosity changes wording, not access to essential state; hands-on practice shows at least INFO. Mr Paperclip retains his established exception.
 
-Use clear verbs: PATCH, DOUSE, REBOOT, RETRY, SEAL, PROBE, REPLY, APPROVE, SHOO; GRAB, SHIP, DEPLOY, DROP, TOSS, ROLLBACK. Compact touch vocabulary may differ from explanatory prose, but the same action must mean the same thing everywhere. A restore point restores a past state; rollback restores a failed cutover on-prem. Do not interchange them.
+Use clear verbs: PATCH, DOUSE, REBOOT, RETRY, SEAL, PROBE, UNJAM, REPLY, APPROVE, SHOO; GRAB, SHIP, DEPLOY, DROP, TOSS, ROLLBACK. Compact touch vocabulary may differ from explanatory prose, but the same action must mean the same thing everywhere. A restore point restores a past state; rollback restores a failed cutover on-prem. Do not interchange them.
 
 Put the fact and consequence before the joke. IT satire may exaggerate office culture, but must not misstate actual cost, risk, completion, or recovery. Tutorials, shop descriptions, README, and floor instructions must agree. Keep real-world cost and benchmark disclaimers.
 
