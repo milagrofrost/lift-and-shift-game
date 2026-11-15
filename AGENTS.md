@@ -4,7 +4,7 @@
 
 Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance, compliance, service recovery, security, and financial pressure. The player starts overwhelmed and progressively builds systems that make routine work manageable.
 
-- Mature automation should be a net positive. Early tools can be unreliable; upgrades should visibly reduce toil and intervention. The CI/CD pipeline is a deliberate exception: it stays flaky at every level (15–20% of sends jam), and only a level 3+ AI agent takes the repairs off your hands. Do not "fix" that with an upgrade that lowers the jam rate.
+- Mature automation should be a net positive. Early tools can be unreliable; upgrades should visibly reduce toil and intervention.
 - Keep meaningful tension without making recovery an uncontrollable cascade of failures.
 - Preserve humor and IT satire, but make cause and effect understandable.
 - Routine maintenance is not an emergency. Distinguish healthy, covered, maintenance-needed, and failed states visually.
