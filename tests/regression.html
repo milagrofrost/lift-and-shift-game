@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("aiCo,CO,letter,rumorBlock,RUMORS,crowd,userLines,alertLines,humanLines,BREAK_CLIENTS,welcomeMail,mailRecap,unicornMail,aiMail,lastMail,spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "K,keyHint,TOUCH,fixWord,grabWord,setSilentPlay,silentBtn,HAS_SESSION,AU,toastsCover,FIX_WORDS,rollbackTarget,tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL,pipeJob,jammed,tickPipeline,sendToPipeline,fixTarget,unjam,jamUnder,laneY,pipeX,PIPE_FIX,PIPE_BREAK_LO,PIPE_BREAK_HI,patchBot,tickJamAlarm,JAM_BUZZ_FIRST,JAM_BUZZ_EVERY," +
+  "SELFTEST,loadIn,LOADIN,moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL,pipeJob,jammed,tickPipeline,sendToPipeline,fixTarget,unjam,jamUnder,laneY,pipeX,PIPE_FIX,PIPE_BREAK_LO,PIPE_BREAK_HI,patchBot,tickJamAlarm,JAM_BUZZ_FIRST,JAM_BUZZ_EVERY," +
   "infected,CLONE_MAX,FORK_COST,spawnAgent,ciOffered,ciLeft,ciLockable,CI_NEW,salary,salaryText,tickSpecials,client,lvl").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},get LOGLV(){return LOGLV},setLogLv:v=>{LOGLV=v},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
@@ -1078,9 +1078,25 @@ test("the obsolete ending fades to black, shows the credits, boots LaS OS, then 
   check(text.indexOf("Matt Frost") < text.indexOf("his boss") && text.indexOf("his boss") < text.indexOf("Claude Opus 5.5"), "credits out of order");
   const boot = roll.querySelector(".boot");
   check(boot && boot.textContent.includes("LaS OS") && boot.querySelector(".bar"), "no LaS OS boot screen with a progress bar");
+  const bsod = roll.querySelector(".bsod");
+  check(bsod && bsod.textContent.includes("HUMAN_NOT_FOUND") && W.getComputedStyle(bsod).display === "none", "no hidden blue crash screen before the reboot");
+  const st = roll.querySelector(".selftest");
+  check(st && W.getComputedStyle(st).display === "none" && G.SELFTEST.length > 20 && G.SELFTEST.includes("every inline script parses"), "no hidden fake regression self-test after the reboot");
+  // it can't be skipped: keys and clicks do nothing (and don't open the terminal)
   W.dispatchEvent(new W.KeyboardEvent("keydown", {code: "Backquote", key: "`"}));
-  check(G.mode !== "credits" && doc.querySelector('[data-act="start"]'), "a key press did not skip to the main menu");
-  check(W.document.getElementById("devterm").hidden, "the skip key also opened the terminal");
+  W.dispatchEvent(new W.KeyboardEvent("keydown", {code: "Escape", key: "Escape"}));
+  roll.click();
+  check(G.mode === "credits" && !doc.querySelector('[data-act="start"]'), "a key or click skipped the ending");
+  check(W.document.getElementById("devterm").hidden, "a key in the credits opened the terminal");
+  check(!roll.querySelector(".skip") && !/skip/i.test(roll.textContent.replace(/skipping/g,"")), "the credits still offer a skip");
+  // after the reboot the floor loads on black; when it's done, the menu goes on top of that same floor
+  G.loadIn(); const loadingS = G.S;
+  check(G.LOADIN.on && doc.documentElement.classList.contains("loadin") && doc.getElementById("overlay").hidden, "the floor isn't loading on black before the menu");
+  W.dispatchEvent(new W.KeyboardEvent("keydown", {code: "KeyQ", key: "q"}));
+  check(G.LOADIN.on && G.mode === "credits", "a key skipped the load-in");
+  G.creditsDone();
+  check(!G.LOADIN.on && !doc.documentElement.classList.contains("loadin") && G.S === loadingS && doc.querySelector('[data-act="start"]'), "the load-in didn't land on the menu over the loaded floor");
+  check(!doc.querySelector(".wrap>.li-on"), "the HUD load-in left its classes behind");
   G.showEnd("uptime"); check(doc.querySelector('[data-act="again"]') && !doc.querySelector('[data-act="credits"]') && !doc.querySelector('[data-act="oldcredits"]'), "other endings lost play again or got credits");
   G.showEnd(null); check(!doc.querySelector('[data-act="oldcredits"]'), "retiring got the old school credits");
 });
@@ -1098,8 +1114,11 @@ test("the outsourced ending offers its own credits with a retro green LaS OS boo
   const boot = roll.querySelector(".boot");
   check(boot && boot.textContent.includes("LaS OS") && boot.querySelector(".bar"), "no LaS OS boot screen with a progress bar");
   check(W.getComputedStyle(boot).fontFamily.includes("Mono"), "the boot screen is not retro");
+  check((roll.querySelector(".bsod")||{}).textContent?.includes("POSITION_OUTSOURCED"), "the outsourced crash screen doesn't say so");
   roll.click();
-  check(G.mode !== "credits" && doc.querySelector('[data-act="start"]'), "a click did not skip to the main menu");
+  check(G.mode === "credits", "a click skipped the outsourced ending");
+  G.creditsDone();
+  check(G.mode !== "credits" && doc.querySelector('[data-act="start"]'), "the outsourced ending didn't end on the main menu");
 });
 test("a level 4 AI agent lets you fire your manager; the freeze and recovery stay, the walker goes", () => {
   const S = fresh(), doc = W.document; S.upgrades = {agent: 3, manager: 3}; S.career = [{name: "A", days: 1, stars: 4, late: 0}];
