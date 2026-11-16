@@ -706,6 +706,24 @@ test("the walk of shame goes straight to the inbox at a slow pace", () => {
   G.tickManager(1); check(S.mgr.state === "shame" && near(S.mgr.y, 248), `y ${S.mgr.y}`);
   S.mgr.y = 99; G.tickManager(1); check(S.mgr.state === "email", `state ${S.mgr.state}`);
 });
+test("a level 2+ manager seeks out a pizza party and opens it; level 1 doesn't", () => {
+  for (const L of [1, 2, 3]) {
+    for (const from of ["idle", "guard", "email"]) {
+      const S = fresh(); S.upgrades.manager = L; G.spawnManager(); S.mgr.state = from; S.mgr.dec = 5; S.pizza = null;
+      const z = {kind: "pizza", x: 500, y: 200, life: 14}; S.sp = [z]; S.em = [{type: "legal", age: 1}];
+      for (let i = 0; i < 80 && !S.pizza; i++) { z.life = 14; G.tickManager(0.05); }
+      if (L < 2) { check(!S.pizza && S.sp.includes(z) && S.mgr.state !== "pizza", `level 1 went for the pizza from ${from}`); continue; }
+      check(S.pizza && near(S.pizza.x, 500) && near(S.pizza.t, 15) && !S.sp.length && S.mgr.state === "idle", `level ${L} from ${from}: pizza ${!!S.pizza}, state ${S.mgr.state}`);
+    }
+  }
+  const S = fresh(); S.upgrades.manager = 2; G.spawnManager(); S.mgr.state = "idle"; S.mgr.dec = 5;
+  const z = {kind: "pizza", x: 500, y: 200, life: 14}; S.sp = [z]; G.tickManager(0.05); check(S.mgr.state === "pizza", "didn't head for it");
+  S.sp = []; G.tickManager(0.05); check(S.mgr.state === "idle" && !S.pizza, "kept chasing a pizza someone else took");
+  const u = {x: 450, y: 300, mgrChat: true}; S.users = [u]; S.mgr.state = "chat"; S.mgr.tgt = u; S.sp = [{kind: "pizza", x: 500, y: 200, life: 14}];
+  G.tickManager(0.05); check(S.mgr.state === "pizza" && !u.mgrChat, "small talk kept the user frozen");
+  const w = {kind: "window", x: 500, y: 200, life: 14}; S.sp = [w]; S.mgr.state = "idle"; S.mgr.dec = 5; S.mgr.x = 500; S.mgr.y = 200;
+  G.tickManager(0.05); check(S.sp.includes(w) && !S.window, "the manager picked up a non-pizza special");
+});
 test("a finance reply, yours or the manager's, extends the closest license and marks that server to glitter", () => {
   const setup = () => { const S = fresh(); const apps = S.racks.filter(Boolean); apps.forEach(x => { x.lic = 0; x.glitter = undefined; }); apps[0].lic = 30; apps[1].lic = 10; return {S, near: apps[1], far: apps[0]}; };
   let {S, near: n, far: f} = setup(); S.t = 5;
