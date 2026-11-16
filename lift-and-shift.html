@@ -2164,9 +2164,9 @@ function finishEngagement(){
   {const ss=S.ss;S.jig=S.jig||{h:0,t:0};S.jig.h+=ss.acts||0;S.jig.t+=(ss.acts||0)+(ss.bot||0)+(ss.ai?ss.ai.n:0);}
   S.career.push({name:c.name,stars:st,days:dayNum(),late:overdue(),spend:Math.round(S.ss.budget0-S.budget),cap:capNext()});
   // not one action from the human for the whole client: the job runs itself, and the AI agent knows it
-  // once you've taken a pay cut, every client already ends with "another pay cut, or retire?", so no more firing meetings
-  S.obsolete=!S.ss.human&&!S.payCuts;
-  S.outsourced=!S.obsolete&&!S.payCuts&&outsourced();
+  // (a pay cut doesn't protect you: do it again and the same meeting offers another cut)
+  S.obsolete=!S.ss.human;
+  S.outsourced=!S.obsolete&&outsourced();
   S.bots.forEach(b=>{b.tgt=null;b.carry=null;});
   if(!S.tut)try{const b=+(localStorage.getItem("liftshift-clients")||0);if(S.career.length>b)localStorage.setItem("liftshift-clients",String(S.career.length));}catch(e){}
   if(S.upgrades.clip)S.clipDays=(S.clipDays||0)+dayNum(); // for his memorial in the old school credits
@@ -3811,7 +3811,7 @@ function howToPlay(){
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and a 4-second speed boost (you glow). 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
     <div><span class="ic">🤖</span><span><b>Patch Bot (upgrade).</b> Patches overdue servers for you, but never fights fires. Level 1 succeeds 50% of the time, level 2 66%, level 3 90%, and each level walks faster. A failed patch leaves a red AUTOMATION ERROR on the rack: patch it yourself to clear it, let an AI Agent trusted with that server tier try at its usual patching odds, or if its compliance timer runs out, the audit fails and the error resets so the bot can try again.</span></div>
     <div><span class="ic">🧠</span><span><b>AI Agent (upgrade, after client 3).</b> A fast purple agent (faster at every level) that answers email, closes tickets, patches servers and seals leaks. Every attempt costs tokens. At level 1 it only touches bronze servers and only half its work is right; the rest does nothing (while claiming success) or breaks something. It works the email and ticket queues once either is half full; otherwise it hunts for fixes on-prem and in the cloud. Level 2 adds silver servers and investigates unknown racks start to finish. Level 3 adds gold, with far better odds, and chases an escalation it caused to the server to clean it up. Level 4 adds guardrails that block harmful actions and answers incidents (fires, outages, breaches, failed cutovers), and you can fire your manager between clients. When it breaks something it apologizes and stays to try one fix, billed in tokens. If that fails, the problem is yours. Some things are beyond it, and the apology is billed anyway: level 1 can't bring back a server it knocked offline, and below level 3 it can't put out a fire its escalation started. Level 3 walks over and puts it out with its digital extinguisher. It also amplifies the practices you already have. Patching improves with Patch Bot, Runbooks and Observability; tickets with Self-Service Portal and Runbooks; email with your Manager and Status Page; leaks with Policy as Code, Vulnerability Scanner and Cloud Auto-Patching. The shop shows its odds for each job and what's missing. Check its ✓ / ✗ marks.</span></div>
-    <div><span class="ic">🏆</span><span><b>Automate yourself out of a job.</b> Finish a whole client without doing a single thing yourself and, after the client review the AI agent gets you fired as obsolete. That's a win. Do even one thing (hold E, grab a server, pull a freeze) and you keep your job. Or take a pay cut at the meeting and stay; HR will ask for another after every client until you retire.</span></div>
+    <div><span class="ic">🏆</span><span><b>Automate yourself out of a job.</b> Finish a whole client without doing a single thing yourself and, after the client review the AI agent gets you fired as obsolete. That's a win. Do even one thing (hold E, grab a server, pull a freeze) and you keep your job. Or take a pay cut at the meeting and stay. Do it again and the meeting offers another one.</span></div>
     <div><span class="ic">🌏</span><span><b>Old school (main menu checkbox).</b> A career with no AI upskills: the AI Agent and AI Chatbots never reach the shop. From your 10th client on, if under 15% of what you do by hand is skilled work (migrating, pipeline sends and repairs, rollbacks, fires, outages, leaks, breaches, cutover retries, freezes) and the rest is checklist work (tickets, email, patching, investigating, FinOps approvals), the job gets outsourced after the review. That's a win too.</span></div>
     <div><span class="ic">👔</span><span><b>Your manager (upgrade).</b> Level 1 answers your email, but chats with users and sometimes wanders over to look at a server. Half the time, just looking takes it offline. While they're at a server, hold E there to shoo them away. Each one they break sends them on a slow walk of shame to the inbox, and they stay out of the data center longer every time. Every level speeds up uptime recovery. Level 2 sticks to email. Level 3 also guards your doorway and shoves users out of your way as you cross the hallway.</span></div>
     <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, gets unknown racks 10–75% investigated (you finish the job), then quits. Users ignore them, 15% of their patches take a server down, some only want snacks, and some were never onboarded: their badge doesn't work, so they stand at the door and quit early. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds. <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
@@ -4220,18 +4220,18 @@ function obsoleteBlock(){
   return`<div class="modcard" style="border-color:var(--ai)">🧠 ${who} ${client().name} went from start to finish without a single action from you. ${ai?"The agent did all of it, and it has run the numbers on your salary.":"The bots did all of it. Finance has noticed that your salary is the last on-prem cost."}</div>
   <div class="row"><button class="btn" data-act="obsolete">${!ai?"Go to the meeting with HR":S.bossFired?"Go to your 1:1 with the AI agent":"Go to the meeting with your manager"}</button>${payCutBtn()}</div>`;
 }
-/* Pay cuts: instead of being let go (obsolete or outsourced), take a pay cut and stay. From the next client on, every
-   review asks again: another pay cut, or retire. Each cut is $25k, so the fifth one has you paying them to work there.
+/* Pay cuts: offered only at the obsolete or outsourced meeting, instead of being let go. Get there again and the
+   meeting offers another one. Each cut is $25k, so the fifth one has you paying them to work there.
    Salary is flavor only: it never touches the budget or the score. */
 const PAY_BASE=100,PAY_CUT=25;
 const salary=(n=S.payCuts||0)=>PAY_BASE-PAY_CUT*n;
 const salaryText=k=>k>0?`$${k}k a year`:k===0?"$0 a year (for the exposure)":`−$${-k}k a year (you pay them)`;
 const payCutBtn=()=>`<button class="btn ghost" data-act="paycut">💸 Take a pay cut and stay · ${salaryText(salary())} → ${salaryText(salary((S.payCuts||0)+1))}</button>`;
 const PAYCUT_LINES=["HR has a new compensation plan for you. It's shorter.","Finance found one more on-prem cost to cut: you.","The AI agent drafted your new offer letter. It used the word \"synergy\" four times.","Your salary has been right-sized. FinOps approved.","Leadership loves your commitment. They'd love it more for less."];
-function payCutBlock(nx){
-  const k=salary(),nk=salary((S.payCuts||0)+1),line=PAYCUT_LINES[(S.payCuts||0)%PAYCUT_LINES.length];
-  return`<div class="modcard" style="border-color:var(--amber)">💸 <b>${line}</b> To keep you on for ${nx.name}, it's another $${PAY_CUT}k off: ${salaryText(k)} → <b>${salaryText(nk)}</b>.${nk<0?" Yes, you'd be paying them to work here. That's crazy, right?":nk===0?" You'd be working for free.":""} Or you could retire.</div>
-  <div class="row"><button class="btn" data-act="paycutnext">💸 Take the pay cut · start ${nx.short}</button><button class="btn ghost" data-act="retire">Retire and see your career</button></div>`;
+// shown in the review right after you take a cut, in place of the meeting
+function payCutNote(){
+  const k=salary(),line=PAYCUT_LINES[(S.payCuts-1)%PAYCUT_LINES.length];
+  return`<div class="modcard" style="border-color:var(--amber)">💸 <b>${line}</b> Pay cut taken: your salary is now <b>${salaryText(k)}</b>.${k<0?" You're paying them to work here. That's crazy, right?":k===0?" You're working for free.":""}</div>`;
 }
 // with an AI agent on the team and only a handful of human actions, say what kept you employed
 /* A rumor when you did under 25% of this client's work (your actions against AI agent attempts and Patch Bot / Mover Bot
@@ -4247,7 +4247,7 @@ const WORK_RUMORS=[
 ];
 function handsBlock(){
   const ss=S.ss,acts=ss.acts||0,all=acts+(ss.bot||0)+(ss.ai?ss.ai.n:0);
-  if(!lvl("agent")||S.obsolete||S.payCuts||S.tut||!acts||!all||acts/all>=WORK_RUMOR_AT)return"";
+  if(!lvl("agent")||S.obsolete||S.tut||!acts||!all||acts/all>=WORK_RUMOR_AT)return"";
   const pct=Math.max(1,Math.round(acts/all*100)),[q,who,where]=WORK_RUMORS[S.sprint%WORK_RUMORS.length];
   return`<div class="rumor">🐦 <b>Heard a rumor…</b><p>"${q}"</p><cite>${who}, ${where}</cite><small>⚠️ You did ${pct}% of the work at this client (${acts} of ${all} jobs); the AI agent and the bots did the rest. Isn't it so cool that AI can do almost your whole job?! I'm sure nothing bad will happen from this. I dare you to just stand around and do nothing for a whole engagement. That would be so funny.</small></div>`;
 }
@@ -4287,7 +4287,7 @@ function review(){
   ${owned}
   ${S.tut?`${clipNote(`That's the whole loop: migrate a client, read the report, upskill, take on a bigger client. When you're done shopping, finish the tutorial.`)}
   <div class="row"><button class="btn" data-act="tutdone">Finish the tutorial</button></div>`:`<div class="modcard">Next client: <b>${nx.name}.</b> ${cnt} known servers (plus whatever they forgot to mention)${cnt+nec.hidden.length>12?`. Too big for one room, so they'll arrive in ${Math.ceil((cnt+nec.hidden.length)/12)} waves`:""}. Lease target: ${nec.days} days.${nx.trait?` <b>${nx.trait.name}:</b> ${nx.trait.desc}`:""}</div>
-  ${S.payCuts&&S.payCutAt!==S.sprint?payCutBlock(nx):`${S.payCuts?`<p style="font-size:13.5px">💸 Pay cut taken. Your salary is now <b>${salaryText(salary())}</b>. HR will be in touch after every client from now on.</p>`:""}<div class="row"><button class="btn" data-act="next">Start engagement: ${nx.short}</button><button class="btn ghost sm" data-act="retire">Retire and see your career</button></div>`}`}`;
+  ${S.payCuts&&S.payCutAt===S.sprint?payCutNote():""}<div class="row"><button class="btn" data-act="next">Start engagement: ${nx.short}</button><button class="btn ghost sm" data-act="retire">Retire and see your career</button></div>`}`;
   show(`<div class="eyebrow">Engagement ${S.sprint} · complete</div><h2>${done.name}</h2>
   <div class="row"><div class="stars" aria-label="${done.stars} of 5 stars">${stars(done.stars)}</div><div style="color:var(--muted);font-size:13.5px">Client satisfaction. Promoted to <b style="color:var(--ink)">${careerTitle()}</b>.</div></div>
   ${clipNote(`This is the <b>end-of-client report</b>. The stars are the client's rating, and they're your career score: breaches, three or more failed audits, using up half the uptime budget and finishing past the lease target each cost stars. Below them is what actually happened, money included. Every client gets one of these.`)}
@@ -4948,9 +4948,7 @@ ov.addEventListener("click",e=>{
   else if(a==="fireboss"){if(lvl("agent")>=4&&lvl("manager")&&!S.bossFired){S.bossFired=true;S.mgr=null;sfx("fired");S.offers=S.offers.filter(id=>id!=="manager");}review();}
   else if(a==="reroll")reroll();
   else if(a==="cino"){S.retroAsk=null;review();}
-  else if(a==="paycut"){if(S.obsolete||S.outsourced){S.payCuts=(S.payCuts||0)+1;S.payCutAt=S.sprint;S.obsolete=S.outsourced=false;sfx("buy");}review();}
-  else if(a==="paycutnext"){S.payCuts=(S.payCuts||0)+1;S.payCutAt=S.sprint;sfx("buy");goNext();}
-  // adopting it reshuffles this sprint's shelf too, so it starts working right away
+  else if(a==="paycut"){if(S.obsolete||S.outsourced){S.payCuts=(S.payCuts||0)+1;S.payCutAt=S.sprint;S.obsolete=S.outsourced=false;sfx("buy");}review();}  // adopting it reshuffles this sprint's shelf too, so it starts working right away
   else if(a==="ciyes"){if(!S.retroPick&&ciOffered()){S.ciLock=ciLockable().map(u=>u.id);S.retroPick="ci";S.retro.ci=1;S.retroAsk=null;sfx("buy");S.offers=rollOffers();shownOffers(S.offers);}review();}
   else if(a==="restart"){newRun();welcomeMail();}
   else if(a==="menu"){newRun();titleScreen();}

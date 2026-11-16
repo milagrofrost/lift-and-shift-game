@@ -1186,13 +1186,23 @@ test("the retrospective always has exactly 3 options; once seen, Continuous impr
   check(ids().length === 3 && ids().includes("ci"), `ci dropped after being seen: ${ids()}`);
   S.retro.ci = 1; check(!ids().includes("ci") && ids().length === 3, `ci still offered after choosing it: ${ids()}`);
 });
-test("a pay cut keeps the job; from then on every client asks: another pay cut, or retire", () => {
-  const doc = W.document; let S = fresh(); S.upgrades.agent = 4; S.ss.human = 0; G.finishEngagement();
+test("a pay cut is offered only at the obsolete or outsourced meeting, and keeps the job", () => {
+  const doc = W.document; let S = fresh(); S.upgrades.agent = 4; S.ss.human = 3; G.finishEngagement();
+  check(!doc.querySelector('[data-act="paycut"]'), "pay cut offered without being made obsolete");
+  S.ss.human = 0; G.finishEngagement();
   check(doc.querySelector('[data-act="paycut"]'), "no pay cut option at the firing meeting");
   doc.querySelector('[data-act="paycut"]').click();
-  check(S.payCuts === 1 && !S.obsolete && doc.querySelector('[data-act="next"]') && !doc.querySelector('[data-act="paycutnext"]'), "the pay cut didn't keep the job");
+  check(S.payCuts === 1 && !S.obsolete && doc.querySelector('[data-act="next"]') && doc.querySelector(".card").textContent.includes("$75k"), "the pay cut didn't keep the job");
+  // the next client: a normal review, no pay cut question
+  S.sprint++; S.ss.human = 3; G.finishEngagement();
+  check(!S.obsolete && doc.querySelector('[data-act="next"]') && !doc.querySelector('[data-act="paycut"]') && !doc.querySelector(".card").textContent.includes("Pay cut taken"), "a normal client still asked about pay");
+  // hands-off again: the meeting comes back, offering the next cut
   S.sprint++; S.ss.human = 0; G.finishEngagement();
-  check(!S.obsolete && doc.querySelector('[data-act="paycutnext"]') && doc.querySelector('[data-act="retire"]') && !doc.querySelector('[data-act="next"]'), "the next client didn't ask for another pay cut");
+  check(S.obsolete && doc.querySelector('[data-act="paycut"]').textContent.includes("$75k a year → $50k a year"), "being obsolete again didn't offer another cut");
+  doc.querySelector('[data-act="paycut"]').click(); check(S.payCuts === 2, "second cut not taken");
+  S.noAI = true; S.upgrades = {}; S.sprint++; S.ss.human = 0; G.finishEngagement();
+  check(doc.querySelector('[data-act="paycut"]'), "no pay cut at the HR meeting without an agent");
+  S.sprint++; S.ss.human = 3; G.finishEngagement();
   check(G.salaryText(G.salary(5)).includes("you pay them") && G.salary(4) === 0, "the fifth cut isn't you paying them");
   doc.querySelector('[data-act="retire"]').click();
   check(G.mode === "end" && doc.querySelector(".stamp.retired") && doc.querySelector(".card").textContent.includes("pay cut"), "retiring after pay cuts");
