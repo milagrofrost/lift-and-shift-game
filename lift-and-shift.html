@@ -750,7 +750,7 @@ const UPGRADES=[
   {id:"vendor",name:"Vendor Negotiation",icon:"🤝",cost:2,max:3,desc:"License renewals cost 20% less per level."},
   {id:"manager",name:"A Manager Who Fights for You",icon:"👔",cost:5,max:3,desc:"All levels automatically call a change freeze for gold outages or breaches (10/14/18 seconds; cooldown 60/50/40 seconds). They also speed up uptime recovery. Level 1: answers your email, but chats with users and sometimes wanders over to look at a server (half the time, it goes offline; hold E at that server to shoo them away). Each server they break keeps them out of the data center longer. Level 2: focuses on email and rarely touches servers. Level 3: also stands guard at your doorway and shoves users out of your way as you cross the hallway."},
   {id:"clip",name:"Mr Paperclip · Reverse Shadow",icon:"📎",cost:2,desc:"A senior migration assistant reverse shadows you: helpful insights and coaching through every migration, at your shoulder in every client. +1⚡ every time he says something. Results may vary. Results will vary."},
-  {id:"agent",name:"AI Agent",icon:"🧠",cost:6,max:4,ai:true,req:()=>S.career.length>=3,desc:"Answers email, closes tickets, patches servers and seals leaks, fast, anywhere, and faster at every level. Every attempt costs tokens. When either queue is half full it works the queues; otherwise it hunts for fixes on-prem and in the cloud. L1 pilot, bronze servers only: 50% right, 25% does nothing, 25% breaks something. L2 better instructions, adds silver: 80/15/5, and investigates unknown racks start to finish. L3 agentic workflows, adds gold: 90/7/3, and chases an escalation it caused to the server to clean it up. L4 guardrails and evals: harmful actions get blocked, it fights fires, restores outages, contains breaches and retries failed cutovers, and you can fire your manager. When it breaks something it apologizes and tries once to fix it (40% at L1, 60% at L2, 80% at L3). It amplifies what you already have: with good foundations for a job, it's right far more often."},
+  {id:"agent",name:"AI Agent",icon:"🧠",cost:6,max:4,ai:true,req:()=>S.career.length>=3,desc:"Answers email, closes tickets, patches servers and seals leaks, fast, anywhere, and faster at every level. Every attempt costs tokens. When either queue is half full it works the queues; otherwise it hunts for fixes on-prem and in the cloud. L1 pilot, bronze servers only: 50% right, 25% does nothing, 25% breaks something. L2 better instructions, adds silver: 80/15/5, and investigates unknown racks start to finish. L3 agentic workflows, adds gold: 90/7/3, and chases an escalation it caused to the server to clean it up. L4 guardrails and evals: harmful actions get blocked, it fights fires, restores outages, contains breaches and retries failed cutovers, and you can fire your manager. When it breaks something it apologizes (billed in tokens) and tries once to fix it (40% at L1, 60% at L2, 80% at L3), except that L1 can't bring back a server it knocked offline and below L3 it can't put out a fire its escalation started. It amplifies what you already have: with good foundations for a job, it's right far more often."},
   {id:"chatbot",name:"AI Chatbots",icon:"💬",cost:4,max:2,ai:true,desc:"A chatbot roams the hallway, chats up users and resolves them. A user being chatted up can't grab you. Sometimes they just want a human and run around the hallway yelling for one. Each level adds a bot."},
 ];
 
@@ -1412,23 +1412,46 @@ function agentFollowEsc(j){
   const p=t&&S.racks[t.slot]===t?RACKS[t.slot]:t&&e.waitAt?e.waitAt:!e.dead?e:null;
   if(p){j.x=p.x;j.y=p.y+44;}
 }
-// one attempt to undo the damage; a failed repair stays the player's problem and never breaks anything further
+/* One attempt to undo the damage; a failed repair stays the player's problem and never breaks anything further.
+   Some damage is beyond it, and the apology is billed anyway: level 1 can't bring back a server it knocked offline,
+   and below level 3 it can't put out a fire its escalation started (it never walks over, and there is no remote
+   extinguisher). Level 3+ walks over and puts the fire out with its digital extinguisher (agentDouse).
+   Returns "douse" when the repair worked and a fire still needs putting out. */
+const AGENT_CANT="Sorry, I can't fix that.";
+function agentCantFix(j,L){
+  if(j.of==="patch")return L<2;
+  if(j.of!=="ticket"||j.follow||!j.esc.dead)return false;
+  const t=j.esc.a;return !!(t&&S.racks[t.slot]===t&&t.fire>0);
+}
+const agentFireRate=()=>(S.upgrades.runbooks&&modId()!=="vacation")?75:48;
 function agentFinishRepair(j,L,G){
   spend("ai",G.cost);S.ss.ai.cost+=G.cost;
   fl({x:S.agent.x,y:S.agent.y-10},`🪙 Apology tokens · −$${G.cost.toFixed(1)}k`,C.muted,2);
+  if(agentCantFix(j,L)){sfx("migrateFail");agentSay(AGENT_CANT,1.8);const t=j.of==="patch"?j.a:j.esc.a,nm=t.hidden?"the unknown rack":t.name;
+    toast(j.of==="patch"?`🧠 The AI agent can't bring ${nm} back online yet. That one's yours.`:`🧠 The AI agent can't put out fires yet. The fire on ${nm} is yours.`);return;}
   if(Math.random()>=agentFixOdds(j.of,L)){sfx("migrateFail");agentSay(pick(AGENT_UNFIXED));toast("🧠 The AI agent couldn't undo its mistake. That one's yours now.");return;}
   sfx("online");agentSay(pick(AGENT_FIXED));
   if(j.of==="patch"){noteRestored(j.a);j.a.down=false;j.a.timer=Math.max(j.a.timer,j.a.maxT*0.5);j.a.agentMark={k:"ok",t:S.t};toast(`🧠 The AI agent apologized and brought ${j.a.name} back online.`);}
   else if(j.of==="leak"){j.a.age=0;j.a.breach=false;j.a.leak=0;j.a.grace=6;j.a.agentMark={k:"ok",t:S.t};toast(`🧠 The AI agent apologized and closed the firewall on ${j.a.name}.`);}
   else if(j.of==="email"){S.em=S.em.filter(m=>!j.mails.includes(m));toast("🧠 The AI agent apologized to the whole company. Legal and the exec have calmed down.");}
   else{const t=j.esc.a,landed=j.esc.dead;j.esc.dead=true;
-    if(t&&S.racks[t.slot]===t){if(t.fire>0)t.fire=0;if(j.follow&&t.down){noteRestored(t);t.down=false;t.prog=0;t.timer=Math.max(t.timer,t.maxT*0.5);}t.agentMark={k:"ok",t:S.t};}
+    if(landed&&j.follow&&t&&S.racks[t.slot]===t&&t.fire>0)return "douse";
+    if(t&&S.racks[t.slot]===t){if(j.follow&&t.down){noteRestored(t);t.down=false;t.prog=0;t.timer=Math.max(t.timer,t.maxT*0.5);}t.agentMark={k:"ok",t:S.t};}
     toast(j.follow&&landed&&t?`🧠 The AI agent apologized, walked over to ${t.hidden?"the unknown rack":t.name} and cleaned up the escalation it caused.`:"🧠 The AI agent apologized and reopened the ticket it broke. The escalation is off.");}
+}
+// level 3+ puts out its escalation's fire hands-on, like its level 4 firefighting (already billed by the apology)
+function agentDouse(j,dt){
+  const A=S.agent,t=j.esc.a;
+  if(t.fire>0){t.fire-=agentFireRate()*dt;A.ext={a:t,t:S.t};A.work=Math.min(0.99,1-t.fire/100);if(t.fire>0)return;t.fire=0;sfx("fireOut");fl(RACKS[t.slot],"🧠 Fire out",C.ok);}
+  if(t.down){noteRestored(t);t.down=false;t.prog=0;t.timer=Math.max(t.timer,t.maxT*0.5);} // it burned through before the fire was out
+  t.agentMark={k:"ok",t:S.t};
+  toast(`🧠 The AI agent apologized, walked over to ${t.hidden?"the unknown rack":t.name} and put out the fire its escalation started.`);
+  A.job=null;A.work=0;
 }
 // hands-on work: progress builds like a person holding E, then it bills once when the job is done
 function agentDoWork(j,dt,G){
   const A=S.agent,a=j.a,W=AGENT_WORK[j.kind];
-  if(j.kind==="fire"){const r=(S.upgrades.runbooks&&modId()!=="vacation")?75:48;a.fire-=r*dt;A.ext={a,t:S.t};A.work=Math.min(0.99,1-a.fire/100);if(a.fire>0)return;a.fire=0;}
+  if(j.kind==="fire"){a.fire-=agentFireRate()*dt;A.ext={a,t:S.t};A.work=Math.min(0.99,1-a.fire/100);if(a.fire>0)return;a.fire=0;}
   else if(j.kind==="discover"){a.disc=(a.disc||0)+dt;a.discT=S.t;A.work=a.disc/W.need(a);if(a.disc<W.need(a))return;}
   else if(j.kind==="rightsize"){j.w=(j.w||0)+dt;A.work=j.w/W.need(a);if(j.w<W.need(a))return;}
   else if(j.kind==="unjam"){j.pj.fix=(j.pj.fix||0)+dt;A.work=j.pj.fix/PIPE_FIX;if(j.pj.fix<PIPE_FIX)return;}
@@ -1461,10 +1484,11 @@ function tickAgent(dt){
   if(AGENT_WORK[j.kind])return agentDoWork(j,dt,G);
   A.work+=dt;
   if(j.kind==="repair"){
+    if(j.douse)return agentDouse(j,dt);
     if(!j.said&&A.work>=1.4){j.said=true;agentSay(pick(AGENT_SORRY),1.8);}
-    {const t=j.esc&&j.esc.a;if(j.follow&&t&&S.racks[t.slot]===t&&t.fire>0&&dist(A,RACKS[t.slot])<70)A.ext={a:t,t:S.t};}
     if(A.work<3)return;
-    agentFinishRepair(j,L,G);A.job=null;A.work=0;return;
+    if(agentFinishRepair(j,L,G)==="douse"){j.douse=true;A.work=0;return;}
+    A.job=null;A.work=0;return;
   }
   if(A.work<1.0)return; // "thinking..."
   let repair=null;
@@ -1497,7 +1521,7 @@ function drawAgent(){
   ctx.fillStyle="#3b2a66";rr(x-13,y-12,26,24,8);ctx.fill();ctx.strokeStyle=C.ai;ctx.lineWidth=2;rr(x-13,y-12,26,24,8);ctx.stroke();
   ctx.strokeStyle=C.ai;ctx.beginPath();ctx.moveTo(x,y-12);ctx.lineTo(x,y-19);ctx.stroke();ctx.fillStyle=pulse>0.5?"#fff":C.ai;ctx.beginPath();ctx.arc(x,y-20,2.5,0,7);ctx.fill();
   ctx.fillStyle="#e9ddff";ctx.fillRect(x-7,y-4,4,4);ctx.fillRect(x+3,y-4,4,4);
-  if(A.job&&A.work>0){const dots=".".repeat(1+Math.floor(S.t*4)%3);tx(`${A.job.kind==="repair"?"apologizing":AGENT_WORK[A.job.kind]?AGENT_WORK[A.job.kind].say:"thinking"}${dots}`,x,y+20,8,C.ai,{weight:600});
+  if(A.job&&A.work>0){const dots=".".repeat(1+Math.floor(S.t*4)%3);tx(`${A.job.kind==="repair"?(A.job.douse?"firefighting":"apologizing"):AGENT_WORK[A.job.kind]?AGENT_WORK[A.job.kind].say:"thinking"}${dots}`,x,y+20,8,C.ai,{weight:600});
     ctx.strokeStyle=C.ai;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(x,y,24,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,A.work));ctx.stroke();}
   else tx(`AI AGENT L${Math.min(4,lvl("agent"))}`,x,y+22,8,C.ai,{font:DISP,weight:700});
 }
@@ -3678,7 +3702,7 @@ function howToPlay(){
     <div><span class="ic">📅</span><span><b>Lease target.</b> Each client's data center lease has a target day. Going late never ends the game, but on-prem costs rise 10% per overdue day and the client's rating drops.</span></div>
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and a 4-second speed boost (you glow). 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
     <div><span class="ic">🤖</span><span><b>Patch Bot (upgrade).</b> Patches overdue servers for you, but never fights fires. Level 1 succeeds 50% of the time, level 2 66%, level 3 90%, and each level walks faster. A failed patch leaves a red AUTOMATION ERROR on the rack: patch it yourself to clear it, let an AI Agent trusted with that server tier try at its usual patching odds, or if its compliance timer runs out, the audit fails and the error resets so the bot can try again.</span></div>
-    <div><span class="ic">🧠</span><span><b>AI Agent (upgrade, after client 3).</b> A fast purple agent (faster at every level) that answers email, closes tickets, patches servers and seals leaks. Every attempt costs tokens. At level 1 it only touches bronze servers and only half its work is right; the rest does nothing (while claiming success) or breaks something. It works the email and ticket queues once either is half full; otherwise it hunts for fixes on-prem and in the cloud. Level 2 adds silver servers and investigates unknown racks start to finish. Level 3 adds gold, with far better odds, and chases an escalation it caused to the server to clean it up. Level 4 adds guardrails that block harmful actions and answers incidents (fires, outages, breaches, failed cutovers), and you can fire your manager between clients. When it breaks something it apologizes and stays to try one fix, billed in tokens. If that fails, the problem is yours. It also amplifies the practices you already have. Patching improves with Patch Bot, Runbooks and Observability; tickets with Self-Service Portal and Runbooks; email with your Manager and Status Page; leaks with Policy as Code, Vulnerability Scanner and Cloud Auto-Patching. The shop shows its odds for each job and what's missing. Check its ✓ / ✗ marks.</span></div>
+    <div><span class="ic">🧠</span><span><b>AI Agent (upgrade, after client 3).</b> A fast purple agent (faster at every level) that answers email, closes tickets, patches servers and seals leaks. Every attempt costs tokens. At level 1 it only touches bronze servers and only half its work is right; the rest does nothing (while claiming success) or breaks something. It works the email and ticket queues once either is half full; otherwise it hunts for fixes on-prem and in the cloud. Level 2 adds silver servers and investigates unknown racks start to finish. Level 3 adds gold, with far better odds, and chases an escalation it caused to the server to clean it up. Level 4 adds guardrails that block harmful actions and answers incidents (fires, outages, breaches, failed cutovers), and you can fire your manager between clients. When it breaks something it apologizes and stays to try one fix, billed in tokens. If that fails, the problem is yours. Some things are beyond it, and the apology is billed anyway: level 1 can't bring back a server it knocked offline, and below level 3 it can't put out a fire its escalation started. Level 3 walks over and puts it out with its digital extinguisher. It also amplifies the practices you already have. Patching improves with Patch Bot, Runbooks and Observability; tickets with Self-Service Portal and Runbooks; email with your Manager and Status Page; leaks with Policy as Code, Vulnerability Scanner and Cloud Auto-Patching. The shop shows its odds for each job and what's missing. Check its ✓ / ✗ marks.</span></div>
     <div><span class="ic">🏆</span><span><b>Automate yourself out of a job.</b> Finish a whole client without doing a single thing yourself and, after the client review the AI agent gets you fired as obsolete. That's a win. Do even one thing (hold E, grab a server, pull a freeze) and you keep your job.</span></div>
     <div><span class="ic">🌏</span><span><b>Old school (main menu checkbox).</b> A career with no AI upskills: the AI Agent and AI Chatbots never reach the shop. From your 10th client on, if under 15% of what you do by hand is skilled work (migrating, pipeline sends and repairs, rollbacks, fires, outages, leaks, breaches, cutover retries, freezes) and the rest is checklist work (tickets, email, patching, investigating, FinOps approvals), the job gets outsourced after the review. That's a win too.</span></div>
     <div><span class="ic">👔</span><span><b>Your manager (upgrade).</b> Level 1 answers your email, but chats with users and sometimes wanders over to look at a server. Half the time, just looking takes it offline. While they're at a server, hold E there to shoo them away. Each one they break sends them on a slow walk of shame to the inbox, and they stay out of the data center longer every time. Every level speeds up uptime recovery. Level 2 sticks to email. Level 3 also guards your doorway and shoves users out of your way as you cross the hallway.</span></div>

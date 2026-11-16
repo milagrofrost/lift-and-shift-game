@@ -846,7 +846,7 @@ test("the AI agent goes to a Patch Bot's automation error first, within its tier
 const agentBreaks = (S, job) => { S.agent = {x: 480, y: 300, job: {...job, x: 480, y: 300}, work: 1, say: "", sayT: 0, wx: 480, wy: 260, wT: 0}; fixedRandom(0.99); G.tickAgent(0.05); };
 test("a failed AI patch takes the server down, then the agent repairs it or leaves it to you", () => {
   for (const works of [true, false]) {
-    const S = fresh(); S.upgrades = {agent: 1}; S.atk = []; const a = firstRack(S); a.covered = false; a.down = false; a.fire = 0;
+    const S = fresh(); S.upgrades = {agent: 2}; S.atk = []; const a = firstRack(S); a.covered = false; a.down = false; a.fire = 0;
     agentBreaks(S, {kind: "patch", a});
     check(a.down && S.agent.job && S.agent.job.kind === "repair", "agent walked away from its mistake");
     const spent = S.cost.ai;
@@ -857,6 +857,17 @@ test("a failed AI patch takes the server down, then the agent repairs it or leav
     check(!S.agent.job, "repair job did not end");
     check(S.cost.ai > spent, "repair was not billed");
   }
+});
+test("a level 1 AI agent can't bring back a server it knocked offline, and still bills the apology", () => {
+  const S = fresh(); S.upgrades = {agent: 1}; S.atk = []; const a = firstRack(S); a.covered = false; a.down = false; a.fire = 0;
+  agentBreaks(S, {kind: "patch", a});
+  check(a.down && S.agent.job && S.agent.job.kind === "repair", "agent walked away from its mistake");
+  const spent = S.cost.ai;
+  fixedRandom(0.01); G.tickAgent(3.1);
+  check(a.down, "level 1 brought its own outage back");
+  check(!S.agent.job, "repair job did not end");
+  check(S.cost.ai > spent, "apology was not billed");
+  check(S.agent.say === "Sorry, I can't fix that.", `said "${S.agent.say}"`);
 });
 test("the agent takes back its reply-all, and skips repairs that someone already made", () => {
   let S = fresh(); S.upgrades = {agent: 1}; S.atk = [];
@@ -882,7 +893,21 @@ test("the agent calls off its own escalation, even after it lands", () => {
   agentBreaks(S, {kind: "ticket"});
   const a = firstRack(S), e2 = S.atk[0]; e2.a = a; e2.dead = true; a.fire = 20;
   fixedRandom(0.1); G.tickAgent(3.1);
-  check(a.fire === 0, "landed escalation still burning");
+  check(e2.dead, "escalation came back");
+});
+test("below level 3 the AI agent can't put out the fire its escalation started, and still bills the apology", () => {
+  for (const L of [1, 2]) {
+    const S = fresh(); S.upgrades = {agent: L}; S.atk = []; S.tk = [{age: 0}];
+    agentBreaks(S, {kind: "ticket"});
+    const a = firstRack(S), e = S.atk[0]; e.a = a; e.dead = true; a.fire = 20;
+    const spent = S.cost.ai;
+    fixedRandom(0.01); G.tickAgent(3.1);
+    check(a.fire === 20, `level ${L} put the fire out remotely (fire ${a.fire})`);
+    check(!S.agent.job, `level ${L} repair job did not end`);
+    check(S.cost.ai > spent, `level ${L} apology was not billed`);
+    check(S.agent.say === "Sorry, I can't fix that.", `level ${L} said "${S.agent.say}"`);
+    check(!G.S.ext && !(S.agent.ext), `level ${L} sprayed an extinguisher`);
+  }
 });
 const agentAt = (S, job) => { S.agent = {x: job.x, y: job.y, job, work: 0, say: "", sayT: 0, wx: 480, wy: 260, wT: 0}; };
 test("a full ticket queue or inbox takes nothing new, so there is never a hidden backlog", () => {
@@ -929,10 +954,15 @@ test("a level 3 AI agent chases the escalation it caused to the server and puts 
   const job = S.agent.job, e = S.atk[0]; check(job.follow, "level 3 did not follow its escalation");
   const a = firstRack(S); e.a = a; e.dead = true; a.fire = 20; S.agent.x = 480; S.agent.y = 470;
   fixedRandom(0.1); runAgent(1); check(a.fire > 0, "put out from across the room");
-  let closest = 1e9;
-  for (let t = 0; t < 4 && S.agent.job; t += 0.1) { G.tickAgent(0.1); closest = Math.min(closest, Math.hypot(S.agent.x - G.RACKS[a.slot].x, S.agent.y - G.RACKS[a.slot].y - 44)); }
+  let closest = 1e9, partial = false, sprayed = false;
+  for (let t = 0; t < 6 && S.agent.job; t += 0.05) {
+    G.tickAgent(0.05); closest = Math.min(closest, Math.hypot(S.agent.x - G.RACKS[a.slot].x, S.agent.y - G.RACKS[a.slot].y - 44));
+    if (a.fire > 0 && a.fire < 20) partial = true;
+    if (S.agent.ext && S.agent.ext.a === a) sprayed = true;
+  }
   check(a.fire === 0 && e.dead && !S.agent.job, "did not clean up at the server");
   check(closest < 8, "agent never walked to the server");
+  check(partial && sprayed, "the fire went out at once instead of with the digital extinguisher");
 });
 test("a level 4 AI agent answers incidents: fires, outages, breaches and failed cutovers", () => {
   const S = fresh(); S.upgrades = {agent: 4}; S.agent = {}; S.tk = []; S.em = []; S.atk = [];
