@@ -751,7 +751,7 @@ const UPGRADES=[
   {id:"manager",name:"A Manager Who Fights for You",icon:"👔",cost:5,max:3,desc:"All levels automatically call a change freeze for gold outages or breaches (10/14/18 seconds; cooldown 60/50/40 seconds). They also speed up uptime recovery. Level 1: answers your email, but chats with users and sometimes wanders over to look at a server (half the time, it goes offline; hold E at that server to shoo them away). Each server they break keeps them out of the data center longer. Level 2: focuses on email and rarely touches servers. Level 3: also stands guard at your doorway and shoves users out of your way as you cross the hallway."},
   {id:"clip",name:"Mr Paperclip · Reverse Shadow",icon:"📎",cost:2,desc:"A senior migration assistant reverse shadows you: helpful insights and coaching through every migration, at your shoulder in every client. +1⚡ every time he says something. Results may vary. Results will vary."},
   {id:"agent",name:"AI Agent",icon:"🧠",cost:6,max:4,ai:true,req:()=>S.career.length>=3,desc:"Answers email, closes tickets, patches servers and seals leaks, fast, anywhere, and faster at every level. Every attempt costs tokens. When either queue is half full it works the queues; otherwise it hunts for fixes on-prem and in the cloud. L1 pilot, bronze servers only: 50% right, 25% does nothing, 25% breaks something. L2 better instructions, adds silver: 80/15/5, and investigates unknown racks start to finish. L3 agentic workflows, adds gold: 90/7/3, and chases an escalation it caused to the server to clean it up. L4 guardrails and evals: harmful actions get blocked, it fights fires, restores outages, contains breaches and retries failed cutovers, and you can fire your manager. When it breaks something it apologizes (billed in tokens) and tries once to fix it (40% at L1, 60% at L2, 80% at L3), except that L1 can't bring back a server it knocked offline and below L3 it can't put out a fire its escalation started. It amplifies what you already have: with good foundations for a job, it's right far more often."},
-  {id:"chatbot",name:"AI Chatbots",icon:"💬",cost:4,max:2,ai:true,desc:"A chatbot roams the hallway, chats up users and resolves them. A user being chatted up can't grab you. Sometimes they just want a human and run around the hallway yelling for one. Each level adds a bot."},
+  {id:"chatbot",name:"AI Chatbots",icon:"💬",cost:4,max:2,ai:true,desc:"A chatbot roams the hallway, chats up users and resolves them. A user being chatted up can't grab you. Sometimes they just want a human: they run around the hallway yelling for one, then come looking for you if you're in the hallway. Each level adds a bot."},
 ];
 
 /* ==== Helpers ==== */
@@ -1075,8 +1075,8 @@ function spawnUsers(){
   }
 }
 /* AI chatbots: roam the hallway, lock onto the nearest user, chat them up, and the user dissolves.
-   A user mid-chat is frozen and can't grab you. ~15% of the time the user wants a human: they run around the
-   hallway shouting for one, like a red alert, until the bots try them again (8 seconds). */
+   A user mid-chat is frozen and can't grab you. ~15% of the time the user wants a human: for 8 seconds they shout
+   for one, scrambling around the hallway for the first half and walking toward you for the second (tickUsers). */
 const BOT_LINES=["Have you tried turning it off and on?","Here's a KB article!","I can help with that!","Ticket auto-resolved ✅","Is there anything else?","Let me summarize that…"];
 /* Break clients have their own hallway crowd (`talk` on the client): babies at the daycare, bubbles at the bubble bar,
    wobbly beginners at Training Wheels, and relentless encouragement at the trophy outlet. Everyone else talks like an
@@ -1087,7 +1087,7 @@ const userLines=r=>(crowd()||{}).lines||r.lines;
 const alertLines=()=>(crowd()||{}).alert||ALERT_LINES;
 const humanLines=()=>(crowd()||{}).human||HUMAN_LINES;
 const HUMAN_LINES=["I want to talk to a human!","AGENT. AGENT. AGENT.","That's not what I asked.","Representative! Representative!"];
-const FRANTIC_T=8;
+const FRANTIC_T=8,USER_PACE=42; // USER_PACE: a calm user's walking speed (they wander at 30–55, slower for higher ranks)
 const frantic=u=>!u.hunter&&(u.frantic||0)>S.t;
 function spawnChatbots(){S.users.forEach(u=>{u.chat=null;});S.cbots=[];for(let k=0;k<lvl("chatbot");k++)S.cbots.push({x:430+k*100,y:300,tgt:null,chatT:0,need:0,line:"",cool:0,hx:430+k*100,hy:300});}
 function tickChatbots(dt){
@@ -1692,8 +1692,15 @@ function tickUsers(dt){
       u.turn-=dt;
       const fr=S.alert||frantic(u); // red alert, or a user who just rejected the chatbot
       if(fr&&!u.panic){u.panic=true;u.turn=0;}else if(!fr&&u.panic){u.panic=false;u.turn=0;}
-      if(u.turn<=0){const sugar=modId()==="donut"?2:1,pm=u.panic?2.2:1;u.turn=u.panic?rand(0.4,1):rand(2,4)/sugar;u.vy=(Math.random()<.5?-1:1)*rand(30,55)*(1-u.rank*0.06)*sugar*pm;u.vx=rand(-18,18)*sugar*(u.panic?3:1);}
-      u.x+=u.vx*dt;u.y+=u.vy*dt;
+      const sugar=modId()==="donut"?2:1;
+      // a chatbot reject scrambles for the first half of their panic, then comes looking for you at a normal
+      // walking pace while you're in the hallway; once the panic is over (or they've caught you) they stop
+      if(frantic(u)&&u.frantic-S.t<FRANTIC_T/2&&zoneOf(P.x)===1){u.seek=true;goTo(u,P.x,P.y,USER_PACE*(1-u.rank*0.06)*sugar,dt);}
+      else{
+        if(u.seek){u.seek=false;u.turn=0;}
+        if(u.turn<=0){const pm=u.panic?2.2:1;u.turn=u.panic?rand(0.4,1):rand(2,4)/sugar;u.vy=(Math.random()<.5?-1:1)*rand(30,55)*(1-u.rank*0.06)*sugar*pm;u.vx=rand(-18,18)*sugar*(u.panic?3:1);}
+        u.x+=u.vx*dt;u.y+=u.vy*dt;
+      }
       if(u.x<382||u.x>578){u.vx*=-1;u.x=clamp(u.x,382,578);}
       if(u.y<110||u.y>H-90){u.vy*=-1;u.y=clamp(u.y,110,H-90);}
     }
@@ -1701,10 +1708,11 @@ function tickUsers(dt){
     const readingStatus=(S.alert&&S.upgrades.statuspage&&!u.hunter)||(u.hunter&&dist(P,INBOX)<85);
     if(!P.heldBy&&u.cd<=0&&P.userImm<=0&&!(P.ghost>0)&&!readingStatus&&dist(u,P)<13+playerR()){
       const r=RANKS[u.rank];
-      if(!r.hold){if(!(u.shoutT>0)){u.shout=pick(userLines(r));u.shoutT=1.6;clipEv("intern");}u.cd=2;continue;} // an intern asks in passing and lets you go
+      if(!r.hold){if(!(u.shoutT>0)){u.shout=pick(frantic(u)?humanLines():userLines(r));u.shoutT=1.6;clipEv("intern");}if(frantic(u))u.frantic=S.t;u.cd=2;continue;} // an intern asks in passing and lets you go
       P.stun=r.hold*Math.pow(0.75,retro("office"));P.heldBy=u;sfx("held");if(!u.hunter)clipEv(r.name==="CIO"?"cio":"user");S.run.held++;S.run.heldT+=r.hold;S.ss.heldT+=r.hold;
       if(u.hunter)unplanned(0.5,"exec"); // only costs anything when the exec actually catches you
       u.line=pick(u.hunter?HUNTER_LINES:S.alert?alertLines():frantic(u)?humanLines():userLines(r));
+      if(frantic(u))u.frantic=S.t; // they got their human: the panic is over
     }
   }
   S.users=S.users.filter(u=>!u.gone);

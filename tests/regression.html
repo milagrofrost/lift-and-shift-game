@@ -569,6 +569,19 @@ test("a user who rejects the chatbot runs around frantic, yells for a human, the
   G.tickUsers(0.05); check(u.panic && Math.abs(u.vx) > 18, `not running around: panic ${u.panic} vx ${u.vx}`);
   S.t = u.frantic + 0.1; u.turn = 0; G.tickUsers(0.05); check(!u.panic, "still frantic after the window");
 });
+test("a frantic user scrambles first, then walks to you in the hallway at a normal pace, and stops once they catch you", () => {
+  const S = fresh(); S.alert = false; S.pizza = null; S.freezeT = 0; S.p.userImm = 0; S.p.ghost = 0; S.p.heldBy = null; S.p.stun = 0;
+  const u = {x: 480, y: 400, rank: 1, vx: 0, vy: 0, turn: 0, cd: 0, line: "", frantic: S.t + 8}; S.users = [u];
+  S.p.x = 480; S.p.y = 150;
+  fixedRandom(0.9); G.tickUsers(0.05); check(!u.seek && u.panic && Math.abs(u.vx) > 18, `first half was not a scramble: seek ${u.seek} vx ${u.vx}`);
+  u.frantic = S.t + 3; const y0 = u.y; G.tickUsers(0.1);
+  const pace = (y0 - u.y) / 0.1;
+  check(u.seek && pace >= 30 && pace <= 55, `second half did not walk toward you at a normal pace (${pace.toFixed(1)}/s)`);
+  S.p.x = 200; G.tickUsers(0.05); check(!u.seek, "kept seeking you in a server room");
+  S.p.x = 480; u.frantic = S.t - 0.1; G.tickUsers(0.05); check(!u.seek, "kept seeking you after the panic ended");
+  u.frantic = S.t + 3; u.x = S.p.x; u.y = S.p.y + 4; G.tickUsers(0.05);
+  check(S.p.heldBy === u && !(u.frantic > S.t), "catching you did not end the panic");
+});
 
 /* ---------- hallway users ---------- */
 test("an intern blurts a question in passing instead of holding you; an analyst still holds you", () => {
