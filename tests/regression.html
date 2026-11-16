@@ -31,7 +31,8 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("aiCo,CO,letter,rumorBlock,RUMORS,crowd,userLines,alertLines,humanLines,BREAK_CLIENTS,welcomeMail,mailRecap,unicornMail,aiMail,lastMail,spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "K,keyHint,TOUCH,fixWord,grabWord,setSilentPlay,silentBtn,HAS_SESSION,AU,toastsCover,FIX_WORDS,rollbackTarget,tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL,pipeJob,jammed,tickPipeline,sendToPipeline,fixTarget,unjam,jamUnder,laneY,pipeX,PIPE_FIX,PIPE_BREAK_LO,PIPE_BREAK_HI,patchBot,tickJamAlarm,JAM_BUZZ_FIRST,JAM_BUZZ_EVERY").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL,pipeJob,jammed,tickPipeline,sendToPipeline,fixTarget,unjam,jamUnder,laneY,pipeX,PIPE_FIX,PIPE_BREAK_LO,PIPE_BREAK_HI,patchBot,tickJamAlarm,JAM_BUZZ_FIRST,JAM_BUZZ_EVERY," +
+  "infected,CLONE_MAX,FORK_COST,spawnAgent,ciOffered,ciLeft,ciLockable,CI_NEW,salary,salaryText,tickSpecials,client,lvl").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},get LOGLV(){return LOGLV},setLogLv:v=>{LOGLV=v},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -1043,7 +1044,8 @@ test("a level 4 AI agent never gives up on offline servers or failed cutovers", 
   const fails = S.run.fails;
   for (let t = 0; t < 40; t += 0.1) G.tickAgent(0.1);
   check(S.run.fails >= fails + 3 && S.cloud[0] === cl && cl.down, `agent stopped retrying after ${S.run.fails - fails} rolls`);
-  check(S.agent.job && S.agent.job.kind === "cutover", "agent walked away from the failed cutover");
+  // at level 4 the main agent or one of its copies may hold the retry
+  check([S.agent, ...(S.clones || [])].some(A => A.job && A.job.kind === "cutover"), "agent walked away from the failed cutover");
   fixedRandom(0.001); for (let t = 0; t < 20 && cl.down; t += 0.1) G.tickAgent(0.1);
   check(!cl.down, "cutover never started once the odds allowed");
 });
@@ -1105,6 +1107,122 @@ test("finishing a client without lifting a finger gets you fired as obsolete; on
   try { G.doFix(0.05); } finally { G.keys.fix = false; }
   check(S.ss.human > 0, "holding E at the desk was not counted"); G.finishEngagement();
   check(!S.obsolete && doc.querySelector('[data-act="next"]'), "one action did not keep the job");
+  check(!doc.querySelector(".card").textContent.includes("only reason you still have a job"), "the hands line shows without an AI agent");
+  // with an AI agent: under 25% of the work brings the rumor, 25% or more doesn't
+  const acts = S.ss.acts, rumor = () => doc.querySelector(".card .rumor") && doc.querySelector(".card").textContent.includes("nothing bad will happen");
+  S.upgrades.agent = 2; S.ss.bot = acts * 3; S.ss.ai.n = 0; G.finishEngagement();
+  check(!rumor(), "the rumor shows at exactly 25% of the work");
+  S.ss.bot = acts * 3 + 1; G.finishEngagement();
+  check(rumor(), "no rumor under 25% of the work");
+  S.upgrades.agent = 0; G.finishEngagement(); check(!rumor(), "the rumor shows without an AI agent");
+});
+test("a level 4 AI agent forks a copy per job (never two on one target), bills each fork, and merges them back", () => {
+  let S = fresh(); S.upgrades = {agent: 4}; S.err = S.errMax = 1e6; S.security = 1e6; G.spawnAgent();
+  const racks = S.racks.filter(a => a && !a.hidden);
+  for (const x of racks.slice(0, 4)) { x.down = true; x.downT = S.time; x.prog = 0; }
+  const cost0 = S.ss.ai.cost;
+  for (let t = 0; t < 3; t += 0.1) G.tickAgent(0.1);
+  check(S.clones.length >= 2, `only ${S.clones.length} copies for four outages`);
+  const targets = [S.agent, ...S.clones].map(A => A.job && A.job.a).filter(Boolean);
+  check(new Set(targets).size === targets.length, "two copies took the same server");
+  check(S.ss.ai.forks >= 2 && S.ss.ai.cost >= cost0 + S.ss.ai.forks * G.FORK_COST - 1e-9, "forks were not billed");
+  for (let t = 0; t < 30; t += 0.1) G.tickAgent(0.1);
+  check(racks.slice(0, 4).every(x => !x.down), "the swarm left servers offline");
+  check(S.clones.length === 0, `${S.clones.length} idle copies never merged back`);
+  check(S.clones.length <= G.CLONE_MAX, "too many copies");
+  // level 3 never forks
+  S = fresh(); S.upgrades = {agent: 3}; G.spawnAgent(); S.tk = [{age: 0}, {age: 0}, {age: 0}, {age: 0}];
+  for (let t = 0; t < 3; t += 0.1) G.tickAgent(0.1);
+  check(S.clones.length === 0 && !S.ss.ai.forks, "a level 3 agent forked");
+});
+test("a level 4 AI agent takes over Patch Bot and Mover Bot: billed per job, never a temp's bot", () => {
+  let S = fresh(); S.upgrades = {patchbot: 1, agent: 3};
+  const b = G.mkBot("patch");
+  check(!G.infected(b), "a level 3 agent took over the Patch Bot");
+  S.upgrades.agent = 4;
+  check(G.infected(b) && !G.infected(G.mkBot("patch", true)), "level 4 did not take over the Patch Bot, or took over a temp's");
+  const a = S.racks.find(x => x && !x.hidden); a.timer = a.maxT * 0.1; a.covered = false;
+  for (const x of S.racks) if (x && x !== a) x.timer = x.maxT;
+  fixedRandom(0.01); const c0 = S.ss.ai.cost;
+  for (let t = 0; t < 20 && !a.covered; t += 0.05) G.patchBot(b, 0.05, 85 * 1.6);
+  check(a.covered, "the taken-over Patch Bot never patched");
+  check(S.ss.ai.infect === 1 && S.ss.ai.cost > c0, "the taken-over Patch Bot's job was not billed");
+});
+test("Continuous improvement: offered from client 8 with an AI agent or old school, asks first, then locks in the shop", () => {
+  const doc = W.document; let S = fresh();
+  const past = n => Array.from({length: n}, () => ({name: "x", stars: 4, days: 5, late: 0, cap: 13, spend: 0}));
+  S.career = past(8); S.upgrades = {pac: 1, scanner: 2, patchbot: 3};
+  check(!G.ciOffered(), "offered without an AI agent");
+  S.noAI = true; check(G.ciOffered(), "not offered on an old school career");
+  S.noAI = false; S.upgrades.agent = 1; check(G.ciOffered(), "not offered with an AI agent");
+  S.career = past(7); check(!G.ciOffered(), "offered before client 8");
+  S.career = past(7); S.ss.human = 3; G.finishEngagement();
+  const opt = doc.querySelector('[data-retro="ci"]'); check(opt, "not in the retrospective");
+  opt.click(); check(!S.retroPick && doc.querySelector(".card").textContent.includes("can't take it back"), "no can't-undo notice");
+  doc.querySelector('[data-act="cino"]').click(); check(doc.querySelector('[data-retro="ci"]') && !S.retro.ci, "Back didn't return to the options");
+  doc.querySelector('[data-retro="ci"]').click(); doc.querySelector('[data-act="ciyes"]').click();
+  check(S.retro.ci && S.retroPick === "ci", "not adopted");
+  check(["pac", "scanner", "agent"].every(id => S.ciLock.includes(id)) && !S.ciLock.includes("patchbot"), `wrong lock-in: ${S.ciLock}`);
+  const fresh2 = ids => ids.filter(id => { const u = G.UPGRADES.find(x => x.id === id); return u.max ? !G.lvl(id) : !S.upgrades[id]; });
+  for (let k = 0; k < 20; k++) { const o = G.rollOffers(); check(fresh2(o).length <= G.CI_NEW, `${fresh2(o).length} new tools on the shelf`);
+    check(G.ciLeft().every(u => o.includes(u.id)), "a locked-in tool is missing from the shelf"); }
+  // a locked-in tool leaves once maxed; all maxed and the shelf goes back to normal
+  S.upgrades.pac = 3; check(!G.ciLeft().some(u => u.id === "pac"), "maxed tool still locked in");
+  S.upgrades.scanner = 3; S.upgrades.agent = 4; check(G.ciLeft().length === 0, "still locked in after maxing everything");
+  let most = 0; for (let k = 0; k < 20; k++) most = Math.max(most, fresh2(G.rollOffers()).length);
+  check(most > G.CI_NEW, "the shelf didn't go back to normal");
+});
+test("the retrospective always has exactly 3 options; once seen, Continuous improvement stays in it until chosen", () => {
+  const S = fresh();
+  const past = (n, rough) => Array.from({length: n}, () => ({name: "x", stars: rough ? 1 : 4, days: 5, late: 0, cap: rough ? 5 : 13, spend: 0}));
+  const ids = () => G.retroOptions().map(o => o.id);
+  S.career = past(2); check(ids().length === 3, `clean client: ${ids()}`);
+  S.ss.audits = 2; S.ss.breaches = 1; S.ss.lost = 3; S.ss.esc = 2; S.ss.missed = 4; check(ids().length === 3, `rough client: ${ids()}`);
+  S.career = past(2, true); check(ids().length === 3 && ids().includes("break"), `break: ${ids()}`);
+  S.career = past(8, true); S.upgrades = {agent: 1, pac: 1, scanner: 1};
+  check(ids().length === 3 && ids().includes("break") && ids().includes("ci"), `break and ci: ${ids()}`);
+  // seen once: it keeps coming back, even with only one tool left to lock in
+  S.career = past(8); S.upgrades = {agent: 1, pac: 1};
+  check(ids().length === 3 && ids().includes("ci"), `ci dropped after being seen: ${ids()}`);
+  S.retro.ci = 1; check(!ids().includes("ci") && ids().length === 3, `ci still offered after choosing it: ${ids()}`);
+});
+test("a pay cut is offered only at the obsolete or outsourced meeting, and keeps the job", () => {
+  const doc = W.document; let S = fresh(); S.upgrades.agent = 4; S.ss.human = 3; G.finishEngagement();
+  check(!doc.querySelector('[data-act="paycut"]'), "pay cut offered without being made obsolete");
+  S.ss.human = 0; G.finishEngagement();
+  check(doc.querySelector('[data-act="paycut"]'), "no pay cut option at the firing meeting");
+  doc.querySelector('[data-act="paycut"]').click();
+  check(S.payCuts === 1 && !S.obsolete && doc.querySelector('[data-act="next"]') && doc.querySelector(".card").textContent.includes("$75k"), "the pay cut didn't keep the job");
+  // the next client: a normal review, no pay cut question
+  S.sprint++; S.ss.human = 3; G.finishEngagement();
+  check(!S.obsolete && doc.querySelector('[data-act="next"]') && !doc.querySelector('[data-act="paycut"]') && !doc.querySelector(".card").textContent.includes("Pay cut taken"), "a normal client still asked about pay");
+  // hands-off again: the meeting comes back, offering the next cut
+  S.sprint++; S.ss.human = 0; G.finishEngagement();
+  check(S.obsolete && doc.querySelector('[data-act="paycut"]').textContent.includes("$75k a year → $50k a year"), "being obsolete again didn't offer another cut");
+  doc.querySelector('[data-act="paycut"]').click(); check(S.payCuts === 2, "second cut not taken");
+  S.noAI = true; S.upgrades = {}; S.sprint++; S.ss.human = 0; G.finishEngagement();
+  check(doc.querySelector('[data-act="paycut"]'), "no pay cut at the HR meeting without an agent");
+  S.sprint++; S.ss.human = 3; G.finishEngagement();
+  check(G.salaryText(G.salary(5)).includes("you pay them") && G.salary(4) === 0, "the fifth cut isn't you paying them");
+  doc.querySelector('[data-act="retire"]').click();
+  check(G.mode === "end" && doc.querySelector(".stamp.retired") && doc.querySelector(".card").textContent.includes("pay cut"), "retiring after pay cuts");
+});
+test("every end screen gets its rubber stamp", () => {
+  const doc = W.document, st = () => { const e = doc.querySelector(".stamp"); return e && e.className + ":" + e.textContent; };
+  let S = fresh(); G.showEnd("uptime"); check(st() === "stamp fired:Fired", `fired: ${st()}`);
+  S = fresh(); G.showEnd(null); check(st() === "stamp retired:Retired", `retired: ${st()}`);
+  S = fresh(); G.showEnd("obsolete"); check(st() === "stamp letgo:Let go", `obsolete: ${st()}`);
+  S = fresh(); S.noAI = true; G.showEnd("outsourced"); check(st() === "stamp outsourced:Outsourced", `outsourced: ${st()}`);
+  S = fresh(); G.resign(); check(st() === "stamp resigned:Resigned", `resigned: ${st()}`);
+});
+test("Big Slice throws way more pizza parties", () => {
+  const share = sprint => { const S = fresh({sprint}); S.p.x = 60; S.p.y = 60; let pz = 0, gap = 0;
+    for (let i = 0; i < 100; i++) { S.sp = []; S.temp = null; S.spT = 0; fixedRandom((i + 0.5) / 100); G.tickSpecials(0); if (S.sp[0] && S.sp[0].kind === "pizza") pz++; gap = Math.max(gap, S.spT); }
+    return {name: G.client().name, pz, gap}; };
+  const big = share(9), other = share(5);
+  check(big.name.startsWith("Big Slice") && !other.name.startsWith("Big Slice"), `setup: ${big.name} / ${other.name}`);
+  check(big.pz >= 55 && other.pz <= 30, `pizza share ${big.pz}% vs ${other.pz}%`);
+  check(big.gap <= 27.01 && other.gap > 40, `special gaps ${big.gap} vs ${other.gap}`);
 });
 test("a no-AI career never offers the AI Agent or AI Chatbots, and skips the AI announcement", () => {
   const S = fresh(); S.noAI = true; S.career = [{}, {}, {}, {}];
