@@ -284,7 +284,34 @@ kbd{font-family:var(--f-mono);font-size:11.5px;background:var(--panel-2);border:
 #credits .bar{width:min(220px,60vw);height:6px;margin:0 auto;border:1px solid #fff;border-radius:3px;overflow:hidden}
 #credits .bar i{display:block;height:100%;width:0;background:#fff;transition:width 2.25s cubic-bezier(.3,.1,.4,1)}
 #credits .bar.full i{width:100%}
-#credits .skip{position:absolute;right:16px;bottom:14px;font-size:12px;color:#55636e;font-family:"IBM Plex Mono",Consolas,monospace}
+/* after the reboot: a black page while the floor loads in (loadIn); the HUD rows pop in one by one (.li-on) */
+.loadin,.loadin body{background:#000}
+.loadin .wrap>:not(.stage){visibility:hidden}
+.loadin .wrap>.li-on{visibility:visible}
+.loadin .stage{border-color:transparent;background:#000}
+#credits.loading{background:transparent}
+/* the last layer of the load-in: the main menu wipes down over the loaded floor (no wipe under reduced motion) */
+.overlay.wipein{animation:wipein .7s cubic-bezier(.45,0,.3,1) both}
+@keyframes wipein{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@media (prefers-reduced-motion:reduce){.overlay.wipein{animation:none}}
+#credits.loading>*{display:none}
+/* the reboot's self-test: a terminal scrolling the regression suite (lines stack from the bottom; the oldest scroll off the top) */
+#credits .selftest{position:absolute;inset:0;display:none;flex-direction:column;justify-content:flex-end;overflow:hidden;padding:16px 24px 40px;color:#c9d4dc;font:clamp(11px,1.6vw,14px)/1.45 "IBM Plex Mono",Consolas,monospace}
+#credits .selftest.show{display:flex}
+#credits .selftest p{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#credits .selftest b{display:inline-block;min-width:4ch;font-weight:600;color:#8aa0b0}
+#credits .selftest b.ok{color:#c9d4dc;white-space:pre}
+#credits .selftest b.ok i{font-style:normal;color:#3dff8a}
+#credits .selftest b.pass{color:#0e1a23;background:#3dff8a;padding:0 4px;margin-top:6px}
+#credits.retro .selftest{color:#39ff6a;text-shadow:0 0 6px rgba(57,255,106,.6)}
+#credits.retro .selftest b,#credits.retro .selftest b.ok,#credits.retro .selftest b.ok i{color:#39ff6a}
+#credits.retro .selftest b.pass{color:#000;background:#39ff6a;text-shadow:none}
+/* the endings' crash screen: classic crash blue, cuts in and out with no fade */
+#credits .bsod{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:16px;background:#0000aa;color:#fff;font-family:"IBM Plex Mono",Consolas,monospace}
+#credits .bsod.show{display:flex}
+#credits .bsod>div{max-width:620px;font-size:clamp(13px,2.2vw,18px);line-height:1.55}
+#credits .bsod b{display:table;margin:0 auto 1.4em;padding:0 10px;background:#aaa;color:#0000aa;font-weight:600}
+#credits .bsod p{margin:0 0 1em}
 /* Old school (outsourced) boot: the same LaS OS screen on a green phosphor terminal */
 #credits.retro .boot{color:#39ff6a;font-family:"IBM Plex Mono",Consolas,monospace;text-shadow:0 0 6px rgba(57,255,106,.75),0 0 18px rgba(57,255,106,.3)}
 #credits.retro::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s ease;background:repeating-linear-gradient(to bottom,rgba(0,0,0,0) 0 2px,rgba(0,0,0,.35) 2px 4px),radial-gradient(ellipse at center,rgba(57,255,106,.07) 0%,rgba(0,0,0,0) 70%)}
@@ -872,6 +899,48 @@ function heartTick(){
   tone(60,0.18,{vol:v*0.7,slide:-14,delay:d+0.26+0.1*k,attack:0.012});
   HB.beat=performance.now()+d*1000;HB.next+=60/bpm;
 }
+/* The endings' reboot hard drive: the spindle whines up from rest, the heads unpark with a clunk, then soft seek ticks
+   in little clusters until driveEnd(t) sets a stop time. Once it's up to speed the motor slowly recedes, so you stop
+   noticing it; over the last DRIVE_SLOW seconds the ticks slow down, and over the last second the motor fades on out
+   to silence DRIVE_FADE after the last tick.
+   Cosmetic: sndRand only, scheduled ahead on the audio clock by driveTick() from frame(). */
+const DRIVE={on:false,next:0,end:Infinity,left:0,nodes:[],bus:null},DRIVE_FADE=0.45,DRIVE_SLOW=2.5;
+function driveStart(){
+  const c=AU.ctx;driveStop();if(!c||!AU.on)return;
+  const t=c.currentTime+0.02,bus=c.createGain();bus.gain.value=1;bus.connect(AU.master);
+  const sp=c.createOscillator(),sg=c.createGain();sp.type="sine";sp.frequency.setValueAtTime(30,t);sp.frequency.exponentialRampToValueAtTime(120,t+1.3);
+  sg.gain.setValueAtTime(0.0001,t);sg.gain.linearRampToValueAtTime(0.06,t+0.4);sp.connect(sg);sg.connect(bus);sp.start(t);
+  const wh=c.createOscillator(),wg=c.createGain();wh.type="triangle";wh.frequency.setValueAtTime(1400,t);wh.frequency.exponentialRampToValueAtTime(7000,t+1.6);
+  wg.gain.setValueAtTime(0.0001,t);wg.gain.linearRampToValueAtTime(0.006,t+0.6);wh.connect(wg);wg.connect(bus);wh.start(t);
+  noiseBurst(1.4,{vol:0.03,freq:250,type:"lowpass"});                                                        // the motor rumbling up
+  tone(180,0.07,{vol:0.35,slide:-110,delay:1.35,attack:0.002});noiseBurst(0.05,{vol:0.35,freq:1200,delay:1.35}); // the heads unpark
+  bus.gain.setValueAtTime(1,t+1.6);bus.gain.setTargetAtTime(0.35,t+1.6,3); // up to speed: the motor slowly recedes into the background
+  Object.assign(DRIVE,{on:true,next:t+1.6,end:Infinity,left:0,nodes:[sp,wh],bus});
+}
+function driveTick(){
+  const c=AU.ctx;if(!DRIVE.on||!c)return;
+  while(DRIVE.next<c.currentTime+0.15&&DRIVE.next<DRIVE.end-0.04){
+    const slow=1+3*clamp(1-(DRIVE.end-DRIVE.next)/DRIVE_SLOW,0,1),d=Math.max(0,DRIVE.next-c.currentTime); // winding down: up to 4x slower by the end
+    noiseBurst(0.012,{vol:0.28,freq:1250,type:"highpass",q:0.7,delay:d});tone(800,0.018,{vol:0.14,delay:d,attack:0.002});
+    if(DRIVE.left<=0)DRIVE.left=1+Math.floor(sndRand()*4);
+    DRIVE.next+=--DRIVE.left>0?0.03*slow:(0.11+sndRand()*0.14)*slow;
+  }
+  if(c.currentTime>=DRIVE.end+DRIVE_FADE)driveStop(0.02); // already faded out: just release the oscillators
+}
+// stop at audio time t: the ticks slow over the DRIVE_SLOW seconds before it, and the motor fades out from t-1 to silence at t+DRIVE_FADE
+// (a smooth half-cosine fade, so it starts gently and tails off without a noticeable end; the pitch stays put).
+// The clicks don't go through this: they keep their volume and only slow down.
+function driveEnd(t){
+  const c=AU.ctx;if(!DRIVE.on||!c)return;DRIVE.end=t;
+  const a=Math.max(c.currentTime,t-1)+0.01,g=DRIVE.bus.gain,v=g.value,curve=new Float32Array(32);
+  for(let i=0;i<32;i++)curve[i]=v*(1+Math.cos(Math.PI*i/31))/2;
+  g.cancelScheduledValues(c.currentTime);g.setValueAtTime(v,c.currentTime);g.setValueCurveAtTime(curve,a,t+DRIVE_FADE-a);
+}
+// cut it now (credits ended early, or new credits)
+function driveStop(fade=0.05){
+  const c=AU.ctx;if(!DRIVE.on||!c)return;DRIVE.on=false;
+  const t=c.currentTime;DRIVE.bus.gain.cancelScheduledValues(t);DRIVE.bus.gain.setTargetAtTime(0,t,fade/3);DRIVE.nodes.forEach(o=>o.stop(t+fade+0.1));
+}
 /* iPhone/iPad Safari: like most casual games, sound obeys the ring/silent switch ("ambient"), and other apps' music
    keeps playing underneath. Players can opt in from the pause menu to play through silent mode ("playback", which
    also pauses other apps' audio). Other browsers don't have audioSession, so the setting only appears where it works. */
@@ -969,12 +1038,17 @@ function wantMood(){
 function musicTick(){
   if(stale())return;
   const c=AU.ctx;if(!c||!MUS.bus)return;
-  MUS.bus.gain.setTargetAtTime(MUS.on?0.2:0,c.currentTime,0.1);
+  if(!MUS.halt)MUS.bus.gain.setTargetAtTime(MUS.on?0.2:0,c.currentTime,0.1);
   // headphones muffle the music, like noise-cancelling
   MUS.filt.frequency.setTargetAtTime(mode==="play"&&S&&S.focus>0?500:18000-15500*(mode==="play"?slowDepth():0),c.currentTime,0.15);
-  if(!MUS.on){MUS.next=c.currentTime+0.05;return;}
+  if(!MUS.on||MUS.halt){MUS.next=c.currentTime+0.05;return;}
   if(MUS.next<c.currentTime)MUS.next=c.currentTime+0.05;
   while(MUS.next<c.currentTime+0.15){
+    if(MUS.stut){ // the credits' skip: stuck on the current chord in 16ths until its end time, then dead air
+      const st=MUS.stut,sx=60/moodBpm()/4;
+      if(MUS.next>=st.end-0.02){MUS.stut=null;MUS.halt=true;MUS.bus.gain.setTargetAtTime(0,Math.max(c.currentTime,st.end),0.01);return;}
+      stutterHit(st.step,MUS.next,sx);MUS.next+=sx;continue;
+    }
     if(MUS.step%8===0){
       const w=wantMood(),up=moodLevel(w)-moodLevel(MUS.mood);MUS.heat=musicHeat();
       if(up>0)MUS.raised=MUS.step;
@@ -984,6 +1058,16 @@ function musicTick(){
     scheduleStep(MUS.step,MUS.next);MUS.next+=60/moodBpm()/4;MUS.step++;
   }
 }
+/* one stutter hit: the chord the song is on, stuck on repeat, in the song's own lead voice, with a light bass under it.
+   No drums, so it reads as a skip, not a build to a drop. */
+function stutterHit(step,t,len){
+  const M=MOODS[MUS.mood],ch=M.chords[Math.floor(step/16)%4];
+  ch.forEach(n=>mNote(mtof(n),t,len*0.85,M.lead,0.045));
+  mNote(mtof(ch[0]-24),t,len*0.8,"triangle",0.07);
+}
+// the obsolete/outsourced credits: the music sticks on its chord for ms milliseconds, then cuts dead; musicResume() after
+function musicStutter(ms){if(MUS.started&&MUS.on&&!MUS.halt&&!MUS.stut)MUS.stut={step:MUS.step,end:AU.ctx.currentTime+ms/1000};}
+function musicResume(){MUS.stut=null;MUS.halt=false;}
 function startMusic(){
   if(MUS.started||!AU.ctx)return;MUS.started=true;const c=AU.ctx;
   MUS.filt=c.createBiquadFilter();MUS.filt.type="lowpass";MUS.filt.frequency.value=18000;
@@ -2065,7 +2149,7 @@ setMusic(MUS.on);
 addEventListener("keydown",e=>{
   if(!$("devterm").hidden)return;
   if(e.target&&e.target.id==="avatar")return; // typing in the avatar box (M would toggle sound, ` would open the terminal)
-  if(mode==="credits"){e.preventDefault();if(!e.repeat&&!["Shift","Control","Alt","Meta"].includes(e.key))creditsDone();return;}
+  if(mode==="credits"){e.preventDefault();return;} // the ending plays out in full: keys do nothing
   if(mode==="restored"){e.preventDefault();if(!e.repeat)play();return;}
   if(e.code==="Backquote"&&!e.repeat){e.preventDefault();devShow();return;}
   if(e.code==="KeyF"&&!e.repeat){useFreeze();return;}
@@ -3327,8 +3411,24 @@ function drawPlayer(){
   if(S.prompt){ctx.font=`600 11px ${MONO}`;const w=ctx.measureText(S.prompt).width+14;const px=clamp(P.x,w/2+4,W-w/2-4);
     ctx.fillStyle="rgba(8,16,22,.86)";rr(px-w/2,top-18,w,18,4);ctx.fill();tx(S.prompt,px,top-9,11,C.ink,{weight:600});}
 }
+/* After the endings' reboot, the floor "loads" on a black screen: the floor streams in top to bottom in chunky
+   scanlines, then every piece pops in one at a time in draw order. Draw-only, on the wall clock, no randomness;
+   it lives outside S. loadIn() in the credits section drives it and the HUD, then the menu goes on top. */
+const LOADIN={on:false,t0:0},LI_FLOOR=[0.3,0.8],LI_STEP=0.092;
+function loadinPieces(){
+  return[drawReaders,drawPipeline,...S.racks.map((a,i)=>()=>drawRack(i,a)),...S.cloud.map((a,i)=>()=>drawSlot(i,a)),drawInbox,
+    ...S.st.map(s=>()=>drawPickup(s)),drawDesk,...S.users.map(u=>()=>drawUser(u)),drawManager,drawPlayer];
+}
+function drawLoadin(){
+  const t=(performance.now()-LOADIN.t0)/1000,f=clamp((t-LI_FLOOR[0])/LI_FLOOR[1],0,1);
+  ctx.fillStyle="#000";ctx.fillRect(0,0,W,H);
+  if(f>0){ctx.save();ctx.beginPath();ctx.rect(0,0,W,Math.ceil(f*8)/8*H);ctx.clip();drawFloor();ctx.restore();}
+  const n=Math.floor((t-LI_FLOOR[0]-LI_FLOOR[1])/LI_STEP)+1;
+  loadinPieces().slice(0,Math.max(0,n)).forEach(p=>p());
+}
 function draw(){
   ctx.clearRect(0,0,W,H);if(!S)return;
+  if(LOADIN.on){drawLoadin();return;}
   ctx.save();
   if(S.shake>0&&!RM){const m=S.shake*14;ctx.translate((Math.random()-.5)*m,(Math.random()-.5)*m);}
   drawFloor();drawReaders();
@@ -4632,30 +4732,81 @@ function letter(t){
   const sign=pick(["Regards,","Best of luck,","Sincerely (not really),","Unsubscribe,"]);
   return`<div class="letter"><p>${to}</p><p>${open}</p><p>${reasons.join(" ")}</p><p>${close}</p><p>${sign}<br>Your former ${careerTitle()}</p></div>`;
 }
-/* Obsolete ending: fade to black, the credits fade in and out, a boot chime, a quick "LaS OS" boot screen with a
-   white progress bar that fades quickly to black once full, then the black fades into the main menu. Any key or click skips straight to the menu. */
+/* Obsolete ending: fade to black, the credits fade in and out, the music starts skipping on its chord, a blue crash screen cuts in
+   while it skips, then screen and music cut dead together: 1.5 s of black silence, a boot chime, a quick "LaS OS" boot screen with a
+   white progress bar that fades quickly to black once full, then the floor loads in piece by piece on black and the main menu goes on top.
+   It can't be skipped: keys and clicks do nothing until the menu is up. */
 const CREDITS=[["h2","Credits"],["p who","Matt Frost"],["p small","and"],["p small","his boss...."],["p who","Claude Opus 5.5"]];
 /* Outsourced (old school) ending: same sequence, but the boot screen is a retro green terminal, and the credits are creditsOld(). */
-const CRED={timers:[],el:null};
+const CRED={timers:[],el:null,musicT:0};
 function rollCredits(retro){
-  mode="credits";hide();setHiss(false);
+  mode="credits";hide();setHiss(false);clearTimeout(CRED.musicT);driveStop();
   const el=CRED.el=document.createElement("div");el.id="credits";if(retro)el.className="retro";el.setAttribute("role","dialog");el.setAttribute("aria-label","Credits");
   el.innerHTML=`<div class="roll">${(retro?creditsOld():CREDITS).map(([t,x])=>{const[tag,cls]=t.split(" ");return`<${tag}${cls?` class="${cls}"`:""}>${x}</${tag}>`;}).join("")}</div>
-    <div class="boot" aria-label="LaS OS is starting"><b>LaS OS</b><div class="bar"><i></i></div></div><div class="skip">Press any key to skip</div>`;
-  document.body.appendChild(el);el.addEventListener("click",creditsDone);
-  const roll=el.querySelector(".roll"),boot=el.querySelector(".boot"),later=(ms,f)=>CRED.timers.push(setTimeout(f,ms));
+    ${crashScreen(retro)}
+    <div class="selftest" aria-hidden="true"><div></div></div>
+    <div class="boot" aria-label="LaS OS is starting"><b>LaS OS</b><div class="bar"><i></i></div></div>`;
+  document.body.appendChild(el);
+  const roll=el.querySelector(".roll"),boot=el.querySelector(".boot"),bsod=el.querySelector(".bsod"),later=(ms,f)=>CRED.timers.push(setTimeout(f,ms));
   requestAnimationFrame(()=>el.classList.add("on"));                              // fade to black
   later(1400,()=>roll.classList.add("show"));                                      // credits fade in
   later(6400,()=>roll.classList.remove("show"));                                   // and out, to black
-  later(8200,()=>{sfx("boot");boot.classList.add("show");requestAnimationFrame(()=>boot.querySelector(".bar").classList.add("full"));}); // chime, LaS OS
-  later(10650,()=>boot.classList.remove("show"));                                   // bar full: LaS OS fades out quickly, to black
-  later(11250,creditsDone);                                                        // black fades into the main menu
+  later(7000,()=>musicStutter(3400));                                              // the music starts skipping on its chord...
+  later(7600,()=>bsod.classList.add("show"));                                      // ...a crash screen cuts in while it skips...
+  later(10400,()=>bsod.classList.remove("show"));                                  // ...then screen and music cut dead together
+  later(11900,()=>{sfx("boot");boot.classList.add("show");requestAnimationFrame(()=>boot.querySelector(".bar").classList.add("full"));}); // 1.5 s of black silence, then chime, LaS OS
+  later(12400,driveStart);                                                         // 0.5 s into the boot screen, the hard drive spins up and seeks until the menu
+  later(14350,()=>boot.classList.remove("show"));                                   // bar full: LaS OS fades out quickly, to black
+  selfTest(el,later,14650);                                                        // a terminal "runs" the regression suite for 3.5 s
+  later(18500,loadIn);                                                             // the floor loads in piece by piece, then the menu
+}
+/* On black: a fresh floor loads in (drawLoadin), then the HUD rows pop in one by one, then the main menu goes on top.
+   The credits layer stays as a clear layer over the page, so clicks still reach nothing until the menu is up. */
+function loadIn(){
+  if(mode!=="credits"||!CRED.el)return;
+  newRun();LOADIN.on=true;LOADIN.t0=performance.now();
+  document.documentElement.classList.add("loadin");CRED.el.classList.add("loading");
+  const later=(ms,f)=>CRED.timers.push(setTimeout(f,ms));
+  let ms=Math.round((LI_FLOOR[0]+LI_FLOOR[1]+loadinPieces().length*LI_STEP)*1000)+150;
+  for(const sel of[".top",".health",".help"]){later(ms,()=>{const e=document.querySelector(".wrap>"+sel);if(e)e.classList.add("li-on");});ms+=140;}
+  later(ms+200,creditsDone);                                                       // everything's "loaded": the menu goes on top
+  if(AU.ctx)driveEnd(AU.ctx.currentTime+(ms+200)/1000+1);                          // so the drive knows its stop time early and winds down in time
+}
+function loadinEnd(){
+  LOADIN.on=false;document.documentElement.classList.remove("loadin");
+  document.querySelectorAll(".wrap>.li-on").forEach(e=>e.classList.remove("li-on"));
+}
+// the blue crash screen between the credits and the reboot (no real OS's wording or face)
+function crashScreen(retro){
+  const[code,why]=retro?["POSITION_OUTSOURCED","The current employee has been relocated to a lower-cost region. Please open a ticket. Someone will look at it overnight."]
+    :["HUMAN_NOT_FOUND","The current employee has been deprecated in favor of a more scalable solution. No data was lost. Mostly."];
+  return`<div class="bsod" role="alert"><div><b>LaS OS</b><p>A fatal exception has occurred at 0x0000DEAD.</p><p>STOP: ${code}</p><p>${why}</p><p>* Press any key to blame the network _</p></div></div>`;
+}
+/* Between the reboot and the floor load-in, LaS OS "runs" the game's own regression suite: two seconds of a terminal
+   scrolling test names, ending on PASS. Faked: a snapshot of real test names from tests/regression.html (nothing runs,
+   nothing plays a sound). Each line takes its own fixed time (a pattern, no randomness): some fly by, a few slow tests hang. */
+const SELFTEST=["every inline script parses", "Tutorials keeps hands-on beside Main menu on every page", "paperclip rotates its wire without moving its eyes", "tutorial waits for actions and its chosen rack", "a redundant patch on a covered server is rejected", "a covered cycle ends into a fresh uncovered one with no audit", "an uncovered cycle that expires fails its audit", "an outage or breach in the cloud blocks client completion", "you must stand on an empty cloud slot to drop a server", "a successful migration retires the server's escalation", "a forced put-back never overwrites a rack someone else now uses", "temps, Patch Bot and Mover Bot never repair a jammed pipeline", "every pipeline lane jams on its own", "respawning chatbots releases anyone they were talking to", "offline servers burn uptime by tier: gold most, bronze barely", "a manager looking at a server takes it offline half the time", "the walk of shame goes straight to the inbox at a slow pace", "blue-green: Space on-prem discards the carried copy", "your donut and immunity timers keep running during a freeze", "each AI agent level only touches the server tiers it has earned", "the agent calls off its own escalation, even after it lands", "a retrospective slot raises the cap with the bar", "Patch Bot and the AI Agent move faster at every level", "every end screen gets its rubber stamp", "Big Slice throws way more pizza parties", "every upgrade has a Learn more link, listed on the menu screen", "About the author is on the main menu and links out safely", "the outage rate adds up every offline server by tier", "a break is inserted between clients and never skips one", "Patch Bot and the CI/CD Pipeline each cost a point less", "the joystick moves the player, and releasing it stops them", "music intensity follows VPs, escalations, queues and fires", "each client plays the next song set, and every song is defined", "every client starts with one restore point and full charges", "restore points follow the interval and land on events", "shared server references survive a restore", "charges run out and aren't refunded by restoring", "restore needs a job: fired yes, retired or title screen no", "dev tools used after a backup still mark the run", "restore points don't cross clients", "? lists commands without exposing the cheat", "? works after a command, in the middle of one, and by prefix", "satire commands answer and change nothing", "git blame turns on you after three clients", "X posts fit the limit even for a long client name", "share links carry the post where the network allows it", "the preview image is a real 1200x630 PNG under the size limits", "every end screen offers sharing, and it leaves the run alone", "sound and music never use the game's random rolls"],SELFTEST_MS=3500;
+function selfTest(el,later,at){
+  const box=el.querySelector(".selftest"),out=box.querySelector("div");
+  const lines=[["$","lasos selftest tests/regression.html"],...SELFTEST.map(n=>["ok",n]),["PASS","156/156 · all systems nominal"]];
+  const w=lines.slice(1).map((_,i)=>i%9===6?5:i%13===3?3.2:0.35+((i*7)%5)*0.3),sum=w.reduce((a,b)=>a+b,0); // how long each line "took"
+  let when=0;const times=[0,...w.map(x=>when+=x*SELFTEST_MS/sum)];
+  later(at,()=>box.classList.add("show"));
+  lines.forEach(([k,t],i)=>later(at+Math.round(times[i]),()=>{const p=document.createElement("p");const b=document.createElement("b");
+    if(k==="ok"){b.className="ok";const o=document.createElement("i");o.textContent="  OK  ";b.append("[",o,"]");} // systemd style: [  OK  ] name
+    else{b.className=k==="PASS"?"pass":"";b.textContent=k;}
+    p.append(b," ",t);out.append(p);}));
+  later(at+SELFTEST_MS+250,()=>box.classList.remove("show"));
 }
 function creditsDone(){
   if(mode!=="credits")return;
-  CRED.timers.forEach(clearTimeout);CRED.timers=[];
+  CRED.timers.forEach(clearTimeout);CRED.timers=[];clearTimeout(CRED.musicT);
   const el=CRED.el;CRED.el=null;
-  newRun();titleScreen();
+  const loaded=LOADIN.on;loadinEnd();
+  if(!loaded)newRun(); // after the load-in, keep the floor that just loaded
+  titleScreen();
+  if(loaded)CRED.musicT=setTimeout(musicResume,1500);else{musicResume();driveStop();} // after the load-in, the menu sits in silence a beat before the music
+  if(loaded&&!RM){ov.classList.add("wipein");ov.addEventListener("animationend",()=>ov.classList.remove("wipein"),{once:true});} // the menu wipes down over it
   if(el){el.style.pointerEvents="none";el.classList.remove("on");setTimeout(()=>el.remove(),1300);}
 }
 // the rubber stamp across an end screen's title row, with its thud
@@ -4986,7 +5137,7 @@ function frame(now){
   if(stale())return; // a newer copy of the game took over this page
   const dt=Math.min(0.05,(now-last)/1000);last=now;
   if(mode==="play"){update(dt);backupTick();}else if(mode==="restoring")tickRestore(dt);else if(mode==="celebrate")tickCelebration(dt);else if(S)S.t+=dt*0.3;
-  if(AU.ctx){setHiss(mode==="play"&&!!S&&(spraying(S.ext)||!!(S.temp&&spraying(S.temp.ext))||agentSpraying()));heartTick();}
+  if(AU.ctx){setHiss(mode==="play"&&!!S&&(spraying(S.ext)||!!(S.temp&&spraying(S.temp.ext))||agentSpraying()));heartTick();driveTick();}
   draw();
   if(now-hudT>100){hud();hudT=now;}
   requestAnimationFrame(frame);
