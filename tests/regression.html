@@ -1289,6 +1289,11 @@ test("the toolkit lists every upgrade you own, stackable or not; coffee and donu
   S.upgrades = {}; check(G.toolkitHtml() === "", "an empty toolkit should not show");
   G.setMode("play"); S.st = [{x: S.p.x, y: S.p.y, life: 9, kind: "coffee"}, {x: S.p.x, y: S.p.y, life: 9, kind: "donut"}]; G.update(0.02);
   check(S.snacks && S.snacks.coffee === 1 && S.snacks.donut === 1, `snacks ${JSON.stringify(S.snacks)}`);
+  // coffee's wired seconds speed up hold-E work 1.3x, and only while they last
+  const ticket = boost => { G.newRun(); G.startSprint(1); const T = G.S; T.energy = 100; T.p.stun = 0; T.p.boost = boost; T.em = []; T.tk = [{t: 0}];
+    T.p.x = G.DESK.x; T.p.y = G.DESK.y - 30; G.keys.fix = true; let n = 0; while (T.tk.length && n < 100) { G.doFix(0.05); n++; } G.keys.fix = false; G.doFix(0); return n; };
+  const plain = ticket(0), wired = ticket(4);
+  check(plain === 12 && wired === 10, `ticket steps plain ${plain} wired ${wired} (want 12 and 10)`);
   G.showEnd(null); check(W.document.body.textContent.includes("Coffee & donuts"), "the end screen has no snack tally");
 });
 test("your avatar is exactly one emoji, kept across visits, and never anything else", () => {
