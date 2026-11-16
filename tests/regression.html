@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("aiCo,CO,letter,rumorBlock,RUMORS,crowd,userLines,alertLines,humanLines,BREAK_CLIENTS,welcomeMail,mailRecap,unicornMail,aiMail,lastMail,spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "K,keyHint,TOUCH,fixWord,grabWord,setSilentPlay,silentBtn,HAS_SESSION,AU,toastsCover,FIX_WORDS,rollbackTarget,tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL,pipeJob,jammed,tickPipeline,sendToPipeline,fixTarget,unjam,jamUnder,laneY,pipeX,PIPE_FIX,PIPE_BREAK_LO,PIPE_BREAK_HI,patchBot").split(",");
+  "moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL,pipeJob,jammed,tickPipeline,sendToPipeline,fixTarget,unjam,jamUnder,laneY,pipeX,PIPE_FIX,PIPE_BREAK_LO,PIPE_BREAK_HI,patchBot,tickJamAlarm,JAM_BUZZ_FIRST,JAM_BUZZ_EVERY").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},get LOGLV(){return LOGLV},setLogLv:v=>{LOGLV=v},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -461,6 +461,28 @@ function jamSetup({lanes = 1, bluegreen = false, tier = "gold"} = {}) {
   const j = {a, t: 0, dur: 6, lane: 0, brk: 0.3}; S.pipe = [j]; G.tickPipeline(5);
   return {S, a, j};
 }
+test("a jammed lane sounds the factory buzzer: soon after the jam, then every 4 s, quiet while repairing or under a red alert", () => {
+  const {S, j} = jamSetup({lanes: 2}); S.alert = false;
+  const buzzes = () => G.DBG_LOG.filter(e => e.s === S && /conveyor alarm/.test(e.text)).length;
+  const run = secs => { for (let t = 0; t < secs - 1e-9; t += 0.05) { S.t += 0.05; G.tickJamAlarm(0.05); } };
+  S.jamBuzzT = undefined;
+  run(G.JAM_BUZZ_FIRST - 0.1); check(buzzes() === 0, "buzzed before the jam had a moment to register");
+  run(0.3); check(buzzes() === 1, `no first buzz (${buzzes()})`); // 0.2 s past each due time below, for float drift
+  run(G.JAM_BUZZ_EVERY * 2); check(buzzes() === 3, `not every 4 s (${buzzes()} buzzes)`);
+  // a second jammed lane doesn't double the alarm
+  const k = {a: j.a, t: 3, dur: 6, lane: 1, brk: 0.3}; S.pipe.push(k);
+  run(G.JAM_BUZZ_EVERY); check(buzzes() === 4, `two jams doubled the alarm (${buzzes()})`);
+  // someone repairing a jam keeps it quiet
+  const before = buzzes();
+  for (let t = 0; t < 6; t += 0.05) { S.t += 0.05; j.fixT = S.t; G.tickJamAlarm(0.05); }
+  check(buzzes() === before, "buzzed while someone was repairing");
+  // a red alert keeps it quiet too
+  S.alert = true; run(6); check(buzzes() === before, "buzzed over the red-alert siren");
+  S.alert = false; run(1.7); check(buzzes() === before + 1, "did not come back within 1.5 s of the alert clearing");
+  // all lanes clear: silence, and the next jam starts fresh
+  S.pipe = []; run(8); check(buzzes() === before + 1, "buzzed with nothing jammed");
+  check(S.jamBuzzT === G.JAM_BUZZ_FIRST, "next jam does not start fresh");
+});
 test("each pipeline send jams 15-20% of the time, partway across the hallway, whatever you own", () => {
   check(G.PIPE_BREAK_LO === 0.15 && G.PIPE_BREAK_HI === 0.2, `range ${G.PIPE_BREAK_LO}-${G.PIPE_BREAK_HI}`);
   for (const kit of [{pipeline: 1}, {pipeline: 3, terraform: true, observe: true, runbooks: true, bluegreen: true, autopatch: true, agent: 4, patchbot: 3, moverbot: true}]) {

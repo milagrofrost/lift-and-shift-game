@@ -833,6 +833,8 @@ const SFX={
   badgeOK:()=>{tone(2637,0.45,{vol:0.022,attack:0.003});tone(5274,0.2,{vol:0.006,attack:0.003});},
   badgeNo:()=>{tone(210,0.12,{type:"square",vol:0.045});tone(210,0.14,{type:"square",vol:0.045,delay:0.17});},
   siren:()=>{tone(620,0.35,{type:"sawtooth",vol:0.06,slide:260});tone(880,0.35,{type:"sawtooth",vol:0.06,slide:-260,delay:0.36});},
+  // a jammed pipeline: a low, flat factory buzzer, three buzzes in a row
+  jamBuzz:()=>{for(let i=0;i<3;i++){tone(140,0.15,{type:"square",vol:0.07,delay:i*0.26});tone(70,0.15,{type:"square",vol:0.05,delay:i*0.26});}},
 };
 function sfx(n){
   if(!AU.on||!SFX[n])return;const now=performance.now();
@@ -1454,7 +1456,7 @@ function agentDoWork(j,dt,G){
   if(j.kind==="fire"){a.fire-=agentFireRate()*dt;A.ext={a,t:S.t};A.work=Math.min(0.99,1-a.fire/100);if(a.fire>0)return;a.fire=0;}
   else if(j.kind==="discover"){a.disc=(a.disc||0)+dt;a.discT=S.t;A.work=a.disc/W.need(a);if(a.disc<W.need(a))return;}
   else if(j.kind==="rightsize"){j.w=(j.w||0)+dt;A.work=j.w/W.need(a);if(j.w<W.need(a))return;}
-  else if(j.kind==="unjam"){j.pj.fix=(j.pj.fix||0)+dt;A.work=j.pj.fix/PIPE_FIX;if(j.pj.fix<PIPE_FIX)return;}
+  else if(j.kind==="unjam"){j.pj.fix=(j.pj.fix||0)+dt;j.pj.fixT=S.t;A.work=j.pj.fix/PIPE_FIX;if(j.pj.fix<PIPE_FIX)return;}
   else{a.prog+=dt;A.work=a.prog/W.need(a);if(a.prog<W.need(a))return;a.prog=0;}
   spend("ai",G.cost);const st=S.ss.ai;st.n++;st.cost+=G.cost;
   const pos={x:A.x,y:A.y-10};fl(pos,`🪙 ${(G.tok*rand(0.8,1.2)).toFixed(1)}k tokens · −$${G.cost.toFixed(1)}k`,C.ok);
@@ -2325,6 +2327,18 @@ function pipeJob(a,lane,byBot){
 }
 const pipeX=j=>PIPE_X0+(PIPE_X1-PIPE_X0)*Math.min(1,j.t/j.dur);
 const jammed=j=>!!j&&j.brk!=null&&j.t>=j.brk*j.dur;
+/* The jam alarm: a factory buzzer (three buzzes) about a second after a lane jams, then every 4 seconds while any lane is
+   jammed. One alarm however many lanes are jammed. It goes quiet while someone (you or the AI agent) is repairing a jam,
+   and during a red alert, when the siren has the floor. It never touches randomness. */
+const JAM_BUZZ_FIRST=0.9,JAM_BUZZ_EVERY=4;
+function tickJamAlarm(dt){
+  const jams=(S.pipe||[]).filter(jammed);
+  if(!jams.length){S.jamBuzzT=JAM_BUZZ_FIRST;return;}
+  if(S.alert||jams.some(j=>S.t-(j.fixT??-9)<0.2)){S.jamBuzzT=clamp(S.jamBuzzT??0,0.6,1.5);return;} // resumes soon after the quiet ends
+  S.jamBuzzT=(S.jamBuzzT??JAM_BUZZ_FIRST)-dt;if(S.jamBuzzT>0)return;
+  S.jamBuzzT=JAM_BUZZ_EVERY;sfx("jamBuzz");
+  dbgLog(1,`conveyor alarm: lane${jams.length>1?"s":""} ${jams.map(j=>j.lane+1).join(", ")} jammed`);
+}
 function unjam(j,who){
   j.brk=null;j.fix=0;sfx("online");
   fl({x:pipeX(j),y:laneY(j.lane)-26},who==="agent"?"🧠 Pipeline repaired":"🔧 Pipeline repaired",C.ok);
@@ -2433,7 +2447,7 @@ function doFix(dt){
   }
   if(f.kind==="unjam"){
     // repairing a jammed pipeline lane: free like incident work, progress kept if you let go
-    f.j.fix=(f.j.fix||0)+dt;S.fixNeed=PIPE_FIX;S.fixP=f.j.fix;
+    f.j.fix=(f.j.fix||0)+dt;f.j.fixT=S.t;S.fixNeed=PIPE_FIX;S.fixP=f.j.fix;
     if(f.j.fix<PIPE_FIX)return;
     S.fixP=0;S.fixLock=true;unjam(f.j,"you");clipEv("unjam");
     return;
@@ -2760,6 +2774,7 @@ function update(dt){
     toast(`🚨 RED ALERT: ${crit.map(c=>c.a.name).join(", ")}. Nothing else works until it's fixed. Incident fixes cost no energy.`);unplanned(1,"alert");clipEv("alert");
   }
   if(S.alert){S.sirenT=(S.sirenT||0)-dt;if(S.sirenT<=0){S.sirenT=1.6;sfx("siren");}}else S.sirenT=0;
+  tickJamAlarm(dt);
   if(!S.alert&&was){
     toast("✅ All clear. Back to work.");clipEv("clear");
     // blameless postmortem: the incident becomes a lesson and gives back 1 story point
@@ -3706,7 +3721,7 @@ function howToPlay(){
     <div><span class="ic">🧑‍💻</span><span><b>Your avatar.</b> Pick one on the main menu, or type or paste any single emoji into the box. It's only shown on your screen.</span></div>
     <div><span class="ic">👤</span><span><b>Users.</b> They wander the hallway. Bump into one and you're stuck for a "quick question." The better dressed, the longer: an analyst holds you under 2 seconds, the CIO almost 5. Interns just blurt their question as you walk past. Right after someone lets you go, and for the first 2 seconds of each client, nobody can stop you: you blink until that wears off.</span></div>
     <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Hover over (or tap) anything in "Your toolkit" to see what it does. Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. Tools you don't own yet keep turning up: the longer one goes unseen, the likelier it is to show up. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
-    <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. It worked when we tested it. Results may vary: 15–20% of sends jam partway across and the lane stops with its server stuck on the belt, still offline and burning uptime (a blue-green copy burns none). Stand anywhere on that conveyor and hold <kbd>E</kbd> to repair it (free, about 2.5 seconds; progress is kept if you let go). A level 3+ AI Agent can repair it too; temps and bots can't, and no upgrade makes it jam less. Every lane jams on its own. Once you have a pipeline, the Mover Bot only uses it and waits for a free lane (a jammed one stays busy); carry servers yourself to go faster. The pipeline and the Mover Bot find a free cloud slot on their own; only you have to walk to one. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at a quarter of its outage rate (blue-green moves burn none).</span></div>
+    <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. It worked when we tested it. Results may vary: 15–20% of sends jam partway across and the lane stops with its server stuck on the belt, still offline and burning uptime (a blue-green copy burns none). Stand anywhere on that conveyor and hold <kbd>E</kbd> to repair it (free, about 2.5 seconds; progress is kept if you let go). A level 3+ AI Agent can repair it too; temps and bots can't, and no upgrade makes it jam less. Every lane jams on its own. A jammed lane sounds a factory buzzer every few seconds until it's repaired (quiet while someone is repairing it, and under a red alert's siren). Once you have a pipeline, the Mover Bot only uses it and waits for a free lane (a jammed one stays busy); carry servers yourself to go faster. The pipeline and the Mover Bot find a free cloud slot on their own; only you have to walk to one. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at a quarter of its outage rate (blue-green moves burn none).</span></div>
     <div><span class="ic">📅</span><span><b>Lease target.</b> Each client's data center lease has a target day. Going late never ends the game, but on-prem costs rise 10% per overdue day and the client's rating drops.</span></div>
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and a 4-second speed boost (you glow). 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
     <div><span class="ic">🤖</span><span><b>Patch Bot (upgrade).</b> Patches overdue servers for you, but never fights fires. Level 1 succeeds 50% of the time, level 2 66%, level 3 90%, and each level walks faster. A failed patch leaves a red AUTOMATION ERROR on the rack: patch it yourself to clear it, let an AI Agent trusted with that server tier try at its usual patching odds, or if its compliance timer runs out, the audit fails and the error resets so the bot can try again.</span></div>
