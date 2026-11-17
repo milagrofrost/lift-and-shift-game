@@ -32,7 +32,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 const NAMES = ("aiCo,CO,letter,rumorBlock,RUMORS,crowd,userLines,alertLines,humanLines,BREAK_CLIENTS,welcomeMail,mailRecap,unicornMail,aiMail,lastMail,spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "K,keyHint,TOUCH,fixWord,grabWord,setSilentPlay,silentBtn,HAS_SESSION,AU,toastsCover,FIX_WORDS,rollbackTarget,tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
   "SELFTEST,loadIn,LOADIN,moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL,pipeJob,jammed,tickPipeline,sendToPipeline,fixTarget,unjam,jamUnder,laneY,pipeX,PIPE_FIX,PIPE_BREAK_LO,PIPE_BREAK_HI,patchBot,tickJamAlarm,JAM_BUZZ_FIRST,JAM_BUZZ_EVERY," +
-  "infected,CLONE_MAX,FORK_COST,spawnAgent,ciOffered,ciLeft,ciLockable,CI_NEW,salary,salaryText,tickSpecials,client,lvl").split(",");
+  "shakeOff,shakeRate,SHAKE_STICK,SHAKE_PX,stickJerk,SHAKE_MAX,SHAKE_WIN,SHAKE_SLOW,SHAKE_FAST,SHAKE_BONUS,SHAKE_LINES,vpLeave,hunting,spawnHunter,infected,CLONE_MAX,FORK_COST,spawnAgent,ciOffered,ciLeft,ciLockable,CI_NEW,salary,salaryText,tickSpecials,client,lvl").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},get LOGLV(){return LOGLV},setLogLv:v=>{LOGLV=v},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -1292,6 +1292,92 @@ test("a no-AI career from client 10 with under 15% skilled work gets outsourced 
   S = run(false, 12, 20, 20); check(!S.outsourced, "a career with AI available got outsourced");
   S = run(true, 12, 0, 0, 0); check(S.obsolete && !S.outsourced, "a hands-off client should be obsolete, not outsourced");
 });
+test("answering the email sends the VP back out the way they came; a leaving VP can't stop you or worry the music", () => {
+  const S = fresh(); S.err = S.errMax; S.atk = []; S.tk = []; S.em = []; S.alert = false; S.p.userImm = 0; S.p.ghost = 0; S.p.heldBy = null; S.p.stun = 0;
+  S.p.x = 480; S.p.y = 140; S.users = []; G.spawnHunter(); const vp = S.users.find(u => u.hunter);
+  check(vp && vp.home && near(vp.x, vp.home.x) && near(vp.y, vp.home.y), "the VP has no recorded entrance");
+  const home = {...vp.home}; vp.x = 480; vp.y = 300;
+  G.tickHazards(0.05); check(vp.leaving && !vp.gone && S.users.includes(vp), "the VP vanished or kept hunting after the reply");
+  check(!G.hunting(vp) && G.musicHeat() === 0, "a leaving VP still counts as hunting");
+  S.p.x = vp.x; S.p.y = vp.y; G.tickUsers(0.05); check(!S.p.heldBy, "a leaving VP stopped you");
+  S.p.x = 100; S.p.y = 100;
+  for (let k = 0; k < 400 && S.users.includes(vp); k++) G.tickUsers(0.05);
+  check(!S.users.includes(vp) && Math.hypot(vp.x - home.x, vp.y - home.y) < 8, `the VP left from ${Math.round(vp.x)},${Math.round(vp.y)}, not ${home.x},${home.y}`);
+  // after holding you once, they walk out too
+  G.spawnHunter(); const v2 = S.users.find(u => u.hunter); S.p.heldBy = v2; S.p.stun = 0; G.tickUsers(0.05);
+  check(v2.leaving && S.users.includes(v2) && !S.p.heldBy, "the VP didn't walk off after holding you");
+  // the inbox fills back up while they're heading out: the same VP turns around, and no second one shows up
+  const missed = S.run.missed; S.p.x = 100; S.p.y = 100;
+  S.em = Array.from({length: G.inboxLimit()}, () => ({type: "legal", age: 0, life: 999}));
+  check(G.importantMail().length >= G.inboxLimit(), `inbox not full: ${G.importantMail().length}`);
+  S.huntT = 0; G.tickHazards(0.05);
+  check(S.users.filter(u => u.hunter).length === 1 && S.users[0] === v2, `${S.users.filter(u => u.hunter).length} VPs after the inbox refilled`);
+  check(!v2.leaving && G.hunting(v2) && S.run.missed === missed + 1, "the leaving VP didn't turn back around");
+  S.huntT = 0; G.tickHazards(0.05); check(S.users.filter(u => u.hunter).length === 1, "a second VP showed up while the first was hunting");
+  S.users = []; S.em = [];
+});
+test("mashing directions by rate shakes off up to a quarter of a hold, then they take the hint; the temp can't be shaken", () => {
+  // hold someone of this rank and tap at `rate` taps/s for the whole hold; returns the share of the hold shaved
+  const run = (rank, rate) => {
+    const S = fresh(); S.alert = false; S.pizza = null; S.freezeT = 0; S.p.userImm = 0; S.p.ghost = 0; S.p.heldBy = null; S.p.stun = 0;
+    const u = {x: S.p.x, y: S.p.y, rank, vx: 0, vy: 0, turn: 9, cd: 0, line: ""}; S.users = [u];
+    G.tickUsers(0.05); check(S.p.heldBy === u, `rank ${rank} didn't stop you`);
+    const full = S.p.holdMax, line = u.line, dt = 1 / 60; let next = S.t;
+    while (S.p.stun > 0) {
+      S.t += dt; S.p.stun -= dt;
+      if (rate) while (next <= S.t) { S.p.taps.push(next); next += 1 / rate; }
+      G.shakeOff(S.p, dt);
+    }
+    return {cut: S.p.shook / full, line: u.line, said: u.line !== line, u};
+  };
+  for (let rank = 1; rank <= 5; rank++) {
+    const none = run(rank, 0), slow = run(rank, 3), comfy = run(rank, 10), fast = run(rank, 17);
+    check(none.cut === 0 && slow.cut === 0 && !slow.said, `rank ${rank}: slow tapping shaved ${slow.cut}`);
+    check(comfy.cut > 0.1 && comfy.cut < 0.24 && !comfy.said, `rank ${rank}: comfortable mashing shaved ${comfy.cut}`);
+    check(near(fast.cut, G.SHAKE_MAX, 1e-6), `rank ${rank}: all-out mashing shaved ${fast.cut}`);
+    check(G.SHAKE_LINES[rank].includes(fast.line), `rank ${rank} said "${fast.line}"`);
+    check(run(rank, 40).cut <= G.SHAKE_MAX + 1e-9, "shook off more than a quarter");
+  }
+  check(G.SHAKE_STICK > 1 && G.SHAKE_SLOW / G.SHAKE_STICK <= 2 && G.SHAKE_FAST / G.SHAKE_STICK <= 8, "stick wiggling needs too fast a rate");
+  // a stick jerk is a reversal after SHAKE_PX of thumb travel, anywhere; it doesn't need to cross the stick's centre
+  {
+    G.setMode("play");
+    try {
+      const S = fresh(); S.p.heldBy = {rank: 3, line: ""}; S.p.stun = 3; S.p.holdMax = 3; S.p.shook = 0; S.p.taps = [];
+      G.stick.jx = 100; G.stick.jy = 100; G.stick.jd = null; let n = 0;
+      const jerk = (x, y) => { G.stickJerk(x, y); G.update(0.0001); const m = S.p.taps.length; const d = m - n; n = m; return d; };
+      check(G.SHAKE_PX <= 10, `stick shake needs ${G.SHAKE_PX}px`);
+      check(jerk(100 + G.SHAKE_PX, 100) === G.SHAKE_STICK, "the first move didn't count");
+      check(jerk(100 + G.SHAKE_PX * 2, 100) === 0, "moving on in the same direction counted");
+      check(jerk(100 + G.SHAKE_PX * 2 - G.SHAKE_PX * 0.5, 100) === 0, "a reversal shorter than SHAKE_PX counted");
+      check(jerk(100 + G.SHAKE_PX, 100) === G.SHAKE_STICK, "a SHAKE_PX reversal off-centre didn't count");
+      check(jerk(100 + G.SHAKE_PX * 2, 100) === G.SHAKE_STICK, "jerking back didn't count");
+      // small wiggles away from the centre: every swing of SHAKE_PX or more counts
+      jerk(130 + 0.8 * G.SHAKE_PX, 100); // still heading right from the last swing: the end of the swing moves out
+      let got = 0; for (let i = 1; i <= 6; i++) got += jerk(130 + (i % 2 ? -0.8 : 0.8) * G.SHAKE_PX, 100);
+      check(got === 6 * G.SHAKE_STICK, `small off-centre wiggles counted ${got / G.SHAKE_STICK} of 6`);
+    } finally { G.setMode("title"); }
+  }
+  // the temp's quick question: it stands still, and taps don't shorten it
+  const S = fresh(); G.spawnTemp(); const T = S.temp; T.snack = false; T.nobadge = false; T.x = S.p.x + 10; T.y = S.p.y; T.idle = 0; S.p.userImm = 0;
+  let k = 0; while (!T.asked && k++ < 50) { T.idle = 0; G.tickTemp(0.01); }
+  check(T.asked && S.p.stun > 0 && !S.p.heldBy, "the temp never asked its question");
+  const tx = T.x, ty = T.y, st = S.p.stun; T.idle = 0;
+  for (let i = 0; i < 10; i++) { T.idle = 0; G.tickTemp(0.05); }
+  check(T.x === tx && T.y === ty, "the temp wandered off mid-question");
+  const tap = () => { W.dispatchEvent(new W.KeyboardEvent("keydown", {code: "KeyA"})); W.dispatchEvent(new W.KeyboardEvent("keyup", {code: "KeyA"})); };
+  G.setMode("play");
+  try {
+    let before = S.p.stun; for (let i = 0; i < 12; i++) tap(); G.update(0.05);
+    check(near(before - S.p.stun, 0.05, 1e-6), `mashing shook off the temp: ${before - S.p.stun}`);
+    // the same real key tap does shorten a user's hold
+    S.temp = null; S.p.stun = 0; S.p.heldBy = null; S.p.userImm = 0;
+    const u = {x: S.p.x, y: S.p.y, rank: 3, vx: 0, vy: 0, turn: 9, cd: 0, line: ""}; S.users = [u]; G.tickUsers(0.05);
+    check(S.p.heldBy === u, "the director didn't stop you");
+    before = S.p.stun; for (let i = 0; i < 12; i++) tap(); G.update(0.05);
+    check(near(before - S.p.stun, 0.05 * (1 + G.SHAKE_BONUS), 1e-6), `real key mashing cut ${before - S.p.stun}`);
+  } finally { G.setMode("title"); }
+});
 test("each client starts with a short grace from users, and the temp's question waits for your immunity too", () => {
   let S = fresh(); check(S.p.userImm === G.START_GRACE, `start grace is ${S.p.userImm}`);
   S.users = [{x: S.p.x, y: S.p.y, vx: 0, vy: 0, rank: 3, cd: 0, turn: 9, line: ""}];
@@ -1553,6 +1639,15 @@ test("music intensity follows VPs, escalations, queues and fires", () => {
   S.users = [{hunter: true}]; S.sprint = 2; S.songOffset = 0; S.alert = false;
   check(G.wantMood() === G.SONG_SETS[1][1], `client 2 under pressure played ${G.wantMood()}`); S.users = [];
   check(G.wantMood() === G.SONG_SETS[1][0], "client 2 did not return to its normal song");
+});
+test("the donut shop's tune still gets worried: a near breach or a VP switches it to its tense version", () => {
+  const S = fresh(); S.err = S.errMax; S.alert = false; S.mod = {id: "donut"}; S.users = []; S.atk = []; S.tk = [];
+  check(G.wantMood() === "donut", `calm donut shop played ${G.wantMood()}`);
+  const m = G.MOODS.tenseDonut; check(m && m.chords.length === 4 && m.bpm > G.MOODS.donut.bpm, "no faster tense donut tune");
+  check(JSON.stringify(m.chords) === JSON.stringify(G.MOODS.donut.chords), "the tense donut tune is a different song");
+  S.cloud[0] = {leakOn: true, leak: 80}; check(G.wantMood() === "tenseDonut", `near breach in the donut shop played ${G.wantMood()}`); S.cloud[0] = null;
+  S.users = [{hunter: true}]; check(G.wantMood() === "tenseDonut", "a VP in the donut shop did not worry the music"); S.users = [];
+  S.alert = true; check(/^alert/.test(G.wantMood()), `red alert in the donut shop played ${G.wantMood()}`); S.alert = false; S.mod = null;
 });
 test("each client plays the next song set, and every song is defined", () => {
   const S = fresh(); check(G.SONG_SETS && G.SONG_SETS.length >= 3, "fewer than 3 song sets");
