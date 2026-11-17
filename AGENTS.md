@@ -182,6 +182,7 @@ Use this sequence for each change, scaled to its scope. Keep notes in the task o
 - Trace every path affecting shared state: player, bots, manager, temporary worker, AI agent, pipeline, rollback, and client transitions.
 - Update tutorial text, controls, descriptions, and README whenever behavior changes. Do not leave contradictory instructions.
 - Preserve pause, sound controls, keyboard/touch interaction, and reduced-motion behavior.
+- Mix levels are calibrated against the endings' boot chime (`FX_GAIN`, `MUSIC_VOL`): new sounds go through `tone`/`noiseBurst` on the sound-effect bus and only the boot chime, hard drive and stamp pass `raw:true`. A limiter on the master catches stacked alarms; don't lean on it for loudness.
 - Cosmetic code never draws on `Math.random`: sound and music use `sndRand`, Mr Paperclip uses `clipRand`, and drawing uses none. Otherwise sounds (throttled by wall-clock time) and music (on its own timer) shift the game's rolls and seeded runs stop matching.
 - Use meaningful deterministic regression checks for accounting and state transitions. Validate full JavaScript syntax.
 - Run `tests/regression.html` (served over HTTP) before pushing `main`; it must read `PASS`. Add or update checks there when you change a rule it covers, instead of writing throwaway scripts.
