@@ -77,7 +77,7 @@ Google Fonts supplies optional fonts; system font fallbacks are included. Sound 
 
 | Input | Action |
 | --- | --- |
-| WASD or arrow keys | Move |
+| WASD or arrow keys | Move. While a user has you pinned for a "quick question", mash any direction (on a phone, wiggle the stick back and forth) to jerk away: the faster you mash, the sooner it ends, up to a quarter off the wait; shave the full quarter and they take the hint. The temp's question can't be shaken off. |
 | Space / J | Grab, or drop while standing on an empty cloud slot or rack; hold near a failed cloud cutover to roll back |
 | Hold E / K | Contextual work: patch, firefight, restore, contain, investigate, answer, or close |
 | F | Use your Emergency Freeze charge (bought between clients) |
@@ -150,6 +150,9 @@ From the 8th client on, if you own the AI Agent (or play old school), the retros
 
 ### Mr Paperclip
 Graduated from the tutorial, the senior paperclip is for sale: **Mr Paperclip · Reverse Shadow**, a 2-point one-off in the improvement sprint (not an AI upskill, so old school careers get him too). He floats at your shoulder in every client with all his tutorial faces (eyes that follow you, wide on coffee, shut and shaking in red alerts, closed while extinguishers spray, an eye roll for hallway users, tears for leaks) and comments in a speech bubble on a good chunk of what happens, backseat-driver style (second-guessing your choices, micromanaging while you hold E, claiming credit, hindsight, unsolicited advice like "Have you considered Kubernetes?"): migrations, failed cutovers, escalations ("Thar she blows!"), outages, email, VPs, pizza and more. His advice is comedy and mostly wrong. His one real effect: every line is worth +1 energy. Ordinary lines wait 8–12 seconds; alarms jump the queue. There is no mute. In the shop he has opinions about what you buy, and the old school credits hold a memorial for him with his days on the team.
+
+### VPs and the inbox
+When the inbox is full, a VP walks in from the far end of the hallway to find you. Answer enough email to get under the limit (or let them hold you once) and they walk back out the way they came. Let the inbox fill up again before they're gone and the same VP turns right back around.
 
 ### Red-alert slow-mo
 On Easy, and a little on Normal, VPs coming to find you slow down during a red alert (60% speed on Easy, 85% on Normal), so you get more time to fix the incident before one grabs you. Everyone else, and your repairs, run at normal speed. A slow heartbeat fades in, the music loses its bass and kick and goes muffled, and the edges of the room darken. When the alert clears it eases back out and the heartbeat quickens and fades away. Hard has none.

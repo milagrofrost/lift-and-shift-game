@@ -860,6 +860,7 @@ const SFX={
   closed:()=>tone(700,0.07,{type:"triangle",vol:0.12}),
   escalate:()=>tone(380,0.45,{type:"sawtooth",vol:0.09,slide:700}),
   held:()=>{tone(320,0.09,{type:"triangle",vol:0.16});tone(250,0.13,{type:"triangle",vol:0.16,delay:0.09});},
+  shook:()=>{tone(250,0.08,{type:"triangle",vol:0.14});tone(380,0.12,{type:"triangle",vol:0.14,delay:0.07});}, // shook off a converser: "held" in reverse
   coffee:()=>{noiseBurst(0.22,{vol:0.14,freq:900,q:5});tone(500,0.18,{vol:0.1,slide:400,delay:0.05});},
   donut:()=>{noiseBurst(0.07,{vol:0.22,freq:350});noiseBurst(0.07,{vol:0.22,freq:350,delay:0.13});},
   special:()=>[784,988,1175,1568].forEach((f,i)=>tone(f,0.14,{vol:0.12,delay:i*0.05})),
@@ -979,6 +980,8 @@ const MOODS={
   work:{bpm:112,chords:[[57,60,64],[53,57,60],[60,64,67],[55,59,62]],bass:[0,4,8,12],arp:[0,2,4,6,8,10,12,14],hat:[2,6,10,14],kick:[0,8],snare:[4,12],lead:"square"},
   tense:{bpm:124,chords:[[57,60,64],[50,53,57],[52,56,59],[57,60,64]],bass:[0,2,4,6,8,10,12,14],arp:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],hat:[0,2,4,6,8,10,12,14],kick:[0,8,10],snare:[4,12],lead:"square"},
   alert:{bpm:140,chords:[[50,53,57],[46,50,53],[43,46,50],[45,49,52]],bass:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],arp:[0,3,6,8,11,14],hat:[2,6,10,14],kick:[0,4,8,12],snare:[4,12],lead:"sawtooth",hop:true},
+  // the donut shop, under pressure: same tune, faster, with the tense sets' driving bass, 16th arps and hats
+  tenseDonut:{bpm:130,chords:[[53,57,60],[50,53,57],[46,50,53],[48,52,55]],bass:[0,2,4,6,8,10,12,14],bassUp:[2,6,10,14],arp:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],hat:[0,2,4,6,8,10,12,14],kick:[0,8,10],snare:[4,12],lead:"triangle",arpVol:0.026},
   donut:{bpm:118,chords:[[53,57,60],[50,53,57],[46,50,53],[48,52,55]],bass:[0,3,8,11],arp:[0,3,4,7,8,11,12,15],hat:[2,6,10,14],kick:[0,8],snare:[4,12],lead:"triangle"},
   victory:{bpm:132,chords:[[60,64,67],[65,69,72],[67,71,74],[72,76,79]],bass:[0,4,8,12],arp:[0,2,4,6,8,10,12,14],hat:[2,6,10,14],kick:[0,4,8,12],snare:[4,12],lead:"square"},
   /* Song set 2, "Ticket Funk": E minor, swung, with a lead melody. mel = per bar, [step, MIDI note, length in 16ths] */
@@ -1029,7 +1032,7 @@ function scheduleStep(step,t){
 function musicHeat(){
   if(mode!=="play"||!S)return 0;
   if(S.racks.some(a=>a&&a.fire>0)||downCount()>0||S.err/S.errMax<0.4)return 2;
-  if(S.atk.length||S.users.some(u=>u.hunter)||S.tk.length>=ticketLimit()-1||importantMail().length>=inboxLimit()-1||S.cloud.some(a=>a&&a.leakOn&&a.leak>60)||overdue()>0)return 1;
+  if(S.atk.length||S.users.some(hunting)||S.tk.length>=ticketLimit()-1||importantMail().length>=inboxLimit()-1||S.cloud.some(a=>a&&a.leakOn&&a.leak>60)||overdue()>0)return 1;
   return 0;
 }
 const moodLevel=m=>m.startsWith("alert")?2:m.startsWith("tense")?1:0;
@@ -1040,8 +1043,9 @@ function wantMood(){
   if(mode!=="play"||!S)return"calm";
   const set=SONG_SETS[((S.songOffset||0)+Math.max(0,S.sprint-1))%SONG_SETS.length];
   if(S.alert)return set[2];
-  if(modId()==="donut")return"donut";
-  return musicHeat()?set[1]:set[0];
+  const hot=musicHeat();
+  if(modId()==="donut")return hot?"tenseDonut":"donut"; // the donut shop has its own tune, but it still worries
+  return hot?set[1]:set[0];
 }
 function musicTick(){
   if(stale())return;
@@ -1192,6 +1196,28 @@ const RANKS=[
   {name:"VP",hold:3.8,lines:["Per my last email...","Why isn't this done?","The board is asking.","This is a P1.","Drop everything."]},
   {name:"CIO",hold:4.8,lines:["Are we cloud yet?","Have you tried AI?","Make it serverless.","Saw it on LinkedIn.","Cut costs 40%."]},
 ];
+/* Shaking off a converser: mash any direction keys (or flick the stick) while someone has you pinned. It goes by rate:
+   taps in the last SHAKE_WIN seconds. Under SHAKE_SLOW taps/s does nothing; from there to SHAKE_FAST the hold runs
+   down up to SHAKE_BONUS faster than normal. At most a quarter of the hold comes off (SHAKE_MAX); shave all of it and
+   they take the hint. Tuned on a real player: ~10 taps/s comfortable (about 17-20% off), ~17 taps/s all-out (25%).
+   The temp's quick question isn't a hold by a user, so it can't be shaken. */
+const SHAKE_MAX=0.25,SHAKE_WIN=0.5,SHAKE_SLOW=4,SHAKE_FAST=16,SHAKE_BONUS=0.5;
+// wiggling the touch stick is slower than mashing keys: each flick counts as this many taps (2 flicks/s starts working, 8 is full speed)
+const SHAKE_STICK=2;
+const SHAKE_LINES=[[],
+  ["Oh, you're busy. Sorry!","Never mind, I'll Google it.","I'll just email you."],
+  ["Sorry, I know you're busy.","Okay, we'll circle back.","No worries, let's sync later."],
+  ["Let's take this offline.","I'll put some time on your calendar.","Okay, let's circle back on this."],
+  ["Let's park this and circle back.","I'll have my EA find time.","Let's take this offline and align async."],
+  ["Let's double-click on this next quarter.","Park it. We'll socialize it at the offsite.","I'll have my chief of staff set up a deep dive."]];
+const shakeRate=P=>(P.taps||[]).filter(t=>t>S.t-SHAKE_WIN).length/SHAKE_WIN;
+function shakeOff(P,dt){
+  P.taps=(P.taps||[]).filter(t=>t>S.t-SHAKE_WIN);
+  const max=(P.holdMax||P.stun)*SHAKE_MAX,done=P.shook||0;if(done>=max-1e-6)return;
+  const k=clamp((P.taps.length/SHAKE_WIN-SHAKE_SLOW)/(SHAKE_FAST-SHAKE_SLOW),0,1);if(k<=0)return;
+  const cut=Math.min(max-done,SHAKE_BONUS*k*dt,P.stun);P.stun-=cut;P.shook=done+cut;
+  if(P.shook>=max-1e-6&&P.heldBy){P.heldBy.line=pick(SHAKE_LINES[P.heldBy.rank]||SHAKE_LINES[2]);sfx("shook");}
+}
 function spawnUsers(){
   S.users=[];if(S.tut)return; // the tutorial brings its one user in when it gets to people
   const n=pace()+1+diff().users;
@@ -1324,10 +1350,11 @@ function tickTemp(dt){
   T.t-=dt;
   if(T.t<=0){T.quit=true;sfx("quit");const q=T.nobadge?"I quit! Nobody set up my badge.":"I quit!";tempSay(q);toast(`🧑‍💼 ${T.name}: "${q}"`);return;}
   const sp=80;
+  if(T.holdT>0){T.holdT-=dt;return;} // asking you their quick question: standing right there until you answer
   // helpful, but a little annoying: phone breaks, one "quick question" for you per shift, and running commentary
   if(T.idle>0){T.idle-=dt;return;}
   if(Math.random()<dt*0.12){T.idle=rand(1.2,2.2);tempSay(pick(["One sec, checking my phone.","Hold on, my mom's texting.","Brb, posting on LinkedIn."]));return;}
-  if(!T.asked&&!T.snack&&dist(T,S.p)<60&&!S.p.heldBy&&!(S.p.ghost>0)&&!(S.p.userImm>0)&&S.p.stun<=0){T.asked=true;S.p.stun=1.2;tempSay(pick(TEMP_ASK));return;}
+  if(!T.asked&&!T.snack&&dist(T,S.p)<60&&!S.p.heldBy&&!(S.p.ghost>0)&&!(S.p.userImm>0)&&S.p.stun<=0){T.asked=true;S.p.stun=1.2;T.holdT=1.2;tempSay(pick(TEMP_ASK));return;}
   if(T.sayT<=0&&T.work>0&&Math.random()<dt*0.25)tempSay(pick(TEMP_WORK));
   // never onboarded: stands at the server-room door getting denied every few seconds until they give up
   if(T.nobadge){
@@ -1849,11 +1876,12 @@ function tickUsers(dt){
     if(mgrShove(u,dt))continue;
     // pizza party: regular users drop everything and crowd around the pizza (hunting execs keep hunting)
     if(S.pizza&&!u.hunter){const k=S.users.indexOf(u),ang=k*1.9;goTo(u,S.pizza.x+Math.cos(ang)*34,S.pizza.y+Math.sin(ang)*26,80,dt);continue;}
-    if(P.heldBy===u){if(P.stun<=0){P.heldBy=null;u.cd=3;P.userImm=1.2;if(u.hunter)u.gone=true;}continue;}
+    if(P.heldBy===u){if(P.stun<=0){P.heldBy=null;u.cd=3;P.userImm=1.2;if(u.hunter)vpLeave(u);}continue;}
+    if(u.leaving){if(goTo(u,u.leaving.x,u.leaving.y,70,dt))u.gone=true;else doorCross(u,false);continue;} // a VP heading back out
     if(u.hunter){
-      // an ignored exec walks (slower than you) to wherever you are, holds you once, then leaves.
+      // an ignored exec walks (slower than you) to wherever you are, holds you once, then walks back out the way they came.
       // Red-alert slow-mo slows their approach. With a badge audit they have to get through the door first.
-      u.life-=dt;if(u.life<=0){u.gone=true;fl(u,"gave up",C.muted);continue;}
+      u.life-=dt;if(u.life<=0){vpLeave(u);fl(u,"gave up",C.muted);continue;}
       if(u.call>0)badgeCall(u,dt);
       const sp=70*(S.slow??1),room=zoneOf(P.x),uz=zoneOf(u.x),badge=S.upgrades.badge&&!u.access;
       if(badge&&uz===1&&room!==1&&!doorOpen(room)){const R=READERS[room];if(goTo(u,R.vx,R.vy,sp,dt))badgeTry(u,room,dt);}
@@ -1879,10 +1907,10 @@ function tickUsers(dt){
     }
     // status page: during a red alert, regular users check it instead of asking you
     const readingStatus=(S.alert&&S.upgrades.statuspage&&!u.hunter)||(u.hunter&&dist(P,INBOX)<85);
-    if(!P.heldBy&&u.cd<=0&&P.userImm<=0&&!(P.ghost>0)&&!readingStatus&&dist(u,P)<13+playerR()){
+    if(!u.leaving&&!P.heldBy&&u.cd<=0&&P.userImm<=0&&!(P.ghost>0)&&!readingStatus&&dist(u,P)<13+playerR()){
       const r=RANKS[u.rank];
       if(!r.hold){if(!(u.shoutT>0)){u.shout=pick(frantic(u)?humanLines():userLines(r));u.shoutT=1.6;clipEv("intern");}if(frantic(u))u.frantic=S.t;u.cd=2;continue;} // an intern asks in passing and lets you go
-      P.stun=r.hold*Math.pow(0.75,retro("office"));P.heldBy=u;sfx("held");if(!u.hunter)clipEv(r.name==="CIO"?"cio":"user");S.run.held++;S.run.heldT+=r.hold;S.ss.heldT+=r.hold;
+      P.stun=r.hold*Math.pow(0.75,retro("office"));P.holdMax=P.stun;P.shook=0;P.taps=[];P.heldBy=u;sfx("held");if(!u.hunter)clipEv(r.name==="CIO"?"cio":"user");S.run.held++;S.run.heldT+=r.hold;S.ss.heldT+=r.hold;
       if(u.hunter)unplanned(0.5,"exec"); // only costs anything when the exec actually catches you
       u.line=pick(u.hunter?HUNTER_LINES:S.alert?alertLines():frantic(u)?humanLines():userLines(r));
       if(frantic(u))u.frantic=S.t; // they got their human: the panic is over
@@ -1911,7 +1939,8 @@ function drawUserBody(u,noLabel){
   ctx.fillStyle=gray;ctx.beginPath();ctx.arc(x,y-10,7.5,0,7);ctx.fill();
   if(r===5){ctx.fillStyle="#141519";ctx.fillRect(x-6,y-27,12,10);ctx.fillRect(x-9.5,y-18.5,19,2.5);ctx.fillStyle="#c0392b";ctx.fillRect(x-6,y-20,12,2);}
   if(r===4){ctx.fillStyle="#3b2a1e";ctx.beginPath();ctx.arc(x,y-12,7.5,Math.PI,0);ctx.fill();}
-  if(u.hunter){
+  if(u.leaving)tx(`${RANKS[r].name.toUpperCase()} · HEADING OUT`,x,y+26,8,C.muted,{font:DISP,weight:700});
+  else if(u.hunter){
     ctx.fillStyle="rgba(255,93,77,.92)";rr(x-26,y-46,52,13,3);ctx.fill();tx("NO REPLY",x,y-39.5,8,"#fff",{font:DISP,weight:700});
     tx(`${RANKS[r].name.toUpperCase()} · LOOKING FOR YOU`,x,y+26,8,C.danger,{font:DISP,weight:700});
   }else if(!noLabel)tx(RANKS[r].name.toUpperCase(),x,y+26,8,C.muted,{font:DISP,weight:700});
@@ -2087,15 +2116,24 @@ function drawHoldBubble(){
   ctx.fillStyle="#f6f8fa";rr(bx-w/2,by,w,30,7);ctx.fill();
   ctx.beginPath();ctx.moveTo(u.x-5,by+30);ctx.lineTo(u.x+5,by+30);ctx.lineTo(u.x,by+37);ctx.closePath();ctx.fill();
   tx(line,bx,by+11,11.5,"#14212b",{font:BODY,weight:600});
-  bar(bx-w/2+8,by+21,w-16,4,P.stun/r.hold,C.amber,"#d5dde3");
+  bar(bx-w/2+8,by+21,w-16,4,P.stun/(P.holdMax||r.hold),C.amber,"#d5dde3");
 }
 /* ==== Inbox, VPs, escalation launch, sprint capacity, desk ==== */
 const INBOX={x:480,y:62};
 function urgentEmail(){const imp=importantMail();if(imp.length)return imp.reduce((a,b)=>b.age>a.age?b:a);return S.em[0]||null;}
+// a VP still looking for you (not one walking back out after you replied)
+const hunting=u=>!!u.hunter&&!u.leaving;
+const VP_BACK_LINES=["Actually, one more thing...","Wait. Another email?","Oh, we're not done.","Circling back. Literally."];
+// the VP heads back the way they came (one without a recorded entrance: the nearest end of the hallway)
+function vpLeave(u){if(u.leaving)return;u.leaving=u.home||[{x:400,y:540},{x:560,y:540},{x:400,y:130},{x:560,y:130}].sort((a,b)=>dist(a,u)-dist(b,u))[0];u.shout="";u.shoutT=0;}
 function spawnHunter(){clipEv("vp");S.ss.vp=(S.ss.vp||0)+1;
+  // a VP still on their way out turns right back around instead of a second one showing up
+  const back=S.users.find(u=>u.leaving&&!u.gone);
+  if(back){back.leaving=null;back.life=999;back.shout=pick(VP_BACK_LINES);back.shoutT=2.2;S.run.missed++;S.ss.missed++;
+    toast("👔 Your inbox is full again. The VP turns right back around.");return;}
   // the exec shows up at whichever end of the hallway is farthest from you, then walks over
   const spot=[{x:400,y:540},{x:560,y:540},{x:400,y:130},{x:560,y:130}].sort((a,b)=>dist(b,S.p)-dist(a,S.p))[0];
-  S.users.push({x:spot.x,y:spot.y,rank:Math.random()<.6?4:5,hunter:true,life:999,cd:0,line:"",vx:0,vy:0,turn:0});
+  S.users.push({x:spot.x,y:spot.y,home:{...spot},rank:Math.random()<.6?4:5,hunter:true,life:999,cd:0,line:"",vx:0,vy:0,turn:0});
   S.run.missed++;S.ss.missed++;
   toast("👔 Your inbox is full. A VP is coming to find out why you haven't replied.");
 }
@@ -2144,7 +2182,7 @@ function resize(){const d=Math.min(2,window.devicePixelRatio||1);cv.width=W*d;cv
 resize();addEventListener("resize",resize);
 
 /* ---------- input ---------- */
-const keys={};let grabPressed=false,mode="title";
+const keys={};let grabPressed=false,mode="title",jerks=0; // jerks: fresh direction taps / stick flicks since the last frame (shaking off a converser)
 const MAP={ArrowUp:"u",KeyW:"u",ArrowDown:"d",KeyS:"d",ArrowLeft:"l",KeyA:"l",ArrowRight:"r",KeyD:"r",Space:"grab",KeyJ:"grab",KeyE:"fix",KeyK:"fix"};
 // browsers only allow audio after the player interacts, so unlock it on the first click or key
 addEventListener("pointerdown",()=>{if(AU.on)audio();},{passive:true});
@@ -2167,6 +2205,7 @@ addEventListener("keydown",e=>{
   const k=MAP[e.code];if(!k||mode!=="play")return;
   e.preventDefault();
   if(k==="grab"&&!keys.grab)grabPressed=true;
+  if(!e.repeat&&"udlr".includes(k))jerks++;
   keys[k]=true;
 });
 addEventListener("keyup",e=>{const k=MAP[e.code];if(k)keys[k]=false;});
@@ -2176,15 +2215,26 @@ addEventListener("blur",()=>{for(const k in keys)keys[k]=false;if(mode==="play")
 const stick={on:false,x:0,y:0,id:null,ox:0,oy:0};
 const STICK_R=66;
 function stickVector(dx,dy,R=STICK_R){const d=Math.hypot(dx,dy);if(d<R*0.15)return{x:0,y:0};const m=Math.min(1,d/(R*0.7));return{x:dx/d*m,y:dy/d*m};}
+/* shaking the stick: a jerk is the thumb turning back at least SHAKE_PX from the end of its last swing, wherever it is (it doesn't have
+   to cross the stick's centre, which took about twice the travel and fought thumb drift). The first move counts too. */
+const SHAKE_PX=10;
+function stickJerk(x,y){
+  const ddx=x-stick.jx,ddy=y-stick.jy,p=stick.jd;
+  if(p&&ddx*p[0]+ddy*p[1]>=0){stick.jx=x;stick.jy=y;return;} // still going the same way: follow it out to the end of the swing
+  const d=Math.hypot(ddx,ddy);if(!(d>=SHAKE_PX))return;
+  stick.jx=x;stick.jy=y;stick.jd=[ddx/d,ddy/d];jerks+=SHAKE_STICK; // turned back (or first move) by SHAKE_PX: one jerk
+}
 function stickDraw(dx=0,dy=0){const d=Math.hypot(dx,dy),k=d>STICK_R?STICK_R/d:1;$("stick-knob").style.transform=`translate(${dx*k}px,${dy*k}px)`;}
 function stickEnd(){const z=$("stick-zone"),b=$("stick-base");stick.on=false;stick.id=null;stick.x=stick.y=0;z.classList.remove("on");b.style.left=b.style.top=b.style.bottom="";stickDraw();}
 function resetTouch(){stickEnd();document.querySelectorAll("#touch button[data-k]").forEach(b=>{keys[b.dataset.k]=false;b.classList.remove("on");});}
 {
   const z=$("stick-zone"),b=$("stick-base");
-  z.addEventListener("pointerdown",e=>{if(stick.id!==null)return;e.preventDefault();z.setPointerCapture(e.pointerId);
+  z.addEventListener("pointerdown",e=>{if(stick.id!==null)return;e.preventDefault();z.setPointerCapture(e.pointerId);stick.jx=e.clientX;stick.jy=e.clientY;stick.jd=null;
     stick.id=e.pointerId;stick.on=true;stick.ox=e.clientX;stick.oy=e.clientY;z.classList.add("on");
     b.style.left=`${e.clientX-66}px`;b.style.top=`${e.clientY-66}px`;b.style.bottom="auto";stickDraw();});
-  z.addEventListener("pointermove",e=>{if(e.pointerId!==stick.id)return;const dx=e.clientX-stick.ox,dy=e.clientY-stick.oy,v=stickVector(dx,dy);stick.x=v.x;stick.y=v.y;stickDraw(dx,dy);});
+  z.addEventListener("pointermove",e=>{if(e.pointerId!==stick.id)return;const dx=e.clientX-stick.ox,dy=e.clientY-stick.oy,v=stickVector(dx,dy);
+    if(mode==="play")stickJerk(e.clientX,e.clientY);
+    stick.x=v.x;stick.y=v.y;stickDraw(dx,dy);});
   const up=e=>{if(e.pointerId===stick.id)stickEnd();};
   z.addEventListener("pointerup",up);z.addEventListener("pointercancel",up);
   $("touch").addEventListener("contextmenu",e=>e.preventDefault());
@@ -2784,8 +2834,8 @@ function tickHazards(dt){
   for(const m of S.em){if(S.focus>0)continue;m.age+=dt;if(m.type==="vendor"&&m.age>=m.life)m.dead=true;}
   S.em=S.em.filter(m=>!m.dead);
   const inboxFull=importantMail().length>=inboxLimit();
-  if(inboxFull&&!(S.focus>0)){spend("email",0.3*dt);S.huntT=(S.huntT||0)-dt;if(!S.users.some(u=>u.hunter)&&S.huntT<=0){S.huntT=6;spawnHunter();}}
-  else if(!inboxFull){S.huntT=2;for(const u of S.users)if(u.hunter&&S.p.heldBy!==u&&!u.gone){u.gone=true;fl(u,"Thanks for the reply.",C.ok);}}
+  if(inboxFull&&!(S.focus>0)){spend("email",0.3*dt);S.huntT=(S.huntT||0)-dt;if(!S.users.some(hunting)&&S.huntT<=0){S.huntT=6;spawnHunter();}}
+  else if(!inboxFull){S.huntT=2;for(const u of S.users)if(hunting(u)&&S.p.heldBy!==u){vpLeave(u);fl(u,"Thanks for the reply.",C.ok);}}
   // Escalations start fires; active incidents slow escalation pressure.
   // During outages or breaches escalation runs at one quarter speed; while a server is burning, at half speed.
   // Each escalation needs ESC_GAP seconds of full queue, and dipping below full doesn't reset that wait.
@@ -2941,6 +2991,8 @@ function update(dt){
   S.t+=dt;S.time+=dt;dbgAlertTick();
   const e0=S.energy;
   const P=S.p;if(P.stun>0)P.stun-=dt;if(P.inv>0)P.inv-=dt;
+  if(jerks>0){if(P.heldBy&&P.stun>0)for(let i=0;i<jerks;i++)(P.taps||(P.taps=[])).push(S.t);jerks=0;}
+  if(P.heldBy&&P.stun>0)shakeOff(P,dt);
   const stk=stick.on&&(stick.x||stick.y),mx=stk?stick.x:(keys.r?1:0)-(keys.l?1:0),my=stk?stick.y:(keys.d?1:0)-(keys.u?1:0),m=stk?1:Math.hypot(mx,my)||1;
   if(P.boost>0)P.boost-=dt;
   let sp=175*(S.upgrades.coffee?1.15:1)*(P.boost>0?1.3:1);
@@ -3372,6 +3424,18 @@ function drawPanel(key,corner,rows,{blocked=()=>false,up=()=>false}={}){
   else{ctx.globalAlpha=1-st.m*2;tx(label,cx+6,cy+th/2,8.5,"#9fe870",{align:"left",weight:500});ctx.globalAlpha=1;}
 }
 function drawPlayer(){
+  const P=S.p;let ox=0,oy=0;
+  if(P.heldBy&&P.stun>0){const stk=stick.on&&(stick.x||stick.y),mx=stk?stick.x:(keys.r?1:0)-(keys.l?1:0),my=stk?stick.y:(keys.d?1:0)-(keys.u?1:0),m=Math.hypot(mx,my);if(m>0){ox=mx/m*3;oy=my/m*3;}}
+  if(!ox&&!oy)drawPlayerBody();
+  else{ctx.save();ctx.translate(ox,oy);drawPlayerBody();ctx.restore();}
+  // shake-off progress: a ring that fills clockwise from the top as you shake them off; green once they take the hint
+  if(P.heldBy&&P.stun>0&&P.shook>0){
+    const f=clamp(P.shook/((P.holdMax||1)*SHAKE_MAX),0,1),done=f>=1-1e-6;
+    ctx.lineWidth=3.5;ctx.lineCap="round";ctx.strokeStyle="rgba(10,16,22,.7)";ctx.beginPath();ctx.arc(P.x,P.y,22,0,7);ctx.stroke();
+    ctx.strokeStyle=done?C.ok:C.amber;ctx.beginPath();ctx.arc(P.x,P.y,22,-Math.PI/2,-Math.PI/2+f*Math.PI*2);ctx.stroke();ctx.lineCap="butt";
+  }
+}
+function drawPlayerBody(){
   const P=S.p;
   // ☕ coffee: amber rings radiate outward with orbiting sparks; flickers in the last second
   if(P.boost>0&&!(P.boost<1&&Math.floor(S.t*12)%2)){
@@ -3761,7 +3825,7 @@ const TUT=[
   {i:"🎫",t:"Tickets and email",b:"Tickets pile up at the desk at the bottom of the hallway; emails pile up in the inbox at the top. Each has a bar with 5 slots. When the ticket bar fills, tickets start escalating and starting server fires; escalations are spaced out, slow by half while a server is burning, and slow by 75% during outages or breaches. When the inbox fills, a VP comes hunting for you. Hold <kbd>E</kbd> at either one to work it down. A full bar is the whole backlog: nothing piles up out of sight.",tip:"Standing at the inbox answering keeps the VP off you. Vendor spam doesn't fill the bar and goes away by itself."},
   {i:"🔥",t:"Fires and outages",b:"Hold <kbd>E</kbd> on a fire to put it out. If it burns through, the server goes offline: hold <kbd>E</kbd> to bring it back up. While anything is offline, nothing can be moved. A gold server offline sets off a red alert.",tip:"Bringing servers back up never costs energy, so you can't get locked out."},
   {i:"💧",t:"The cloud isn't safe either",b:"Cloud apps spring leaks that flash redder as they get worse. Seal them with <kbd>E</kbd>. A leak you ignore becomes a breach, which spreads to the app next door and triggers a red alert.",tip:"Security upgrades like Policy as Code, Vulnerability Scanner and Secrets Manager make leaks rarer."},
-  {i:"👤",t:"People",b:"Users wander the hallway. Bump into one and you're stuck for a \"quick question\". The better dressed they are, the longer it takes (interns don't stop you at all). Grab a 🍩 donut and they can't stop you for a few seconds.",tip:"Later you can buy AI chatbots to keep users busy for you."},
+  {i:"👤",t:"People",b:"Users wander the hallway. Bump into one and you're stuck for a \"quick question\". The better dressed they are, the longer it takes (interns don't stop you at all). Mash any direction to shake them off a little sooner. Grab a 🍩 donut and they can't stop you for a few seconds.",tip:"Later you can buy AI chatbots to keep users busy for you."},
   {i:"📋",t:"Between clients",b:"After each client you get an improvement sprint: 13 story points to spend on tools that come with you to every future client. Incidents create unplanned work, which eats into those points.",tip:"A clean engagement earns +2 points. Unspent points don't carry over."},
   {i:"⭐",t:"How you're judged",b:"You get fired if the uptime budget or security runs out. Money never ends the game; it's your score, and the goal is the least negative total. Each client rates you 1 to 5 stars.",tip:"Finishing past the client's lease target costs money and a star, but you keep going."},
 ];
@@ -3919,14 +3983,14 @@ function howToPlay(){
     <div><span class="ic">🥇</span><span><b>Tiers.</b> Gold, silver and bronze servers. Gold takes longest to bring back up (5s) and burns uptime fastest: 3 per second, against 1 for silver and 0.25 for bronze.</span></div>
     <div><span class="ic">🚨</span><span><b>Red alert.</b> A gold server offline or any cloud breach. You drop everything and can only fix incidents until it's over. Incident fixes never cost energy. On Easy (and a little on Normal), VPs coming to find you slow down until it's cleared, so you get more time to fix it.</span></div>
     <div><span class="ic">💧</span><span><b>Cloud leak.</b> Hold E to seal it by hand (it costs energy; security upgrades make leaks rarer). Ignore it and it becomes a breach that spreads to the next app every 10 seconds. Unpatched cloud apps drift: the longer since one was last patched (sealed or contained), the more often it leaks, up to twice as often. Cloud Auto-Patching stops the drift.</span></div>
-    <div><span class="ic">📧</span><span><b>Email inbox.</b> At the top of the hallway, with a 5-slot bar. ⚖️ legal, 💰 finance and 👔 exec emails fill it; 📣 vendor spam doesn't and disappears by itself. The bar shows every important email waiting: once it is full, new ones bounce. When the bar is full, fines trickle in and a VP comes hunting you, again and again, until you answer some. While you're at the inbox answering, the VP won't interrupt. Answering a finance email, yours or your manager's, also pushes back the closest license renewal.</span></div>
+    <div><span class="ic">📧</span><span><b>Email inbox.</b> At the top of the hallway, with a 5-slot bar. ⚖️ legal, 💰 finance and 👔 exec emails fill it; 📣 vendor spam doesn't and disappears by itself. The bar shows every important email waiting: once it is full, new ones bounce. When the bar is full, fines trickle in and a VP comes hunting you, again and again, until you answer some. While you're at the inbox answering, the VP won't interrupt, and once you're under the limit they head back out the way they came. Answering a finance email, yours or your manager's, also pushes back the closest license renewal.</span></div>
     <div><span class="ic">🎫</span><span><b>Ticket queue.</b> At the bottom of the hallway, with a 5-slot bar. Hold E there to close tickets. The bar shows every ticket waiting: once it is full, new ones are turned away, so there is never a hidden backlog. When the bar fills, it flashes red and tickets escalate 🚨 one at a time until you work it down. Each one sets a server on fire and costs half a story point. They're at least 12 seconds apart, half as fast while a server is burning, and 75% slower during an outage or breach. Focus time and change freezes pause them.</span></div>
     <div><span class="ic">❄</span><span><b>Change freeze.</b> Users, new tickets and email, escalations, fire growth and breach spread all stop. Downtime and breach damage still count, so a freeze buys time, it doesn't fix anything. Every incident gets a short 4-second freeze (once a minute), CHANGE FREEZE flashes across the floor, and the message says what caused it. A manager makes it 10/14/18 seconds and lets it return sooner (60/50/40s). The Emergency Freeze Window upgrade gives you one 12-second freeze on F or the Freeze button.</span></div>
     <div><span class="ic">⏪</span><span><b>Restore from backup.</b> Open the terminal (the &gt;_ at the top left, or the &#96; key) and type <code>journalctl</code> for this client's event log. Rows marked 💾 are restore points, roughly every 30 seconds. Pick one, or type <code>restore 05:40</code>, to go back to that moment. Easy gets 3 for the whole career, Normal 2, Hard 1, and Hardcore none. They also work from the screen where you get fired. Restore points only cover the current client, and the future can go differently the second time.</span></div>
     <div><span class="ic">📎</span><span><b>Tutorials.</b> The Tutorials button on the main menu opens a quick illustrated tour. Every page of it offers the Hands on Tutorial: one tiny practice client where a senior paperclip points at what to do next, step by step, then walks you through the end-of-client report and your first improvement sprint. Compliance clocks are paused and cutovers always succeed there, but the day clock runs and a fire left alone still burns through. Nothing in it counts toward your career.</span></div>
     <div><span class="ic">📎</span><span><b>Mr Paperclip (upgrade).</b> The tutorial's senior paperclip, for 2 points: he rides on your shoulder in every client, reacts to everything, and comments in a speech bubble. His advice is mostly wrong, but every line he says gives you +1 energy. There is no mute. You made your choice.</span></div>
     <div><span class="ic">🧑‍💻</span><span><b>Your avatar.</b> Pick one on the main menu, or type or paste any single emoji into the box. It's only shown on your screen.</span></div>
-    <div><span class="ic">👤</span><span><b>Users.</b> They wander the hallway. Bump into one and you're stuck for a "quick question." The better dressed, the longer: an analyst holds you under 2 seconds, the CIO almost 5. Interns just blurt their question as you walk past. Right after someone lets you go, and for the first 2 seconds of each client, nobody can stop you: you blink until that wears off.</span></div>
+    <div><span class="ic">👤</span><span><b>Users.</b> They wander the hallway. Bump into one and you're stuck for a "quick question." The better dressed, the longer: an analyst holds you under 2 seconds, the CIO almost 5. Interns just blurt their question as you walk past. Mash any direction to jerk away and cut up to a quarter off the wait; shave the full quarter and they take the hint. The temp's quick question can't be shaken off. Right after someone lets you go, and for the first 2 seconds of each client, nobody can stop you: you blink until that wears off.</span></div>
     <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Hover over (or tap) anything in "Your toolkit" to see what it does. Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. Tools you don't own yet keep turning up: the longer one goes unseen, the likelier it is to show up. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
     <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. It worked when we tested it. Results may vary: 15–20% of sends jam partway across and the lane stops with its server stuck on the belt, still offline and burning uptime (a blue-green copy burns none). Stand anywhere on that conveyor and hold <kbd>E</kbd> to repair it (free, about 2.5 seconds; progress is kept if you let go). A level 3+ AI Agent can repair it too; temps and bots can't, and no upgrade makes it jam less. Every lane jams on its own. A jammed lane sounds a factory buzzer every few seconds until it's repaired (quiet while someone is repairing it, and under a red alert's siren). Once you have a pipeline, the Mover Bot only uses it and waits for a free lane (a jammed one stays busy); carry servers yourself to go faster. The pipeline and the Mover Bot find a free cloud slot on their own; only you have to walk to one. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at a quarter of its outage rate (blue-green moves burn none).</span></div>
     <div><span class="ic">📅</span><span><b>Lease target.</b> Each client's data center lease has a target day. Going late never ends the game, but on-prem costs rise 10% per overdue day and the client's rating drops.</span></div>
