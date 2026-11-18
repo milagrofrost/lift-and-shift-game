@@ -1222,6 +1222,8 @@ const RANKS=[
 const SHAKE_MAX=0.25,SHAKE_WIN=0.5,SHAKE_SLOW=4,SHAKE_FAST=16,SHAKE_BONUS=0.5;
 // wiggling the touch stick is slower than mashing keys: each flick counts as this many taps (2 flicks/s starts working, 8 is full speed)
 const SHAKE_STICK=2;
+// a shaken-off user's exit line stays up this long after they let you go
+const SHAKE_BYE=2;
 const SHAKE_LINES=[[],
   ["Oh, you're busy. Sorry!","Never mind, I'll Google it.","I'll just email you."],
   ["Sorry, I know you're busy.","Okay, we'll circle back.","No worries, let's sync later."],
@@ -1234,7 +1236,7 @@ function shakeOff(P,dt){
   const max=(P.holdMax||P.stun)*SHAKE_MAX,done=P.shook||0;if(done>=max-1e-6)return;
   const k=clamp((P.taps.length/SHAKE_WIN-SHAKE_SLOW)/(SHAKE_FAST-SHAKE_SLOW),0,1);if(k<=0)return;
   const cut=Math.min(max-done,SHAKE_BONUS*k*dt,P.stun);P.stun-=cut;P.shook=done+cut;
-  if(P.shook>=max-1e-6&&P.heldBy){P.heldBy.line=pick(SHAKE_LINES[P.heldBy.rank]||SHAKE_LINES[2]);sfx("shook");}
+  if(P.shook>=max-1e-6&&P.heldBy){P.heldBy.line=pick(SHAKE_LINES[P.heldBy.rank]||SHAKE_LINES[2]);P.heldBy.shookOff=true;sfx("shook");}
 }
 function spawnUsers(){
   S.users=[];if(S.tut)return; // the tutorial brings its one user in when it gets to people
@@ -1444,7 +1446,7 @@ function drawSpecials(){
   tx(T.quit?`${T.name.toUpperCase()} · QUIT`:`TEMP · ${T.name.toUpperCase()}${T.snack?" (SNACK BREAK)":T.nobadge?" (NO BADGE)":""} · ${Math.ceil(T.t)}s`,T.x,T.y+26,8,"#4fd1c5",{font:DISP,weight:700});
 }
 function tickShouts(dt){
-  for(const u of S.users){if(u.shoutT>0)u.shoutT-=dt;
+  for(const u of S.users){if(u.byeT>0)u.byeT-=dt;if(u.shoutT>0)u.shoutT-=dt;
     // a user the chatbot couldn't help keeps yelling for a person
     else if(frantic(u)&&!u.chat&&S.p.heldBy!==u&&Math.random()<dt*1.5){u.shout=pick(humanLines());u.shoutT=1.8;}}
   if(!S.alert)return;
@@ -1455,7 +1457,9 @@ function tickShouts(dt){
 function drawShouts(){
   for(const u of S.users){
     if(u.panic&&!u.hunter){ctx.fillStyle=C.danger;tx("!",u.x+10,u.y-24+Math.sin(S.t*20+u.x)*2,14,C.danger,{font:DISP,weight:700});}
-    if(u.shoutT>0&&S.p.heldBy!==u&&logLv()>=1)smallBubble(u.shout,u.x,u.y-30,"#ffe8e4","#7a1f17");
+    if(S.p.heldBy===u||logLv()<1)continue;
+    if(u.byeT>0)smallBubble(u.line,u.x,u.y-30,"#f6f8fa","#14212b"); // shaken off: the exit line, in the hold bubble's colours
+    else if(u.shoutT>0)smallBubble(u.shout,u.x,u.y-30,"#ffe8e4","#7a1f17");
   }
 }
 function drawTempBubble(){if(logLv()<1)return;const T=S.temp;if(T&&T.sayT>0)smallBubble(T.say,T.x,T.y-24,"#f6f8fa","#14212b");for(const AG of agentsAll())if(AG.sayT>0)smallBubble(AG.say,AG.x,AG.y-26,"#efe6ff","#3b1d6e");const M=S.mgr;if(M&&M.sayT>0)smallBubble(M.say,M.x,M.y-26,"#fff4dc","#5a3a00");}
@@ -1894,7 +1898,7 @@ function tickUsers(dt){
     if(mgrShove(u,dt))continue;
     // pizza party: regular users drop everything and crowd around the pizza (hunting execs keep hunting)
     if(S.pizza&&!u.hunter){const k=S.users.indexOf(u),ang=k*1.9;goTo(u,S.pizza.x+Math.cos(ang)*34,S.pizza.y+Math.sin(ang)*26,80,dt);continue;}
-    if(P.heldBy===u){if(P.stun<=0){P.heldBy=null;u.cd=3;P.userImm=1.2;if(u.hunter)vpLeave(u);}continue;}
+    if(P.heldBy===u){if(P.stun<=0){P.heldBy=null;u.cd=3;P.userImm=1.2;if(u.hunter)vpLeave(u);if(u.shookOff){u.shookOff=false;u.byeT=SHAKE_BYE;}}continue;} // a shaken-off exit line lingers after the hold
     if(u.leaving){if(goTo(u,u.leaving.x,u.leaving.y,70,dt))u.gone=true;else doorCross(u,false);continue;} // a VP heading back out
     if(u.hunter){
       // an ignored exec walks (slower than you) to wherever you are, holds you once, then walks back out the way they came.
@@ -1928,7 +1932,7 @@ function tickUsers(dt){
     if(!u.leaving&&!P.heldBy&&u.cd<=0&&P.userImm<=0&&!(P.ghost>0)&&!readingStatus&&dist(u,P)<13+playerR()){
       const r=RANKS[u.rank];
       if(!r.hold){if(!(u.shoutT>0)){u.shout=pick(frantic(u)?humanLines():userLines(r));u.shoutT=1.6;clipEv("intern");}if(frantic(u))u.frantic=S.t;u.cd=2;continue;} // an intern asks in passing and lets you go
-      P.stun=r.hold*Math.pow(0.75,retro("office"));P.holdMax=P.stun;P.shook=0;P.taps=[];P.heldBy=u;sfx("held");if(!u.hunter)clipEv(r.name==="CIO"?"cio":"user");S.run.held++;S.run.heldT+=r.hold;S.ss.heldT+=r.hold;
+      P.stun=r.hold*Math.pow(0.75,retro("office"));P.holdMax=P.stun;P.shook=0;P.taps=[];P.heldBy=u;u.shookOff=false;u.byeT=0;sfx("held");if(!u.hunter)clipEv(r.name==="CIO"?"cio":"user");S.run.held++;S.run.heldT+=r.hold;S.ss.heldT+=r.hold;
       if(u.hunter)unplanned(0.5,"exec"); // only costs anything when the exec actually catches you
       u.line=pick(u.hunter?HUNTER_LINES:S.alert?alertLines():frantic(u)?humanLines():userLines(r));
       if(frantic(u))u.frantic=S.t; // they got their human: the panic is over
