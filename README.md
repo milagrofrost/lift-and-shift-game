@@ -169,6 +169,9 @@ Every end screen (retired, fired, obsolete, outsourced, or resigned) has a share
 
 The report page and image are Cloudflare Pages Functions in `functions/`, with no dependencies or build step. Report links hold only numbers and fixed choices. To try them locally, run `npx wrangler pages dev .`; a plain static server doesn't run them.
 
+### Older versions
+The dropdown at the top right of the main menu plays the game as it was at any earlier change: "Latest" is what's live, and older versions are listed by date and commit. Each opens at `/v/<commit>/`, served straight from this repository's history by a Pages Function (`functions/v/`), so every commit is playable without its own deployment. Once a version has been opened, Cloudflare keeps it cached, so it loads quickly and keeps working even if GitHub is unavailable; the live game is never cached this way, so updates show up as soon as they deploy. Older versions keep their own saved records and settings, so trying one never touches your current best scores. Pick Latest to come back. Optionally, set a `GITHUB_TOKEN` secret on the Pages project to raise GitHub's rate limit for the version list.
+
 ### Terminal help
 Type `?` in the terminal to list its commands, a command and `?` for its options (`ping ?`), or part of a word and `?` to match by prefix (`p?`). Help answers as soon as you press `?` and keeps your line.
 

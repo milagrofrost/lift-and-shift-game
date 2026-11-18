@@ -13,7 +13,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 ## Repository and branch handling
 
 - Inspect Git status, branch, and applicable instructions before editing. Preserve unrelated user changes.
-- `lift-and-shift.html` contains the game. No build system is required. `functions/` holds dependency-free Cloudflare Pages Functions for shared report links.
+- `lift-and-shift.html` contains the game. No build system is required. `functions/` holds dependency-free Cloudflare Pages Functions for shared report links and older versions (`/v/`).
 - Gameplay revisions are merged into `main`. Cloudflare Pages deploys `main` to https://las.milagrofrost.com. Use feature branches and pull requests; `main` is protected (pull request plus four green CI checks), and merging publishes the site.
 - Workflows: `.github/README.md` explains every GitHub workflow, the protection on `main` and the required check names. Any change under `.github/workflows/` must update it in the same pull request (CI enforces this). Renaming a CI job also means updating the ruleset's required checks.
 - The design direction below describes accepted behavior, including feature-branch work. Inspect the current branch before claiming it is implemented.
@@ -146,6 +146,14 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 - Sharing only reads the run. It must never change `S`, and it never posts for the player.
 - The firm is Lift & Shift Consulting Ltd. From client 4 (the VP's AI email, old school included; never in the tutorial) it is Lift & Shift AI Consulting Ltd. everywhere the game names it: the VP's signature, the resignation letter, share posts and the share card (`CO()`, `aiCo()`). Report codes carry it as an optional last field (`_1`), so older links still read as the old name. Day 2 is set after the rename.
 - Report links (`/r/<code>`) carry only numbers and fixed choices, never free text, so nobody can put their own words on an image served from this domain. `functions/_lib/report.js` mirrors the game's titles and verdicts.
+
+### Older versions
+
+- The main menu has a version picker at the top right, level with "A cloud migration game" (`version-picker.js`, its own file). "Latest (<8-char hash>)" is the newest commit on `main` that changed `lift-and-shift.html`; older ones are listed newest first as the date and 8-character hash. Picking one opens `/v/<hash>/`; Latest opens `/`.
+- `functions/v/[[path]].js` serves those builds straight from GitHub (no deployment per commit) and `/v/versions.json` for the picker, cached at the edge and refreshed every 10 minutes (a stale list is kept if GitHub refuses; an optional `GITHUB_TOKEN` secret raises the rate limit). Only commits on that list are served: GitHub's raw host also answers for fork commits, so never serve a hash that isn't on it.
+- Every older-build response that passed that check is cached at the edge for a year (keyed by path and `BUILD`) and checked before the list, so a build opened once is served without GitHub, even while GitHub is rate-limiting. A hash never changes, so this can't hide a push: the live game at `/` is Pages' own static file, and the list, `pwa.js` and `version-picker.js` are never cached as builds. Bump `BUILD` when `patchGame` or the served headers change; browsers keep an older build's page for an hour and its files for a day.
+- An older build gets three changes: a shim gives its localStorage keys a per-version prefix (`liftshift@<hash>:`) so it can never touch current records or settings, its `pwa.js` is a no-op so it never registers a service worker, and it loads the current `version-picker.js` so the way back is always there. Keep `version-picker.js` working against old builds: it only looks for `#overlay .eyebrow`.
+- Without `/v/versions.json` (a plain static server, file://) the picker shows nothing. `tests/e2e/serve.mjs` answers it with a fixture; `tests/versions.mjs` checks the Function.
 
 ### Terminal commands
 
