@@ -18,6 +18,25 @@ this file in the same pull request.** CI fails the pull request otherwise (`test
 5. Cloudflare Pages deploys `main` to <https://las.milagrofrost.com> (Cloudflare does this, not GitHub Actions).
 6. **Live site** waits for that deploy and smoke-tests production.
 
+### What Cloudflare publishes
+
+Cloudflare doesn't publish the whole repository. Its build command (Workers & Pages → `lift-and-shift-game` →
+Settings → Build; it lives only in the dashboard) copies a fixed list of files into `dist`, the build output
+directory; `functions/` is deployed alongside it:
+
+```sh
+mkdir -p dist && cp lift-and-shift.html dist/index.html && cp lift-and-shift.html dist/ && cp -r assets dist/ && cp manifest.webmanifest pwa.js sw.js version-picker.js _headers dist/
+```
+
+**A new file the game loads from the repository root has to be added to that command**, or the live site answers its
+address with the game page instead (status 200, `text/html`). A script then refuses to run, and **Live site** fails
+on the console error. This happened with `version-picker.js` until the command was updated. Files under `assets/`
+are copied as a folder, so they need nothing. Tests, docs and `package.json` stay out on purpose.
+
+`_headers` sets no-cache on `sw.js` and the manifest, but the custom domain's four-hour cache rule overrides it, so
+`/sw.js` also has its own cache exception in the domain's Cloudflare cache settings. The manifest has no exception
+yet and is cached for up to four hours.
+
 ## Workflows
 
 | Workflow | File | Runs on | Blocks merging? | What it does |
