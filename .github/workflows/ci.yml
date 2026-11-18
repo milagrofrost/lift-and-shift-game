@@ -29,14 +29,20 @@ jobs:
       - run: node tests/syntax.mjs
       - run: node tests/pwa.mjs
       - run: node tests/versions.mjs
+      - run: node tests/playwright-image.mjs
       - name: Workflow changes come with .github/README.md
         if: github.event_name == 'pull_request'
         run: node tests/workflow-docs.mjs "origin/${{ github.base_ref }}"
 
   browser:
     name: ${{ matrix.label }}
-    # Playwright 1.64's WebKit needs Ubuntu 24.04's ICU (libicu74); ubuntu-latest is now 26.04 (libicu78)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
+    # Playwright's own image: browsers and their system libraries are baked in, so nothing comes from apt or the
+    # browser CDN. Installing them each run (--with-deps) sometimes crawled for 18+ minutes on Ubuntu's mirror.
+    # The tag must match @playwright/test in package.json (tests/playwright-image.mjs checks).
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --user 1001
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -45,15 +51,12 @@ jobs:
           - group: regression
             label: Regression (Chromium, WebKit)
             projects: --project=regression-*
-            browsers: chromium webkit
           - group: desktop
             label: Desktop (Chromium, WebKit, Firefox)
             projects: --project=desktop-*
-            browsers: chromium webkit firefox
           - group: phone
             label: Phone and tablet (Chromium, WebKit)
             projects: --project=phone-* --project=tablet-*
-            browsers: chromium webkit
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -61,12 +64,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Cache Playwright browsers
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.browsers }}
-      - run: npx playwright install --with-deps ${{ matrix.browsers }}
       - name: Run tests
         run: npx playwright test -c tests/e2e ${{ matrix.projects }}
         env:
