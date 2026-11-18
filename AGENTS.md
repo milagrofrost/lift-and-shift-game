@@ -160,6 +160,8 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 
 - Commands only read or joke. They must never change `S`, or reveal hidden servers, escalation targets or outcomes, because the terminal pauses the game.
 - `?` help follows Cisco conventions (`?`, `ping ?`, `p?`) and is driven by the `CLI` table. The cheat command stays out of it.
+- Joke commands: `cowsay <text>` draws a real cowsay bubble (wrapped at 40 columns) with your words, case kept. `foxsay` ignores its text and cycles through real fox noises (`FOX_NOISES`, a counter, never a roll); don't quote song lyrics there. `dig <name>` always turns out to be DNS. `history` is the previous consultant's "back in my day" commands followed by this page's own (`TTY_HIST`; the cheat never lands there). `cd do_not_delete` is the only other directory (`CWD`, `FILES`): `ls`, `pwd`, `cat` and `rm` follow it, `cd ..`/`cd ~` go home, and `cd` prints nothing when it works. All of this lives outside `S`.
+- Read-only Friday: on the player's real Friday (`isFriday`, device clock), `date` says so and the first `play()` of the page load toasts "Read-only Friday!" (`fridayTip`, never in the tutorial). It's an acknowledgement only: nothing about play changes.
 
 ### Career and balance
 
