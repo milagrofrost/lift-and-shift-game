@@ -976,6 +976,9 @@ try{AU.loud=localStorage.getItem("liftshift-silentplay")==="on";}catch(e){}
 function audioSession(){try{if(HAS_SESSION)navigator.audioSession.type=AU.on&&AU.loud?"playback":"ambient";}catch(e){}}
 function setSilentPlay(on){AU.loud=!!on;try{localStorage.setItem("liftshift-silentplay",on?"on":"off");}catch(e){}audioSession();}
 // once per device, on a phone that can't tell us about its silent switch: say where the sound went
+// once per page load, on a real Friday: an acknowledgement, nothing more
+let fridayNoted=false;
+function fridayTip(){if(fridayNoted||!isFriday()||S.tut)return;fridayNoted=true;toast("📅 It's Friday. Read-only Friday! (The client didn't get the memo.)");}
 function silentTip(){
   if(!HAS_SESSION||!AU.on||AU.loud||!matchMedia("(pointer:coarse)").matches)return;
   try{if(localStorage.getItem("liftshift-silenttip"))return;localStorage.setItem("liftshift-silenttip","1");}catch(e){return;}
@@ -3689,7 +3692,7 @@ ov.addEventListener("focusout",e=>{if(e.target.closest("[data-tip]"))hideTip();}
 ov.addEventListener("scroll",hideTip,true);
 addEventListener("keydown",e=>{if(e.key==="Escape"&&tipFor)hideTip();},true);
 function hide(){hideTip();ov.hidden=true;ov.innerHTML="";if(document.activeElement)document.activeElement.blur();}
-function play(){for(const k in keys)keys[k]=false;grabPressed=false;hide();mode="play";}
+function play(){for(const k in keys)keys[k]=false;grabPressed=false;hide();mode="play";if(S)fridayTip();}
 /* ---------- main menu, tutorial, how to play, design notes ---------- */
 let DIFF="normal";try{const d=localStorage.getItem("liftshift-diff");if(d&&DIFFS[d])DIFF=d;}catch(e){}
 let HARDCORE=false;try{HARDCORE=DIFF==="hard"&&localStorage.getItem("liftshift-hardcore")==="on";}catch(e){}
@@ -5076,10 +5079,15 @@ function finishRestore(){
 const cli=(d,sub)=>({d,sub});
 const CLI={
   cat:cli("Read a file",{"passwords.txt":cli("Please don't"),"resume_final_v7_REAL.docx":cli("Your qualifications")}),
+  cd:cli("Change directory",{"<dir>":cli("A directory from ls")}),
+  cowsay:cli("A cow says it",{"<text>":cli("What the cow says")}),
   date:cli("Show the date"),
+  dig:cli("Look up a DNS name",{"<name>":cli("Any name")}),
   exit:cli("Close the terminal"),
+  foxsay:cli("A fox says it",{"<text>":cli("Ignored. It's a fox.")}),
   git:cli("Assign responsibility",{blame:cli("Find out whose fault this is")}),
   help:cli("How to get help"),
+  history:cli("Show earlier commands"),
   journalctl:cli("Show this client's event log"),
   kubectl:cli("Container orchestration",{get:cli("List resources",{pods:cli("List pods")})}),
   ls:cli("List files"),
@@ -5111,9 +5119,59 @@ function cliHelp(cmd){
   devLog(hits.map(k=>`  ${k.padEnd(w)}${node[k].d}`).join("\n"));
 }
 const RESUME=["Cloud experience: has seen one, from a plane.","Certifications: several, pending. Led a successful migration of a calendar invite.","Architected enterprise-grade synergy across a very small number of servers.","Personally invented the availability zone. Trusted by clients who have stopped returning calls.","Thought leader. Keynote speaker at a conference held in my kitchen.","The cloud was my idea. References available upon subpoena."];
-function cliRun(cmd){
+// cowsay/foxsay: a real cowsay bubble, wrapped at 40 columns
+function sayBubble(t){
+  const words=String(t).trim().split(/\s+/).filter(Boolean),lines=[];let cur="";
+  for(let w of words){while(w.length>40){if(cur){lines.push(cur);cur="";}lines.push(w.slice(0,40));w=w.slice(40);}
+    if(!w)continue;if(cur&&cur.length+1+w.length>40){lines.push(cur);cur=w;}else cur=cur?`${cur} ${w}`:w;}
+  if(cur||!lines.length)lines.push(cur);
+  const n=Math.max(...lines.map(l=>l.length)),pad=l=>l.padEnd(n);
+  const mid=lines.length===1?[`< ${pad(lines[0])} >`]:lines.map((l,i)=>i===0?`/ ${pad(l)} \\`:i===lines.length-1?`\\ ${pad(l)} /`:`| ${pad(l)} |`);
+  return[` ${"_".repeat(n+2)}`,...mid,` ${"-".repeat(n+2)}`].join("\n");
+}
+const COW=String.raw`        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||`;
+const FOX=String.raw`        \
+         \   /\___/\
+            ( o   o )
+            (  =v=  )___
+             \_____/    \~~~~
+              || ||_____)`;
+// the fox ignores what you typed and says what foxes actually say, in turn (no dice: it's a joke, not a roll)
+const FOX_NOISES=["Ring-ding-ding-ding-dingeringeding!", "Wa-pa-pa-pa-pa-pa-pow!", "Hatee-hatee-hatee-ho!"];
+let foxN=0;
+const HISTORY=["# back in my day we had one server. It lived under Gary's desk.","telnet prod","# back in my day \"the cloud\" was the smoke coming out of the server room","ftp backup.zip","how do i exit vim","# back in my day uptime meant nobody had kicked the power strip yet","sudo make me a sandwich","# back in my day we patched once a year, whether it needed it or not","rm -rf / --no-preserve-root","# back in my day the runbook was one sticky note. It said \"call Gary\"","# Gary retired. Good luck, kid."];
+const TTY_HIST=[]; // this page's commands, after the previous consultant's (outside S, like the rest of the terminal)
+let CWD=""; // "" is home; the only other place is do_not_delete
+const HOME="/home/definitely_qualified";
+const FILES={"":["resume_final_v7_REAL.docx","passwords.txt","do_not_delete/"],do_not_delete:["prod_backup_FINAL.tar.gz","README.txt"]};
+const isFriday=()=>new Date().getDay()===5; // the player's own clock; only ever said, never changes play
+function cliRun(cmd,raw=cmd){
   const[h,...a]=cmd.split(" "),rest=a.join(" ");let out=null;
-  if(h==="sudo")out="This incident will be reported to Linda.";
+  const rawRest=raw.trim().replace(/^\S+\s*/,"");
+  if(h==="cowsay")out=`${sayBubble(rawRest||"Moo. (Try: cowsay hello)")}\n${COW}`;
+  else if(h==="foxsay"){out=`${sayBubble(FOX_NOISES[foxN%FOX_NOISES.length])}\n${FOX}`;foxN++;}
+  else if(h==="dig"){const q=(rest||"prod.internal").split(" ")[0];out=`; <<>> DiG 9.18 <<>> ${q}\n;; QUESTION SECTION:\n;${q}.\t\tIN\tA\n\n;; ANSWER SECTION:\n;; It's not DNS.\n;; There's no way it's DNS.\n;; It was DNS.\n\n;; Query time: 3 weeks\n;; SERVER: 127.0.0.1#53 (the sticky note on Gary's monitor)`;}
+  else if(h==="history")out=[...HISTORY,...TTY_HIST].map((c,i)=>`${String(i+1).padStart(5)}  ${c}`).join("\n");
+  else if(h==="cd"){
+    const d=rest.replace(/\/+$/,"");
+    if(!d||d==="~"||d===HOME||(d===".."&&CWD))CWD="";
+    else if(d===".."){out="cd: You can't go any higher. That's management.";}
+    else if(!CWD&&d==="do_not_delete"||d===`${HOME}/do_not_delete`||d==="~/do_not_delete")CWD="do_not_delete";
+    else if(d!=="."&&d!==CWD)out=`cd: ${d}: No such directory. Have you tried opening a ticket?`;
+    if(out===null)out="";
+  }
+  else if(h==="ls")out=FILES[CWD].join("  ");
+  else if(h==="pwd")out=CWD?`${HOME}/${CWD}`:HOME;
+  else if(h==="cat"&&CWD==="do_not_delete"){const f=rest.replace(/^\.\//,"");
+    if(f==="readme.txt")out="DO NOT DELETE.\nNobody remembers why. Last modified by Previous Consultant, 2011.\nIt might be load-bearing.";
+    else if(f==="prod_backup_final.tar.gz")out="prod_backup_FINAL.tar.gz: 0 bytes. It has been 0 bytes since 2019.\nNobody ever tried restoring it, so technically it's fine.";
+    else out=`cat: ${f||"what"}: No such file. Have you tried opening a ticket?`;}
+  else if(h==="rm"&&CWD==="do_not_delete")out="rm: It says do not delete. It's right there in the name.";
+  else if(h==="sudo")out="This incident will be reported to Linda.";
   else if(h==="rm")out="Blocked by change control. Submit a CAB request in 6-8 weeks.";
   else if(h==="cat"){
     if(rest==="passwords.txt")out="hunter2, Summer2019!, and Linda's cat's name.";
@@ -5126,16 +5184,17 @@ function cliRun(cmd){
   else if(h==="ping")out=rest==="linda"?"Request timed out. Linda is at lunch.":rest?"Request timed out.":"usage: ping <host>";
   else if(h==="man")out=rest==="restore"?`RESTORE(1)\nRPO, recovery point objective: how much work you can afford to lose. Here it's about ${BACKUP_EVERY} seconds, the gap between 💾 restore points.\nRTO, recovery time objective: how long getting back takes. Here it's the progress bar.\nA backup you've never restored is just a rumor.`:rest?`No manual entry for ${rest}. Documentation is on the roadmap.`:"What manual page do you want?";
   if(out===null)return false;
-  devLog(out);return true;
+  if(out)devLog(out);return true; // cd says nothing when it works
 }
 const cliNorm=v=>v.trimStart().toLowerCase().replace(/\s+/g," ");
 function devRun(raw){
   const cmd=raw.trim().toLowerCase().replace(/\s+/g," ");if(!cmd)return;
   if(devHash(cmd)===CHEAT_HASH){DEV.unlocked=true;devLog("Access granted. Please don't tell Compliance.");dbgLog(0,CHEATER);devMenu();return;}
   if(cmd.endsWith("?")){cliHelp(cliNorm(raw.trim()));return;}
-  if(backupCmd(cmd)||cliRun(cmd))return;
+  TTY_HIST.push(raw.trim()); // the cheat returned above, so it never lands here
+  if(backupCmd(cmd)||cliRun(cmd,raw))return;
   if(cmd==="exit"||cmd==="logout"){devClose();return;}
-  const R={help:"Type ? to list commands, or a command and ? for its options, like: ping ?",ls:"resume_final_v7_REAL.docx  passwords.txt  do_not_delete/",whoami:S?careerTitle().toLowerCase():"nobody",pwd:"/home/definitely_qualified",uptime:"Define uptime.",date:"Q4, always."};
+  const R={help:"Type ? to list commands, or a command and ? for its options, like: ping ?",whoami:S?careerTitle().toLowerCase():"nobody",uptime:"Define uptime.",date:isFriday()?"Q4, always. Also Friday: read-only Friday! Put the keyboard down.":"Q4, always."};
   devLog(R[cmd]||`${cmd.split(" ")[0]}: command not found. Have you tried opening a ticket?`);
 }
 function devShow(){

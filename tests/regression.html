@@ -174,7 +174,10 @@ test("paperclip reactions follow events without changing the run or random odds"
   S.alert=true;check(G.clipMood().quake,"red alert reaction missing");
   // long eye shuts with quick peeks: shut for most of each 2.4s cycle, open for the rest
   let shut=0;for(let k=0;k<240;k++){S.t=k*0.01;if(G.clipMood().shut)shut++;}
-  check(shut>=150&&shut<240,`red alert eyes should stay shut most of the cycle with a peek, shut ${shut}/240`);
+  // under reduced motion the game keeps them shut and still, so a browser with it on (like the desktop app's pane) expects 240/240
+  const rm=W.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(rm)check(shut===240,`reduced motion: red alert eyes should stay shut, shut ${shut}/240`);
+  else check(shut>=150&&shut<240,`red alert eyes should stay shut most of the cycle with a peek, shut ${shut}/240`);
   S.alert=false;S.t=0.5;check(!G.clipMood().shut,"eyes stay squeezed shut after the red alert");
   // a real spray: stand at a burning rack and hold E, the way the game does it
   const r=S.racks.find(x=>x&&!x.hidden);r.fire=40;S.p.x=G.RACKS[r.slot].x;S.p.y=G.RACKS[r.slot].y;S.p.stun=0;S.p.inv=0;S.energy=100;
@@ -1110,7 +1113,8 @@ test("the outsourced ending offers its own credits with a retro green LaS OS boo
   check(!text.includes("Claude") && text.indexOf("Matt Frost") < text.indexOf("Mr Paperclip"), "old school credits are wrong");
   check(roll.querySelector(".clipcred svg") && text.includes("R.I.P.") && text.includes("0 days in the game"), "Mr Paperclip's memorial is missing");
   roll.querySelector(".roll").classList.add("show");const pupil=roll.querySelector(".clipcred .pupil"),an=pupil&&W.getComputedStyle(pupil);
-  check(an&&an.animationName==="clipeyeroll"&&an.animationIterationCount==="1","Mr Paperclip doesn't roll his eyes (once) in the credits");
+  if(W.matchMedia("(prefers-reduced-motion: reduce)").matches)check(an&&an.animationName==="none","reduced motion: Mr Paperclip's eyes should stay still in the credits");
+  else check(an&&an.animationName==="clipeyeroll"&&an.animationIterationCount==="1","Mr Paperclip doesn't roll his eyes (once) in the credits");
   const boot = roll.querySelector(".boot");
   check(boot && boot.textContent.includes("LaS OS") && boot.querySelector(".bar"), "no LaS OS boot screen with a progress bar");
   check(W.getComputedStyle(boot).fontFamily.includes("Mono"), "the boot screen is not retro");
@@ -1764,6 +1768,35 @@ test("satire commands answer and change nothing", () => {
   check(term("man restore").includes("RPO") && term("man restore").includes("RTO"), "man");
   check(S.err === before.err && S.security === before.sec && S.budget === before.budget && G.BK.left === before.left && S.racks.filter(Boolean).length === before.racks, "a joke changed the game");
   check(G.S === S, "state was replaced");
+});
+test("cowsay, foxsay, dig, history and do_not_delete answer and change nothing", () => {
+  const S = fresh(); const before = JSON.stringify({err: S.err, sec: S.security, budget: S.budget, left: G.BK.left});
+  const cow = term("cowsay Hello Linda");
+  check(cow.includes("< Hello Linda >") && cow.includes("(oo)"), `cowsay should keep your words and case: ${cow}`);
+  const long = term("cowsay " + "word ".repeat(20)).split("\n");
+  check(long.some(l => l.startsWith("/ ")) && long.some(l => l.startsWith("\\ ")) && long.every(l => l.length <= 46), "cowsay should wrap long text at 40 columns");
+  const fox = term("foxsay I am a fox"), fox2 = term("foxsay I am a fox");
+  check(!fox.includes("I am a fox") && fox.includes("\\_____/"), `foxsay should ignore your words: ${fox}`);
+  check(fox !== fox2, "foxsay should move on to its next noise");
+  const dig = term("dig prod.internal");
+  check(dig.includes("It's not DNS.") && dig.includes("It was DNS.") && dig.includes("prod.internal"), "dig");
+  term("ping linda"); const h = term("history");
+  check(h.includes("back in my day") && h.includes("ping linda") && h.trimEnd().endsWith("history"), `history should end with your own commands: ${h}`);
+  check(term("ls").includes("do_not_delete/"), "home ls");
+  check(term("cd do_not_delete") === "", "cd should be quiet when it works");
+  check(term("pwd").trim().endsWith("/do_not_delete") && term("ls").includes("README.txt"), "inside do_not_delete");
+  check(term("cat README.txt").includes("load-bearing") && term("cat prod_backup_FINAL.tar.gz").includes("0 bytes"), "do_not_delete files");
+  check(term("rm prod_backup_FINAL.tar.gz").includes("do not delete"), "rm inside do_not_delete");
+  check(term("cd nowhere").includes("No such directory"), "unknown directory");
+  term("cd .."); check(term("pwd").trim() === "/home/definitely_qualified" && term("cd ..").includes("management"), "cd .. back home, then no higher");
+  check(term("cowsay ?").includes("<text>") && term("c?").includes("cowsay") && term("?").includes("foxsay"), "help lists the new commands");
+  check(JSON.stringify({err: S.err, sec: S.security, budget: S.budget, left: G.BK.left}) === before && G.S === S, "a joke changed the game");
+});
+test("date knows about read-only Friday", () => {
+  fresh(); const RealDate = W.Date;
+  const at = day => { W.Date = class extends RealDate { getDay() { return day; } }; try { return term("date"); } finally { W.Date = RealDate; } };
+  check(at(5).includes("read-only Friday"), "Friday should be acknowledged");
+  check(!at(3).includes("Friday"), "a Wednesday is just Q4");
 });
 test("git blame turns on you after three clients", () => {
   const S = fresh();
