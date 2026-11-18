@@ -35,7 +35,7 @@ Four jobs run side by side, about 2½ minutes in all. Each is a required status 
 
 | Check | What it runs |
 | --- | --- |
-| **Syntax, PWA and docs** | `node tests/syntax.mjs` (every script parses), `node tests/pwa.mjs` (service worker rules), and on pull requests `tests/workflow-docs.mjs` (this file changes when the workflows do) |
+| **Syntax, PWA and docs** | `node tests/syntax.mjs` (every script parses), `node tests/pwa.mjs` (service worker rules), `node tests/versions.mjs` (the older-versions Function, with GitHub faked), and on pull requests `tests/workflow-docs.mjs` (this file changes when the workflows do) |
 | **Regression (Chromium, WebKit)** | `tests/regression.html` in Chrome's and Safari's engines; must read `PASS` |
 | **Desktop (Chromium, WebKit, Firefox)** | `tests/e2e`: 1440×900, 1280×720 and reduced motion. Fourteen set-up scenes with checks on what each shows, and a recorded 20-second keyboard play session |
 | **Phone and tablet (Chromium, WebKit)** | `tests/e2e`: iPhone 15, iPhone SE, Pixel 7, iPad, an upright iPhone and reduced motion. The same scenes, checking the touch words, gray-out, that the buttons never move and that no text names a key; a recorded touch play session; an offline reload through Cloudflare-style redirects |
