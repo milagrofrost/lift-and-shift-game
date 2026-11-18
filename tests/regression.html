@@ -29,7 +29,7 @@
    Results: the page title becomes "PASS n/n" or "FAIL k/n", and window.__RESULTS holds the details. */
 const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
-const NAMES = ("aiCo,CO,letter,rumorBlock,RUMORS,crowd,userLines,alertLines,humanLines,BREAK_CLIENTS,welcomeMail,mailRecap,unicornMail,aiMail,lastMail,spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
+const NAMES = ("setTheme,readColors,C,aiCo,CO,letter,rumorBlock,RUMORS,crowd,userLines,alertLines,humanLines,BREAK_CLIENTS,welcomeMail,mailRecap,unicornMail,aiMail,lastMail,spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "K,keyHint,TOUCH,fixWord,grabWord,setSilentPlay,silentBtn,HAS_SESSION,AU,toastsCover,FIX_WORDS,rollbackTarget,tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
   "SELFTEST,loadIn,LOADIN,moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL,pipeJob,jammed,tickPipeline,sendToPipeline,fixTarget,unjam,jamUnder,laneY,pipeX,PIPE_FIX,PIPE_BREAK_LO,PIPE_BREAK_HI,patchBot,tickJamAlarm,JAM_BUZZ_FIRST,JAM_BUZZ_EVERY," +
   "shakeOff,shakeRate,SHAKE_STICK,SHAKE_PX,stickJerk,SHAKE_MAX,SHAKE_WIN,SHAKE_SLOW,SHAKE_FAST,SHAKE_BONUS,SHAKE_LINES,vpLeave,hunting,spawnHunter,infected,CLONE_MAX,FORK_COST,spawnAgent,ciOffered,ciLeft,ciLockable,CI_NEW,salary,salaryText,tickSpecials,client,lvl").split(",");
@@ -2071,6 +2071,28 @@ test("logging level: ERROR only incidents, WARN short, INFO full, DEBUG labels e
     const seen = []; for (let i = 0; i < 4; i++) { btn().click(); seen.push(btn().textContent.split(": ")[1]); }
     check(seen.join(",") === "INFO,DEBUG,ERROR,WARN", `button cycled ${seen}`);
   } finally { G.setLogLv(2); try { if (saved === null) W.localStorage.removeItem("liftshift-loglevel"); else W.localStorage.setItem("liftshift-loglevel", saved); } catch (e) {} }
+});
+
+test("light mode: the pause menu's moon/sun button switches the palette, sticks, and never touches the run", () => {
+  let saved = null; try { saved = W.localStorage.getItem("liftshift-theme"); } catch (e) {}
+  const root = W.document.documentElement;
+  try {
+    G.setTheme("dark"); const S = fresh(); const darkPrem = G.C.prem;
+    G.setMode("play"); G.togglePause();
+    const btn = () => W.document.querySelector("[data-act=theme]");
+    check(btn() && btn().textContent === "🌙" && btn().getAttribute("aria-label") === "Switch to light mode", "pause menu has no moon button in dark mode");
+    const before = JSON.stringify([S.p, S.energy, S.t, S.racks.map(x => x && [x.timer, x.covered])]);
+    const random = W.Math.random; W.Math.random = () => { throw new Error("switching themes used game randomness"); };
+    try { btn().click(); } finally { W.Math.random = random; }
+    check(root.dataset.theme === "light" && W.localStorage.getItem("liftshift-theme") === "light", "light mode didn't apply or wasn't saved");
+    check(btn().textContent === "☀️" && btn().getAttribute("aria-label") === "Switch to dark mode", "button should show the sun in light mode");
+    check(G.C.prem !== darkPrem, "the canvas palette didn't pick up the light colours");
+    check(G.C.ink === "#e7eef3", "floor ink sits on dark plates and must stay light");
+    check(W.document.getElementById("glare").classList.contains("on"), "switching to light should flash the glare");
+    check(JSON.stringify([S.p, S.energy, S.t, S.racks.map(x => x && [x.timer, x.covered])]) === before, "switching themes changed the run");
+    btn().click();
+    check(!root.dataset.theme && W.localStorage.getItem("liftshift-theme") === "dark" && G.C.prem === darkPrem, "dark mode didn't come back");
+  } finally { G.setTheme(saved === "light" ? "light" : "dark"); try { if (saved === null) W.localStorage.removeItem("liftshift-theme"); } catch (e) {} }
 });
 
 // each level gets its own fresh game frame: state outside S (restore points, for one) means two runs in one frame differ anyway.

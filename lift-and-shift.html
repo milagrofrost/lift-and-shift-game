@@ -23,7 +23,8 @@
 <style>
 /* ==== Styles ==== */
 /* Layout: one ops-console column. HUD strip on top, the game floor below, controls under it.
-   Single dark theme on purpose: a server room after hours. */
+   Dark by default: a server room after hours. Light mode (pause menu, saved) turns the lights on: lighter floors and
+   panels, deeper accents so labels stay readable. Racks, offline and hidden servers stay dark: they're the hardware. */
 :root{
   --bg:#0e1a23; --panel:#152634; --panel-2:#1c3243; --line:#2a4558;
   --ink:#e7eef3; --muted:#8ea5b4;
@@ -35,6 +36,19 @@
   --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
   color-scheme:dark;
 }
+:root[data-theme="light"]{
+  --bg:#e8edf1; --panel:#ffffff; --panel-2:#dbe3e9; --line:#b7c6d1;
+  --ink:#15232d; --muted:#5c7080;
+  --amber:#c27400; --danger:#d63828; --ok:#1d9351; --leak:#1b7cc4; --ai:#7a52d8;
+  --prem:#d8cfc3; --prem-2:#cfc5b8; --hall:#c8d2d9; --hall-2:#bcc8d0; --wall:#7d93a3;
+  color-scheme:light;
+}
+:root[data-theme="light"] .toast{background:rgba(255,255,255,.95);box-shadow:0 2px 8px rgba(0,0,0,.15)}
+/* switching to light: a glare that fades as your eyes adjust */
+#glare{position:fixed;inset:0;z-index:90;pointer-events:none;background:#fff;opacity:0}
+#glare.on{animation:glare 1.6s ease-out forwards}
+@keyframes glare{0%{opacity:.92}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){#glare.on{animation:none}}
 [hidden]{display:none!important}
 html,body{background:var(--bg);color:var(--ink)}
 body{font-family:var(--f-body)}
@@ -535,6 +549,7 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
 </div>
 <div id="rotate" role="alert"><i>📱↻</i><b>Turn your phone sideways</b><span>Lift &amp; Shift plays in landscape.</span></div>
 <div class="overlay" id="overlay"></div>
+<div id="glare" aria-hidden="true"></div>
 <div class="tip" id="tip" role="tooltip" hidden></div>
 <button id="devbtn" type="button" aria-label="Console">&gt;_</button>
 <div id="devterm" hidden><div class="devbox"><pre id="devlog"></pre><div class="devline"><span>$</span><input id="devinput" aria-label="Command" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div><div class="bklist" id="bklist"></div><div class="devmenu" id="devmenu"></div></div></div>
@@ -881,6 +896,8 @@ const SFX={
   siren:()=>{tone(620,0.35,{type:"sawtooth",vol:0.06,slide:260});tone(880,0.35,{type:"sawtooth",vol:0.06,slide:-260,delay:0.36});},
   // a jammed pipeline: a low, flat factory buzzer, three buzzes in a row
   jamBuzz:()=>{for(let i=0;i<3;i++){tone(140,0.15,{type:"square",vol:0.07,delay:i*0.26});tone(70,0.15,{type:"square",vol:0.05,delay:i*0.26});}},
+  // switching to light mode: a high tinnitus ring (two close tones beating), a brief hiss, fading as your eyes adjust
+  glare:()=>{noiseBurst(0.35,{vol:0.05,freq:6000,type:"highpass"});tone(7040,2.8,{vol:0.014,attack:0.12});tone(7049,2.8,{vol:0.01,attack:0.2});tone(3520,1.4,{vol:0.004,attack:0.15});},
   // a rubber stamp landing on paper: a dull thump and a papery slap, timed to the end-screen stamp's landing
   stamp:()=>{const d=0.6;tone(90,0.2,{type:"sine",vol:0.4,slide:-40,delay:d,raw:true});noiseBurst(0.09,{vol:0.35,freq:600,type:"lowpass",delay:d,raw:true});noiseBurst(0.05,{vol:0.12,freq:2200,type:"bandpass",delay:d+0.01,raw:true});},
 };
@@ -2172,8 +2189,15 @@ function drawDesk(){
 }
 
 /* ==== Canvas setup and input ==== */
-const cs=getComputedStyle(document.documentElement), C={};
-["bg","panel","line","ink","muted","amber","danger","ok","leak","ai","prem","prem-2","hall","hall-2","sky","sky-2","sky-ink","wall","rack","rack-2"].forEach(k=>C[k]=cs.getPropertyValue("--"+k).trim());
+/* Light or dark mode (pause menu, saved). The canvas reads the same colour tokens, so switching re-reads them. */
+let THEME="dark";try{if(localStorage.getItem("liftshift-theme")==="light")THEME="light";}catch(e){}
+const C={};
+function readColors(){const cs=getComputedStyle(document.documentElement);["bg","panel","line","ink","muted","amber","danger","ok","leak","ai","prem","prem-2","hall","hall-2","sky","sky-2","sky-ink","wall","rack","rack-2"].forEach(k=>C[k]=cs.getPropertyValue("--"+k).trim());
+  C.ink="#e7eef3";} // the floor's ink only sits on dark plates (racks, lane boxes, the prompt bubble), so it stays light in both modes
+function applyTheme(){const d=document.documentElement;if(THEME==="light")d.dataset.theme="light";else delete d.dataset.theme;
+  const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=THEME==="light"?"#e8edf1":"#0e1a23";readColors();}
+function setTheme(t){THEME=t==="light"?"light":"dark";try{localStorage.setItem("liftshift-theme",THEME);}catch(e){}applyTheme();return THEME;}
+applyTheme();
 const EF="'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif";
 const MONO='"IBM Plex Mono",Consolas,monospace', DISP='"Chakra Petch","Segoe UI",sans-serif', BODY='"IBM Plex Sans","Segoe UI",sans-serif';
 
@@ -5139,12 +5163,13 @@ $("devterm").addEventListener("click",e=>{
 // cycles ERROR → WARN → INFO → DEBUG; the tutorial still shows at least INFO
 const LOG_TIPS=["Only incidents get text on the floor","Short hints and problems only","Every hint, result and odds","Everything. Labels on everything. Sorry."];
 function silentBtn(){return HAS_SESSION?`<button class="btn ghost" data-act="silentplay" aria-pressed="${AU.loud}" title="${AU.loud?"Sound plays even with your phone on silent, and pauses music from other apps":"Your phone's silent switch mutes the game, and other apps' music keeps playing"} (click to change)">Silent mode: ${AU.loud?"play sound":"muted"}</button>`:"";}
+function themeBtn(){const l=THEME==="light";return `<button class="btn ghost" data-act="theme" aria-label="${l?"Switch to dark mode":"Switch to light mode"}" title="${l?"Light mode. Click for dark mode":"Dark mode. Click for light mode"}">${l?"☀️":"🌙"}</button>`;}
 function logLevelBtn(){return `<button class="btn ghost" data-act="loglevel" title="${LOG_TIPS[LOGLV]} (click to change)">Logging level: ${LOG_LEVELS[LOGLV]}</button>`;}
 function togglePause(){
   if(mode==="play"&&S.tut){mode="paused";show(`<h2>Paused</h2><p>The paperclip will wait. It's very patient. It's a paperclip.</p>
-    <div class="row"><button class="btn" data-act="resume">Resume</button>${logLevelBtn()}${silentBtn()}<button class="btn ghost" data-act="menu">Leave tutorial</button></div>`);}
+    <div class="row"><button class="btn" data-act="resume">Resume</button>${themeBtn()}${logLevelBtn()}${silentBtn()}<button class="btn ghost" data-act="menu">Leave tutorial</button></div>`);}
   else if(mode==="play"){mode="paused";show(`<h2>Paused</h2><p>The fires are paused too. This is the only time that happens.</p>
-    <div class="row"><button class="btn" data-act="resume">Resume</button>${logLevelBtn()}${silentBtn()}<button class="btn ghost" data-act="restart">Restart run</button><button class="btn ghost" data-act="quit">Give up</button></div>
+    <div class="row"><button class="btn" data-act="resume">Resume</button>${themeBtn()}${logLevelBtn()}${silentBtn()}<button class="btn ghost" data-act="restart">Restart run</button><button class="btn ghost" data-act="quit">Give up</button></div>
     <p style="font-size:12.5px;color:var(--muted)">Restart throws this run away and starts a new one. Giving up means handing in your notice.</p>${toolkitHtml()}`);}
   else if(mode==="paused")play();
 }
@@ -5176,6 +5201,8 @@ ov.addEventListener("click",e=>{
   else if(a==="onward"){toast(`New client: ${client().name}${endDot(client().name)} Your tools came with you.`);play();}
   else if(a==="resume")play();
   else if(a==="silentplay"){setSilentPlay(!AU.loud);audio();b.outerHTML=silentBtn();ov.querySelector('[data-act=silentplay]').focus();}
+  else if(a==="theme"){const l=setTheme(THEME==="light"?"dark":"light")==="light";if(l){sfx("glare");const g=$("glare");if(g){g.classList.remove("on");void g.offsetWidth;g.classList.add("on");}}else sfx("click");
+    b.outerHTML=themeBtn();ov.querySelector('[data-act=theme]').focus();}
   else if(a==="loglevel"){setLogLevel(LOGLV+1);b.outerHTML=logLevelBtn();ov.querySelector('[data-act=loglevel]').focus();}
   else if(a==="retire")showEnd(null);
   else if(a==="obsolete")showEnd("obsolete");
