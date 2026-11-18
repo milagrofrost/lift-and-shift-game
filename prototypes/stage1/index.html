@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Lift &amp; Shift · Day 2, stage 1 (prototype 5)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0e1a23">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+/* Day 2 prototype 4: stage 1, the temp and the ticket system. Standalone page; it borrows the main game's look
+   (tokens, fonts, canvas size, touch layout) but shares no code with lift-and-shift.html. */
+:root{
+  --bg:#0e1a23; --panel:#152634; --panel-2:#1c3243; --line:#2a4558;
+  --ink:#e7eef3; --muted:#8ea5b4;
+  --amber:#ffb547; --danger:#ff5d4d; --ok:#5fd38d; --leak:#45aefc; --ai:#b896ff;
+  --prem:#2a2321; --prem-2:#302724; --hall:#16232d; --hall-2:#1b2a35;
+  --sky:#cde5f3; --sky-2:#e6f3fa; --sky-ink:#1d4058; --wall:#3f5a6c; --rack:#2c3a45; --rack-2:#384a57;
+  --f-display:"Chakra Petch","Segoe UI",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body)}
+.wrap{max-width:1000px;margin:0 auto;padding-block:14px 28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:10px}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;justify-content:space-between}
+.brand{font-family:var(--f-display);font-weight:700;letter-spacing:.08em;font-size:20px;line-height:1.1;text-transform:uppercase}
+.brand span{color:var(--amber)}
+.brand small{display:block;font-family:var(--f-body);font-weight:400;letter-spacing:0;text-transform:none;font-size:12px;color:var(--muted);margin-top:2px}
+.hud{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 9px;font-family:var(--f-mono);font-size:13px;font-variant-numeric:tabular-nums;display:flex;gap:7px;align-items:center;white-space:nowrap}
+.chip .lbl{color:var(--muted);font-family:var(--f-body);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em}
+.chip b{font-weight:600}
+.chip .rate{color:var(--muted);font-size:11px}
+.chip.bad b{color:var(--danger)}
+.chip.warn b{color:var(--amber)}
+.bar{width:64px;height:7px;background:var(--panel-2);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;width:100%;background:var(--ok);transition:width .1s linear}
+.chip.bad .bar i{background:var(--danger)} .chip.warn .bar i{background:var(--amber)}
+.stage{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--hall)}
+canvas{display:block;width:100%;height:auto;aspect-ratio:960/560;touch-action:none}
+#toasts{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;flex-direction:column;gap:4px;align-items:center;pointer-events:none;width:min(94%,560px)}
+.toast{background:rgba(10,20,28,.93);border:1px solid var(--line);color:var(--ink);font-size:13px;line-height:1.35;padding:6px 11px;border-radius:6px;animation:toast 4.2s forwards;text-align:center}
+@keyframes toast{0%{opacity:0;transform:translateY(6px)}6%{opacity:1;transform:none}88%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.toast{animation-name:fade}@keyframes fade{0%,90%{opacity:1}100%{opacity:0}}}
+.help{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:12.5px;color:var(--muted)}
+kbd{font-family:var(--f-mono);font-size:11.5px;background:var(--panel-2);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 5px;color:var(--ink)}
+.sndbtn{margin-left:auto;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:4px 10px;font:inherit;font-size:12.5px;cursor:pointer}
+.sndbtn:focus-visible,.btn:focus-visible{outline:2px solid var(--leak);outline-offset:2px}
+.overlay{position:fixed;inset:0;background:rgba(5,10,14,.78);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20;overflow:auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;max-width:560px;width:100%;padding:20px 22px;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.card h1,.card h2{font-family:var(--f-display);margin:0;letter-spacing:.04em}
+.card h1{font-size:24px} .card h2{font-size:15px;color:var(--amber);text-transform:uppercase;letter-spacing:.1em}
+.card p{margin:0;line-height:1.5;font-size:14.5px}
+.card ul{margin:0;padding-left:20px;line-height:1.6;font-size:14px}
+.card .muted{color:var(--muted);font-size:12.5px}
+.stats{display:grid;grid-template-columns:1fr auto;gap:5px 18px;font-size:14px}
+.stats span:nth-child(even){font-family:var(--f-mono);text-align:right}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.btn{background:var(--amber);color:#14212b;border:0;border-radius:7px;padding:9px 16px;font:inherit;font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);text-decoration:none;display:inline-block}
+.lcd{font-family:var(--f-mono);background:#140707;color:#ff3b2b;padding:0 5px;border-radius:3px;letter-spacing:.1em;text-shadow:0 0 6px rgba(255,59,43,.45)}
+.smiley{font-size:20px;line-height:1;padding:1px 8px;cursor:pointer;color:inherit;font-family:inherit}
+.chipbtn{cursor:pointer;color:var(--ink);font-family:var(--f-body);font-size:12.5px}
+.smiley:focus-visible,.chipbtn:focus-visible{outline:2px solid var(--leak);outline-offset:2px}
+.console dl{display:grid;grid-template-columns:auto 1fr;gap:7px 14px;margin:0;font-family:var(--f-mono);font-size:13px}
+.console dt{color:var(--muted);font-family:var(--f-body);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;padding-top:3px;white-space:nowrap}
+.console dd{margin:0;line-height:1.45;overflow-wrap:anywhere}
+.console code{background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:12px;display:inline-block;margin:0 3px 3px 0}
+.console .note{color:var(--amber);font-size:12px;display:block}
+.spark{display:block;max-width:100%;height:auto;border:1px solid var(--line);border-radius:4px;margin-bottom:3px}
+.memo{background:#f4efd9;color:#2b2618;border-radius:6px;padding:14px 16px;font-family:var(--f-mono);font-size:13px;line-height:1.55}
+.board{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tile{border:1px solid var(--line);border-radius:6px;padding:7px 4px;text-align:center;font-family:var(--f-mono);font-size:11px;background:var(--panel-2);overflow-wrap:anywhere}
+.tile b{display:block;font-size:20px;line-height:1.2}
+.tile span{display:block;color:var(--muted);font-family:var(--f-body);font-size:10.5px;margin-top:2px}
+.tile.boom{background:#5a1712;border-color:var(--danger)} .tile.ok{border-color:var(--ok)}
+.cites{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:13.5px;line-height:1.45}
+@media (max-width:520px){.board{grid-template-columns:repeat(2,1fr)}.console dl{grid-template-columns:1fr}}
+.duo{display:flex;width:70px;height:8px;border-radius:4px;overflow:hidden;background:var(--panel-2)}
+.duo i{display:block;height:100%;width:0;transition:width .2s}
+#b-up{background:var(--danger)} #b-stop{background:var(--ok)}
+.clipnote{background:#f4efd9;color:#2b2618;border-radius:6px;padding:10px 12px;font-size:13.5px;line-height:1.5}
+.clipnote .btns{margin-top:8px;align-items:center}
+.clipnote .btn.ghost{color:#2b2618;border-color:#b7a983}
+.inbook{font-weight:700;color:#2c7a4b;font-size:13px}
+.book{margin:0;padding-left:22px;line-height:1.6;font-size:14px}
+/* Touch controls, as in the main game: drag anywhere on the left half to move, big buttons on the right. */
+.touch{display:none;position:fixed;inset:0;z-index:10;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+@media (pointer:coarse){.touch{display:block}.touch[hidden]{display:none}}
+.stick-zone{position:absolute;left:0;top:0;bottom:0;width:50%;pointer-events:auto;touch-action:none}
+.stick-base{position:absolute;left:max(24px,env(safe-area-inset-left,0px));bottom:20px;width:132px;height:132px;border-radius:50%;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.26);opacity:.6}
+.stick-zone.on .stick-base{opacity:1;background:rgba(255,255,255,.12)}
+.stick-knob{position:absolute;left:50%;top:50%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;background:rgba(255,255,255,.26);border:2px solid rgba(255,255,255,.5)}
+.tbtn{position:absolute;pointer-events:auto;touch-action:none;border-radius:50%;background:rgba(10,20,28,.6);border:2px solid rgba(190,196,200,.55);color:rgba(205,211,215,.85);font-family:var(--f-display);font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.8);padding:0;-webkit-tap-highlight-color:transparent;white-space:nowrap;overflow:hidden;line-height:1}
+.tbtn.ready{background:rgba(60,38,6,.62);border-color:#ffb547;color:#fff}
+.tbtn.on{background:rgba(140,88,16,.82);border-color:#ffb547;color:#fff}
+#t-fix{right:max(14px,env(safe-area-inset-right,0px));bottom:14px;width:124px;height:124px;font-size:22px}
+#t-grab{right:calc(max(14px,env(safe-area-inset-right,0px)) + 132px);bottom:14px;width:100px;height:100px;font-size:18px}
+#t-pause{right:max(14px,env(safe-area-inset-right,0px));top:8px;width:52px;height:52px;font-size:20px}
+@media (pointer:coarse) and (orientation:landscape) and (max-height:520px){
+  .wrap{max-width:none;padding-block:2px 12px;gap:3px;padding-left:max(6px,env(safe-area-inset-left,0px));padding-right:max(6px,env(safe-area-inset-right,0px))}
+  .brand,.help{display:none}
+  .top{justify-content:center}
+  .hud{flex-wrap:nowrap;gap:4px}
+  .chip .lbl{display:none}
+  .smiley{font-size:16px}
+  .chip{padding:1px 7px;font-size:11px;gap:5px}
+  .chip .lbl{font-size:9.5px}
+  .bar{width:44px}
+  .stage{max-height:calc(100dvh - 40px);aspect-ratio:960/560;margin:0 auto}
+  canvas{height:100%;width:auto;max-width:100%}
+  .toast{font-size:11.5px;padding:3px 8px}
+}
+.book4{font-size:15px;letter-spacing:.12em}
+.book4 .off{opacity:.22;filter:grayscale(1)}
+@media (pointer:coarse){.help span{display:none}}
+.later{background:#0b141b;border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-size:14px;line-height:1.55}
+</style>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">Lift <span>&amp;</span> Shift<small>Day 2 · stage 1 · prototype 5 · Convenience Fee Ltd.</small></div>
+    <div class="hud" aria-live="off">
+      <div class="chip" id="c-q" hidden title="Requests waiting for you at the frozen ticket system."><span class="lbl">Waiting</span><b class="lcd" id="h-q">000</b></div>
+      <button class="chip smiley" id="smiley" type="button" aria-label="Restart" title="Restart">🙂</button>
+      <div class="chip" id="c-spent" title="Spent so far, against the most the client will pay before pulling the contract."><span class="lbl">Spent</span><b id="h-spent">$0</b><div class="bar"><i id="b-spent"></i></div></div>
+      <div class="chip" id="c-up" title="The uptime budget: outages and breaches burn it. Run out and you're walked out."><span class="lbl">Uptime</span><div class="bar"><i id="b-uptime"></i></div></div>
+      <div class="chip" id="c-rate" title="What the cloud costs per hour right now, and the client's target."><span class="lbl">Rate</span><b id="h-rate">$0/hr</b><span class="rate" id="h-target"></span></div>
+      <div class="chip" id="c-book" hidden title="What the temp has learned by watching you: no owner, no budget code, no end date, standing admin, and what a good request looks like."><span class="lbl">📕</span><span class="book4" id="h-book"></span></div>
+    </div>
+  </div>
+  <div class="stage">
+    <canvas id="c" width="960" height="560" aria-label="Game floor"></canvas>
+    <div id="toasts" aria-live="polite"></div>
+  </div>
+  <div class="help">
+    <span><kbd>WASD</kbd> / <kbd>←↑↓→</kbd> move</span>
+    <span>hold <kbd>E</kbd> investigate · freeze · patch · douse · shut down</span>
+    <span><kbd>E</kbd> approve · thank</span>
+    <span><kbd>Space</kbd> deny</span>
+    <span><kbd>P</kbd> pause</span>
+    <span><kbd>M</kbd> mute</span>
+    <button id="snd" class="sndbtn" type="button" aria-pressed="true">🔊 Sound on</button>
+  </div>
+</div>
+<div class="touch" id="touch">
+  <div class="stick-zone" id="stick-zone" aria-label="Drag to move"><div class="stick-base" id="stick-base"><div class="stick-knob" id="stick-knob"></div></div></div>
+  <button class="tbtn" id="t-fix" type="button" data-k="fix" aria-label="Investigate, freeze, approve or shut down">FIX</button>
+  <button class="tbtn" id="t-grab" type="button" data-k="grab" aria-label="Deny">DENY</button>
+  <button class="tbtn" id="t-pause" type="button" aria-label="Pause">❚❚</button>
+</div>
+<div class="overlay" id="overlay" hidden></div>
+<script src="stage1.js"></script>
+</body>
+</html>
