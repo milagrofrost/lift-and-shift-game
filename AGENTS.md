@@ -13,7 +13,7 @@ Lift & Shift teaches cloud migration alongside BAU: email, tickets, maintenance,
 ## Repository and branch handling
 
 - Inspect Git status, branch, and applicable instructions before editing. Preserve unrelated user changes.
-- `lift-and-shift.html` contains the game. No build system is required. `functions/` holds dependency-free Cloudflare Pages Functions for shared report links and older versions (`/v/`).
+- `lift-and-shift.html` contains the game. No build system is required, but Cloudflare's build command copies a fixed list of root files: a new file the game loads from the root must be added to it (see "What Cloudflare publishes" in `.github/README.md`). `functions/` holds dependency-free Cloudflare Pages Functions for shared report links and older versions (`/v/`).
 - Gameplay revisions are merged into `main`. Cloudflare Pages deploys `main` to https://las.milagrofrost.com. Use feature branches and pull requests; `main` is protected (pull request plus four green CI checks), and merging publishes the site.
 - Workflows: `.github/README.md` explains every GitHub workflow, the protection on `main` and the required check names. Any change under `.github/workflows/` must update it in the same pull request (CI enforces this). Renaming a CI job also means updating the ruleset's required checks.
 - The design direction below describes accepted behavior, including feature-branch work. Inspect the current branch before claiming it is implemented.
