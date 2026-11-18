@@ -523,7 +523,7 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
     <div class="hb" id="hb-sec" title="Breaches and failed audits drain it. +25 at each security review between clients."><div class="hl"><span>Security</span><b></b></div><div class="ht"><i></i></div><small>Empty = fired</small></div>
     <div class="hb" id="hb-lease" title="Days into this engagement vs the client's lease target. Late costs 10% more on-prem per day and a star."><div class="hl"><span>Lease</span><b></b></div><div class="ht"><i></i></div><small>Late = costs + a lost star</small></div>
     <div class="hb" id="hb-stars" title="The rating this client would give you right now."><div class="hl"><span>Client rating</span><b></b></div><div class="ht"><i></i></div><small>Your career score</small></div>
-    <div class="hb" id="hb-pts" title="Story points for the improvement sprint after this client. Incidents eat into it."><div class="hl"><span>Next sprint</span><b></b></div><div class="ht"><i></i></div><small>Points for upgrades</small></div>
+    <div class="hb" id="hb-pts" title="Story points for the improvement sprint after this client. Incidents eat into it; finishing days ahead of the lease target wins some back."><div class="hl"><span>Next sprint</span><b></b></div><div class="ht"><i></i></div><small>Points for upgrades</small></div>
   </div>
   <div class="stage">
     <canvas id="c" width="960" height="560" aria-label="Game floor: on-prem server room on the left, hallway in the middle, cloud on the right"></canvas>
@@ -1132,8 +1132,8 @@ const RETRO={
   ci:{icon:"♾️",name:"Continuous improvement",fix:"Permanent. Locks in the tools you're levelling up: every shop keeps 2 slots for tools you don't own yet and fills the rest with locked-in tools, until they're all maxed."},
   break:{icon:"🏖️",name:"Give me a break",fix:"Just this once: a small job slips in before your next client, sized and paced like your first. The next client waits its turn. A clean finish can win back your sprint points, and the next shop is guaranteed to stock every big-ticket tool you don't own yet."},
 };
-// offered after two rough clients in a row: 5 or 6 sprint points, or 2 stars or fewer
-const needsBreak=()=>{const l=S.career.slice(-2);return l.length===2&&l.every(c=>c.cap<=6||c.stars<=2);};
+// offered after two rough clients in a row: 5 or 6 sprint points (before any early-finish refund), or 2 stars or fewer
+const needsBreak=()=>{const l=S.career.slice(-2);return l.length===2&&l.every(c=>(c.cap0??c.cap)<=6||c.stars<=2);};
 function retroOptions(){
   const ss=S.ss,late=overdue(),fails=ss.att-ss.mig,c=[];
   if(ss.audits)c.push(["patchcal",ss.audits*3,`${ss.audits} failed audit${ss.audits>1?"s":""}`]);
@@ -1209,12 +1209,13 @@ const burnRate=()=>onPremApps().filter(a=>!a.hidden).length*ONPREM_RATE*leaseMul
 /* ==== Hallway: users, chatbots, pickups, specials, temp worker ==== */
 /* hallway users: bump into one and they hold you. Better dressed = higher rank = longer hold.
    Interns (hold 0) don't have the standing to stop you: they blurt their question as you walk past. */
+// "VP" is kept for the VP who emails you and the one who comes looking when you don't reply (hunters, rankName)
 const RANKS=[
   {name:"Intern",hold:0,lines:["Where's the printer?","Is Wi-Fi down?","Can I get admin?","What's a server?","Where's the free pizza?"]},
   {name:"Analyst",hold:1.6,lines:["Quick question...","Excel's frozen.","Reset my password?","Is it slow for you?","My mouse is gone."]},
   {name:"Manager",hold:2.3,lines:["Got a sec?","Quick sync?","Need this by EOD.","Can you just...","Status update?"]},
   {name:"Director",hold:3.0,lines:["Let's align.","Hop on a call?","Why is it red?","I need a deck.","Make it pop."]},
-  {name:"VP",hold:3.8,lines:["Per my last email...","Why isn't this done?","The board is asking.","This is a P1.","Drop everything."]},
+  {name:"Senior Director",hold:3.8,lines:["Per my last email...","Why isn't this done?","The board is asking.","This is a P1.","Drop everything."]},
   {name:"CIO",hold:4.8,lines:["Are we cloud yet?","Have you tried AI?","Make it serverless.","Saw it on LinkedIn.","Cut costs 40%."]},
 ];
 /* Shaking off a converser: mash any direction keys (or flick the stick) while someone has you pinned. It goes by rate:
@@ -1943,17 +1944,18 @@ function tickUsers(dt){
   }
   S.users=S.users.filter(u=>!u.gone);
 }
+const rankName=u=>u.hunter?"VP":RANKS[u.rank].name;
 function drawUser(u){
   const k=!u.hunter&&crowd()&&crowd().scale;
   if(k){ctx.save();ctx.translate(u.x,u.y+17);ctx.scale(k,k);ctx.translate(-u.x,-u.y-17);}
   drawUserBody(u,!!k);
-  if(k){ctx.restore();tx(RANKS[u.rank].name.toUpperCase(),u.x,u.y+26,8,C.muted,{font:DISP,weight:700});} // labels stay readable
+  if(k){ctx.restore();tx(rankName(u).toUpperCase(),u.x,u.y+26,8,C.muted,{font:DISP,weight:700});} // labels stay readable
 }
 function drawUserBody(u,noLabel){
   const{x,y,rank:r}=u,gray="#a9b6c0";
   ctx.fillStyle="rgba(0,0,0,.25)";ctx.beginPath();ctx.ellipse(x,y+17,13,4,0,0,7);ctx.fill();
-  // body: plain gray for the intern (the generic user icon), then shirt, then suits
-  ctx.fillStyle=["#8d9aa5","#6f9cc4","#e6ecf0","#46525e","#1f2a44","#141519"][r];
+  // body: plain gray for the intern (the generic user icon), then shirt, then suits; the VP who hunts you wears a bright blue one
+  ctx.fillStyle=u.hunter?"#2f63c4":["#8d9aa5","#6f9cc4","#e6ecf0","#46525e","#1f2a44","#141519"][r];
   ctx.beginPath();ctx.moveTo(x-14,y+16);ctx.quadraticCurveTo(x-14,y-1,x,y-1);ctx.quadraticCurveTo(x+14,y-1,x+14,y+16);ctx.closePath();ctx.fill();
   if(r>=3){ctx.fillStyle="#f3f5f7";ctx.beginPath();ctx.moveTo(x-4.5,y-1);ctx.lineTo(x+4.5,y-1);ctx.lineTo(x,y+11);ctx.closePath();ctx.fill();}
   if(r===0){ctx.strokeStyle="#4a8fd6";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x-4,y);ctx.lineTo(x,y+8);ctx.lineTo(x+4,y);ctx.stroke();ctx.fillStyle="#f3f5f7";ctx.fillRect(x-3,y+8,6,5);}
@@ -1964,11 +1966,11 @@ function drawUserBody(u,noLabel){
   ctx.fillStyle=gray;ctx.beginPath();ctx.arc(x,y-10,7.5,0,7);ctx.fill();
   if(r===5){ctx.fillStyle="#141519";ctx.fillRect(x-6,y-27,12,10);ctx.fillRect(x-9.5,y-18.5,19,2.5);ctx.fillStyle="#c0392b";ctx.fillRect(x-6,y-20,12,2);}
   if(r===4){ctx.fillStyle="#3b2a1e";ctx.beginPath();ctx.arc(x,y-12,7.5,Math.PI,0);ctx.fill();}
-  if(u.leaving)tx(`${RANKS[r].name.toUpperCase()} · HEADING OUT`,x,y+26,8,C.muted,{font:DISP,weight:700});
+  if(u.leaving)tx(`${rankName(u).toUpperCase()} · HEADING OUT`,x,y+26,8,C.muted,{font:DISP,weight:700});
   else if(u.hunter){
     ctx.fillStyle="rgba(255,93,77,.92)";rr(x-26,y-46,52,13,3);ctx.fill();tx("NO REPLY",x,y-39.5,8,"#fff",{font:DISP,weight:700});
-    tx(`${RANKS[r].name.toUpperCase()} · LOOKING FOR YOU`,x,y+26,8,C.danger,{font:DISP,weight:700});
-  }else if(!noLabel)tx(RANKS[r].name.toUpperCase(),x,y+26,8,C.muted,{font:DISP,weight:700});
+    tx(`${rankName(u).toUpperCase()} · LOOKING FOR YOU`,x,y+26,8,C.danger,{font:DISP,weight:700});
+  }else if(!noLabel)tx(rankName(u).toUpperCase(),x,y+26,8,C.muted,{font:DISP,weight:700});
 }
 /* ==== Floor effects: warnings, FinOps marks, celebration, alerts, energy ==== */
 function drawFx(dt){
@@ -2158,7 +2160,7 @@ function spawnHunter(){clipEv("vp");S.ss.vp=(S.ss.vp||0)+1;
     toast("👔 Your inbox is full again. The VP turns right back around.");return;}
   // the exec shows up at whichever end of the hallway is farthest from you, then walks over
   const spot=[{x:400,y:540},{x:560,y:540},{x:400,y:130},{x:560,y:130}].sort((a,b)=>dist(b,S.p)-dist(a,S.p))[0];
-  S.users.push({x:spot.x,y:spot.y,home:{...spot},rank:Math.random()<.6?4:5,hunter:true,life:999,cd:0,line:"",vx:0,vy:0,turn:0});
+  S.users.push({x:spot.x,y:spot.y,home:{...spot},rank:4,hunter:true,life:999,cd:0,line:"",vx:0,vy:0,turn:0});
   S.run.missed++;S.ss.missed++;
   toast("👔 Your inbox is full. A VP is coming to find out why you haven't replied.");
 }
@@ -2180,11 +2182,16 @@ function drawInbox(){
 }
 function launchEscalation(){logEv("🚨 A ticket escalated.");clipEv("escalate");S.ss.esc++;sfx("escalate");S.run.esc++;const e={x:DESK.x,y:DESK.y-24,a:null};S.atk.push(e);unplanned(0.5,"esc");return e;}
 /* Sprint capacity: 13 points per sprint. Incidents create unplanned work that eats next sprint's capacity.
-   A clean sprint (no unplanned work) earns +2. Never below 5, never above 15. Unspent points don't carry over. */
+   A clean sprint (no unplanned work) earns +2. Never below 5, never above 15. Unspent points don't carry over.
+   Finishing ahead of the lease target wins some of the unplanned work back: +1 at 2 days early, +2 at 4 or more.
+   It only refunds what was lost (never past 13), so a clean sprint gets nothing extra. */
 const BASE_CAP=13;
 function unplanned(n,why){S.ss.unplanned+=n;S.ss.why[why]=(S.ss.why[why]||0)+n;fl({x:S.p.x,y:S.p.y-14},`−${n} pt next sprint`,C.ai,1);}
 // costs: red alert 1, failed audit 1, escalated ticket 0.5, exec who catches you 0.5 (rounded at the end)
-const capNext=()=>{const u=S.ss.unplanned;return clamp(BASE_CAP-Math.round(u)+(u===0?2:0),5,15);};
+const capBase=()=>{const u=S.ss.unplanned;return clamp(BASE_CAP-Math.round(u)+(u===0?2:0),5,15);};
+const earlyDays=()=>Math.max(0,S.cdays-dayNum());
+const earlyBack=()=>{const b=capBase();return b>=BASE_CAP?0:Math.min(BASE_CAP-b,Math.min(2,Math.floor(earlyDays()/2)));};
+const capNext=()=>capBase()+earlyBack();
 function drawDesk(){
   const{x,y}=DESK,w=150,h=46,n=S.tk.length,lim=ticketLimit(),full=n>=lim;
   ctx.save();if(full){ctx.shadowColor=C.danger;ctx.shadowBlur=14+6*Math.sin(S.t*10);}
@@ -2347,7 +2354,7 @@ function clientStars(){
 function finishEngagement(){
   const c=client(),st=clientStars();
   {const ss=S.ss;S.jig=S.jig||{h:0,t:0};S.jig.h+=ss.acts||0;S.jig.t+=(ss.acts||0)+(ss.bot||0)+(ss.ai?ss.ai.n:0);}
-  S.career.push({name:c.name,stars:st,days:dayNum(),late:overdue(),spend:Math.round(S.ss.budget0-S.budget),cap:capNext()});
+  S.career.push({name:c.name,stars:st,days:dayNum(),late:overdue(),spend:Math.round(S.ss.budget0-S.budget),cap:capNext(),cap0:capBase()});
   // not one action from the human for the whole client: the job runs itself, and the AI agent knows it
   // (a pay cut doesn't protect you: do it again and the same meeting offers another cut)
   S.obsolete=!S.ss.human;
@@ -2356,7 +2363,7 @@ function finishEngagement(){
   if(!S.tut)try{const b=+(localStorage.getItem("liftshift-clients")||0);if(S.career.length>b)localStorage.setItem("liftshift-clients",String(S.career.length));}catch(e){}
   if(S.upgrades.clip)S.clipDays=(S.clipDays||0)+dayNum(); // for his memorial in the old school credits
   clipShopPick();
-  S.retroOpts=retroOptions();S.retroPick=null;S.retroAsk=null;S.agentNews=S.career.length===3&&!lvl("agent")&&!S.noAI;S.points=S.cap=capNext();missShops();S.offers=rollOffers();if(S.agentNews&&!S.offers.includes("agent"))S.offers[0]="agent";shownOffers(S.offers);S.quote=pick(c.quotes);S.rerolls=0;S.rerollMsg="";
+  S.retroOpts=retroOptions();S.retroPick=null;S.retroAsk=null;S.agentNews=S.career.length===3&&!lvl("agent")&&!S.noAI;S.points=S.cap=capNext();S.capBack=earlyBack();S.capEarly=earlyDays();missShops();S.offers=rollOffers();if(S.agentNews&&!S.offers.includes("agent"))S.offers[0]="agent";shownOffers(S.offers);S.quote=pick(c.quotes);S.rerolls=0;S.rerollMsg="";
   // security review between clients: get some security back (capped at 100), and the critical warning can fire again
   S.secRefill=Math.min(25,100-Math.max(0,S.security));S.security=Math.min(100,S.security+25);S.secWarned=false;
   review();
@@ -3373,7 +3380,7 @@ function drawDebug(){
   const P=S.p,f1=n=>n.toFixed(1);
   S.racks.forEach((a,i)=>{if(!a)return;const p=RACKS[i];
     debugTag(a.hidden?"0x????":`t=${f1(a.timer)}/${f1(a.maxT)}`,p.x,p.y-45);debugTag(a.hidden?"[REDACTED]":`cov=${a.covered?1:0} fire=${f1(a.fire||0)}`,p.x,p.y-34);});
-  for(const u of S.users)debugTag(`${RANKS[u.rank].name.toLowerCase()}{x:${u.x|0},y:${u.y|0}${u.hunter?",hunting:true":""}}`,u.x,u.y+26,"#ffd28a");
+  for(const u of S.users)debugTag(`${rankName(u).toLowerCase()}{x:${u.x|0},y:${u.y|0}${u.hunter?",hunting:true":""}}`,u.x,u.y+26,"#ffd28a");
   for(const b of S.bots)debugTag(`${b.kind}bot.work=${b.work.toFixed(2)}`,b.x,b.y+24,"#8fd3ff");
   for(const e of S.atk)debugTag("target=<redacted, ask in Slack>",e.x,e.y+32,"#ff9a8f");
   if(S.temp)debugTag("temp.contract=expiring",S.temp.x,S.temp.y+26,"#8fe8de");
@@ -3603,7 +3610,8 @@ function healthBars(){
   const d=dayNum(),late=overdue(),lf=d/S.cdays;
   setBar("hb-lease",late?1:lf,late?`${late} day${late>1?"s":""} late`:`Day ${d}/${S.cdays}`,late?"bad":lf>0.75?"warn":"ok",late>0);hitFlash("hb-lease",d,(v,p)=>v>p&&v>=S.cdays-LEASE_WARN_DAYS,late>0); // quiet early, a warning in the final days, hard flashes once overdue
   const st=clientStars();setBar("hb-stars",st/5,stars(st),st>=4?"ok":st===3?"warn":"bad",st<=1);hitFlash("hb-stars",st,(v,p)=>v<p);
-  const cap=capNext();setBar("hb-pts",cap/15,`${cap} pts`,cap>=10?"ok":cap>=7?"warn":"bad",cap<=5);hitFlash("hb-pts",cap,(v,p)=>v<p);
+  const cap=capNext(),back=earlyBack();setBar("hb-pts",cap/15,`${cap} pts`,cap>=10?"ok":cap>=7?"warn":"bad",cap<=5);hitFlash("hb-pts",capBase(),(v,p)=>v<p); // the early refund shrinking as days pass isn't a hit
+  $("hb-pts").querySelector("small").textContent=back?`Includes +${back} if you finish now`:"Points for upgrades";
 }
 /* Touch buttons say what they'd do right now (one word, several actions can share it) and go gray when there's
    nothing to do. The button keeps its size and place; long words just get a smaller font. Gray buttons still take
@@ -3858,7 +3866,7 @@ const TUT=[
   {i:"🔥",t:"Fires and outages",b:"Hold <kbd>E</kbd> on a fire to put it out. If it burns through, the server goes offline: hold <kbd>E</kbd> to bring it back up. While anything is offline, nothing can be moved. A gold server offline sets off a red alert.",tip:"Bringing servers back up never costs energy, so you can't get locked out."},
   {i:"💧",t:"The cloud isn't safe either",b:"Cloud apps spring leaks that flash redder as they get worse. Seal them with <kbd>E</kbd>. A leak you ignore becomes a breach, which spreads to the app next door and triggers a red alert.",tip:"Security upgrades like Policy as Code, Vulnerability Scanner and Secrets Manager make leaks rarer."},
   {i:"👤",t:"People",b:"Users wander the hallway. Bump into one and you're stuck for a \"quick question\". The better dressed they are, the longer it takes (interns don't stop you at all). Mash any direction to shake them off a little sooner. Grab a 🍩 donut and they can't stop you for a few seconds.",tip:"Later you can buy AI chatbots to keep users busy for you."},
-  {i:"📋",t:"Between clients",b:"After each client you get an improvement sprint: 13 story points to spend on tools that come with you to every future client. Incidents create unplanned work, which eats into those points.",tip:"A clean engagement earns +2 points. Unspent points don't carry over."},
+  {i:"📋",t:"Between clients",b:"After each client you get an improvement sprint: 13 story points to spend on tools that come with you to every future client. Incidents create unplanned work, which eats into those points.",tip:"A clean engagement earns +2 points. Finishing 2 days early wins 1 lost point back, 4 days early 2. Unspent points don't carry over."},
   {i:"⭐",t:"How you're judged",b:"You get fired if the uptime budget or security runs out. Money never ends the game; it's your score, and the goal is the least negative total. Each client rates you 1 to 5 stars.",tip:"Finishing past the client's lease target costs money and a star, but you keep going."},
 ];
 function tutorial(i){
@@ -4023,7 +4031,7 @@ function howToPlay(){
     <div><span class="ic">📎</span><span><b>Mr Paperclip (upgrade).</b> The tutorial's senior paperclip, for 2 points: he rides on your shoulder in every client, reacts to everything, and comments in a speech bubble. His advice is mostly wrong, but every line he says gives you +1 energy. There is no mute. You made your choice.</span></div>
     <div><span class="ic">🧑‍💻</span><span><b>Your avatar.</b> Pick one on the main menu, or type or paste any single emoji into the box. It's only shown on your screen.</span></div>
     <div><span class="ic">👤</span><span><b>Users.</b> They wander the hallway. Bump into one and you're stuck for a "quick question." The better dressed, the longer: an analyst holds you under 2 seconds, the CIO almost 5. Interns just blurt their question as you walk past. Mash any direction to jerk away and cut up to a quarter off the wait; shave the full quarter and they take the hint. The temp's quick question can't be shaken off. Right after someone lets you go, and for the first 2 seconds of each client, nobody can stop you: you blink until that wears off.</span></div>
-    <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Hover over (or tap) anything in "Your toolkit" to see what it does. Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Unspent points don't carry over. Tools you don't own yet keep turning up: the longer one goes unseen, the likelier it is to show up. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
+    <div><span class="ic">📋</span><span><b>Improvement sprint.</b> Hover over (or tap) anything in "Your toolkit" to see what it does. Between clients you get 13 story points to build tools that come with you. Red alerts, failed audits, escalations and execs who catch you eat into it. A clean engagement earns +2. Finishing ahead of the lease target wins some lost points back: 1 at 2 days early, 2 at 4 or more, never past 13. Unspent points don't carry over. Tools you don't own yet keep turning up: the longer one goes unseen, the likelier it is to show up. The review also shows your DORA metrics and a retrospective, where you pick one free action item based on what hurt.</span></div>
     <div><span class="ic">🏭</span><span><b>CI/CD pipeline (upgrade).</b> Press Space at a rack to use a free pipeline lane; if all lanes are busy, carry the server instead. The conveyor sends it to the cloud: no walking, about 6 seconds (3 with Terraform), +10% odds. Each level adds a lane. It worked when we tested it. Results may vary: 15–20% of sends jam partway across and the lane stops with its server stuck on the belt, still offline and burning uptime (a blue-green copy burns none). Stand anywhere on that conveyor and hold <kbd>E</kbd> to repair it (free, about 2.5 seconds; progress is kept if you let go). A level 3+ AI Agent can repair it too; temps and bots can't, and no upgrade makes it jam less. Every lane jams on its own. A jammed lane sounds a factory buzzer every few seconds until it's repaired (quiet while someone is repairing it, and under a red alert's siren). Once you have a pipeline, the Mover Bot only uses it and waits for a free lane (a jammed one stays busy); carry servers yourself to go faster. The pipeline and the Mover Bot find a free cloud slot on their own; only you have to walk to one. Any server being moved, by hand or by pipeline, is in its cutover window and burns uptime at a quarter of its outage rate (blue-green moves burn none).</span></div>
     <div><span class="ic">📅</span><span><b>Lease target.</b> Each client's data center lease has a target day. Going late never ends the game, but on-prem costs rise 10% per overdue day and the client's rating drops.</span></div>
     <div><span class="ic">☕</span><span><b>Coffee and donuts.</b> They show up in the hallway. ☕ gives energy and 4 wired seconds (you glow): you walk and work 30% faster. 🍩 means your mouth is full for 8 seconds: you go see-through and users can't stop you. The donut next to you gets eaten away as the time runs down, and you flicker back to solid at the end.</span></div>
@@ -4419,7 +4427,7 @@ function capacityLine(){
   const w=S.ss.why,u=S.ss.unplanned,names={alert:"red alerts",audit:"failed audits",esc:"escalated tickets",exec:"execs who caught you"};
   const parts=Object.keys(names).filter(k=>w[k]).map(k=>`${names[k]} −${w[k]}`);
   const msg=u===0?`Clean engagement. No unplanned work, so the team's velocity went up: <b>${S.cap} points</b> (13 + 2).`
-    :`You planned 13 points. Unplanned work ate ${Math.round(u)}${parts.length?` (${parts.join(", ")})`:""}${S.cap===5&&13-Math.round(u)<5?", but the team always keeps at least 5":""}. You have <b>${S.cap} points</b>.`;
+    :`You planned 13 points. Unplanned work ate ${Math.round(u)}${parts.length?` (${parts.join(", ")})`:""}${S.cap-(S.capBack||0)===5&&13-Math.round(u)<5?", but the team always keeps at least 5":""}.${S.capBack?` Finishing ${S.capEarly} days early won ${S.capBack} back.`:""} You have <b>${S.cap} points</b>.`;
   return`<div class="modcard" style="border-color:var(--ai)">${msg}</div>`;
 }
 /* Level 4 AI: the agent can do your manager's job, so you can let them go. The freeze, the recovery boost and the
