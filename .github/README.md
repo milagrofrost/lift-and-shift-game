@@ -35,7 +35,7 @@ Four jobs run side by side, about 2½ minutes in all. Each is a required status 
 
 | Check | What it runs |
 | --- | --- |
-| **Syntax, PWA and docs** | `node tests/syntax.mjs` (every script parses), `node tests/pwa.mjs` (service worker rules), `node tests/versions.mjs` (the older-versions Function, with GitHub faked), and on pull requests `tests/workflow-docs.mjs` (this file changes when the workflows do) |
+| **Syntax, PWA and docs** | `node tests/syntax.mjs` (every script parses), `node tests/pwa.mjs` (service worker rules), `node tests/versions.mjs` (the older-versions Function, with GitHub faked), `node tests/playwright-image.mjs` (every workflow's Playwright image matches `@playwright/test` in `package.json`, and none installs browsers itself), and on pull requests `tests/workflow-docs.mjs` (this file changes when the workflows do) |
 | **Regression (Chromium, WebKit)** | `tests/regression.html` in Chrome's and Safari's engines; must read `PASS` |
 | **Desktop (Chromium, WebKit, Firefox)** | `tests/e2e`: 1440×900, 1280×720 and reduced motion. Fourteen set-up scenes with checks on what each shows, and a recorded 20-second keyboard play session |
 | **Phone and tablet (Chromium, WebKit)** | `tests/e2e`: iPhone 15, iPhone SE, Pixel 7, iPad, an upright iPhone and reduced motion. The same scenes, checking the touch words, gray-out, that the buttons never move and that no text names a key; a recorded touch play session; an offline reload through Cloudflare-style redirects |
@@ -147,12 +147,16 @@ Add `--project=desktop-*` or `--project=phone-*` to the first test command to ru
 
 ## Limits
 
-The jobs that run WebKit (the three browser checks in CI, and the live-site smoke test) are pinned to
-`ubuntu-24.04`. GitHub moved `ubuntu-latest` to Ubuntu 26.04 in November 2026, and the WebKit build that
-Playwright 1.64 downloads still links against Ubuntu 24.04's ICU (`libicudata.so.74`), so on 26.04 it exits before
-opening a page ("browserType.launch: Target page, context or browser has been closed"). Move them back to
-`ubuntu-latest` once a Playwright upgrade supports 26.04. The other jobs only use Chromium or no browser and stay on
-`ubuntu-latest`.
+Every job that drives a browser (the three browser checks in CI, the balance bot and the live-site smoke test)
+runs inside Playwright's own Docker image, `mcr.microsoft.com/playwright:v1.64.1-noble`, as the runner's user
+(`--user 1001`). The browsers and every system library they need are baked in, so a run downloads nothing from apt
+or Playwright's CDN. Installing them each run (`npx playwright install --with-deps`) used to fetch about 150 Ubuntu
+packages, and on a slow mirror day one job would crawl for 18 minutes or more against its 20-minute timeout. The image
+is Ubuntu 24.04, so WebKit keeps the ICU it links against (`libicudata.so.74`) whatever `ubuntu-latest` becomes.
+
+To upgrade Playwright, change `@playwright/test` in `package.json` (an exact version) and the image tag in `ci.yml`,
+`balance.yml` and `smoke.yml` together. `tests/playwright-image.mjs` fails the **Syntax, PWA and docs** check if they
+disagree, because the image's browsers only work with the matching Playwright.
 
 Emulated phones aren't real iPhones: the silent switch, `navigator.audioSession`, Home Screen mode, safe areas and
 real touch feel still need a device. Screenshots are evidence to look at; nothing compares them pixel by pixel yet.

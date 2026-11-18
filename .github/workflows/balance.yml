@@ -21,6 +21,12 @@ jobs:
   balance:
     name: Balance bot (main vs this PR)
     runs-on: ubuntu-latest
+    # Playwright's own image: browsers and their system libraries are baked in, so nothing comes from apt or the
+    # browser CDN. Installing them each run (--with-deps) sometimes crawled for 18+ minutes on Ubuntu's mirror.
+    # The tag must match @playwright/test in package.json (tests/playwright-image.mjs checks).
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --user 1001
     timeout-minutes: 20
     permissions:
       contents: read
@@ -34,12 +40,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Cache Playwright browsers
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-chromium
-      - run: npx playwright install --with-deps chromium
       - name: Get main's copy of the game
         run: git show "origin/${{ github.base_ref || 'main' }}:lift-and-shift.html" > "$RUNNER_TEMP/base.html"
       - name: Play
