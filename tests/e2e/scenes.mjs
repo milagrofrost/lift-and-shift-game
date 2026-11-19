@@ -50,6 +50,16 @@ export const SCENES = [
     S.pipe = [{a, t: 0, dur: 6, lane: 0, brk: 0.4}]; G.tickPipeline(5); document.getElementById('toasts').innerHTML = '';
     stand(S, {x: 480, y: 240}); tick();`, mode: 'play', touch: {fix: ['UNJAM', true], grab: null},
     hint: {key: 'Hold E: repair pipeline', touch: 'Hold UNJAM: repair pipeline'}},
+  {name: '16-day2-handover', build: `seedS(5); G.setLogLv(1); G.D2.start(); G.D2.act('d2go'); const S = G.S; S.users = [];
+    document.getElementById('toasts').innerHTML = ''; stand(S, {x: 426, y: 60}); tick();`, mode: 'play', touch: {fix: ['WRITE', true], grab: ['COACH', false]},
+    hint: {key: 'Hold E: patching runbook', touch: 'Hold WRITE: patching runbook'}},
+  {name: '17-day2-coach', build: `seedS(5); G.setLogLv(1); G.D2.start(); G.D2.act('d2go'); const S = G.S; S.users = [];
+    S.d2.prog.sk.patch.xp = 20; document.getElementById('toasts').innerHTML = ''; const a = S.racks.find(Boolean); stand(S, {x: G.RACKS[a.slot].x, y: G.RACKS[a.slot].y + 44}); tick(); tick();`,
+    mode: 'play', touch: {fix: ['PATCH', true], grab: ['COACH', true]}},
+  {name: '18-day2-night', build: `seedS(5); G.setLogLv(1); G.D2.start(); G.D2.act('d2go'); G.D2.act('d2shift'); const S = G.S;
+    S.d2.call = {t: {kind: 'ticket', a: null}, left: 6, ring: 1}; S.d2.temp.phone = true; document.getElementById('toasts').innerHTML = ''; tick();`,
+    mode: 'play', touch: {fix: ['PICK UP', true], grab: ['PICK UP', true]}},
+  {name: '19-day2-review', build: `seedS(5); G.setLogLv(1); G.D2.simulate({prog: {shift: 0}});`, mode: 'end'},
   {name: '14-hands-on', build: `G.setLogLv(1); G.titleScreen(); document.querySelector('[data-act=tut]').click(); document.querySelector('[data-act=handson]').click();`},
 ];
 

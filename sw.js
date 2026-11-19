@@ -1,10 +1,11 @@
 /* Bump this version whenever a precached file changes. A new worker takes over right away (skipWaiting) but
    never reloads or messages a page, so a running game is untouched; it only answers the next fetch.
    v2: v1 cached Cloudflare's 308 redirect (/lift-and-shift.html -> /lift-and-shift) and served it back, which
-   Safari refuses ("Response served by service worker has redirections"), so the game wouldn't open. */
-const CACHE = 'lift-shift-shell-v4';
+   Safari refuses ("Response served by service worker has redirections"), so the game wouldn't open.
+   v5: adds the Day 2 prototype (assets/day2.js), so it still opens offline. */
+const CACHE = 'lift-shift-shell-v5';
 const GAME = '/lift-and-shift.html';
-const ASSETS = [GAME, '/pwa.js', '/manifest.webmanifest',
+const ASSETS = [GAME, '/pwa.js', '/manifest.webmanifest', '/assets/day2.js',
   '/assets/lift-and-shift-logo.png', '/assets/icon-192.png',
   '/assets/icon-512.png', '/assets/icon-maskable-512.png', '/assets/apple-touch-icon.png'];
 const GAME_PATHS = new Set(['/', '/index', '/index.html', '/lift-and-shift', GAME]);
