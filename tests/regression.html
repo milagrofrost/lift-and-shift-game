@@ -1756,6 +1756,23 @@ test("Gitamp: the terminal opens it, it plays any song in any mood, and Stop han
     check(G.S === S && S.time === t0 && JSON.stringify({t: S.time, err: S.err, tk: S.tk.length}) === before, "Gitamp changed the run");
   } finally { W.Math.random = random; GA.close(); G.setMode("play"); }
 });
+test("PacketDrop: Gitamp's VIS button opens it, it draws without the game's rolls, and Esc closes it", () => {
+  const GA = G.GA, S = fresh(), t0 = S.time, pd = W.document.getElementById("packetdrop");
+  const random = W.Math.random; let calls = 0; W.Math.random = () => { calls++; return random(); };
+  try {
+    check(pd && pd.hidden, "PacketDrop is open before anyone asked");
+    G.devRun("gitamp"); W.document.querySelector('#gitamp [data-ga="vis"]').click();
+    check(!pd.hidden && GA.vis.state().open, "VIS didn't open PacketDrop");
+    const now = W.performance.now(); for (let k = 1; k <= 120; k++) GA.vis.frame(now + k * 16);
+    check(calls === 0, `PacketDrop used Math.random ${calls} times`);
+    check(G.S === S && S.time === t0, "PacketDrop changed the run");
+    check(pd.querySelector(".pd-drop").textContent.startsWith("packets dropped:"), "no dropped-packet counter");
+    W.dispatchEvent(new W.KeyboardEvent("keydown", {key: "Escape", bubbles: true}));
+    check(pd.hidden, "Esc didn't close PacketDrop");
+    check(G.mode !== "paused", "Esc on PacketDrop also paused the game");
+    GA.act("vis"); GA.close(); check(pd.hidden, "closing Gitamp left PacketDrop open");
+  } finally { W.Math.random = random; GA.close(); }
+});
 test("a mood change keeps the song's bar; a new song starts at its top; red alert holds the bridge", () => {
   const MUS = G.MUS, was = {mood: MUS.mood, pos: MUS.pos, ss: MUS.ss, step: MUS.step};
   try {

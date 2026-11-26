@@ -3,8 +3,9 @@
    v2: v1 cached Cloudflare's 308 redirect (/lift-and-shift.html -> /lift-and-shift) and served it back, which
    Safari refuses ("Response served by service worker has redirections"), so the game wouldn't open.
    v5: adds the Day 2 prototype (assets/day2.js), so it still opens offline.
-   v6: adds Gitamp (assets/gitamp.js), the terminal's music player. */
-const CACHE = 'lift-shift-shell-v6';
+   v6: adds Gitamp (assets/gitamp.js), the terminal's music player.
+   v7: Gitamp gains PacketDrop, its visualizer. */
+const CACHE = 'lift-shift-shell-v7';
 const GAME = '/lift-and-shift.html';
 const ASSETS = [GAME, '/pwa.js', '/manifest.webmanifest', '/assets/day2.js', '/assets/gitamp.js',
   '/assets/lift-and-shift-logo.png', '/assets/icon-192.png',
