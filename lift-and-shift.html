@@ -252,12 +252,13 @@ a.learnlink{color:var(--amber);font-size:12.5px;white-space:nowrap}
 .endhead{position:relative}
 /* the stamp sits behind the title and text, slightly see-through, like ink under the type */
 .endhead>:not(.stamp){position:relative;z-index:1}
-.stamp{position:absolute;right:6px;top:12px;z-index:0;transform:rotate(-14deg);font-family:var(--f-display);font-weight:800;font-size:38px;line-height:1;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;padding:6px 14px 4px;border:5px solid currentColor;border-radius:8px;box-shadow:inset 0 0 0 2px var(--panel),inset 0 0 0 4px currentColor;opacity:.5;pointer-events:none;animation:stampin .42s cubic-bezier(.3,1.5,.5,1) .3s both}
+.stamp{position:absolute;right:6px;top:12px;z-index:0;transform:rotate(-14deg);font-family:var(--f-display);font-weight:800;font-size:38px;line-height:1;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;padding:6px 14px 4px;border:5px solid currentColor;border-radius:8px;box-shadow:inset 0 0 0 2px var(--panel),inset 0 0 0 4px currentColor;opacity:.5;pointer-events:none;animation:stampin .42s cubic-bezier(.3,1.5,.5,1) .3s backwards,stampfade 3.5s ease-in-out 1.6s forwards}
 .stamp.fired{color:var(--danger)}.stamp.retired{color:#f2c14e}.stamp.letgo{color:var(--ai)}.stamp.outsourced{color:var(--amber)}.stamp.resigned{color:#45aefc}
 @keyframes stampin{0%{transform:rotate(-14deg) scale(3.4);opacity:0}60%{opacity:.6}100%{transform:rotate(-14deg) scale(1);opacity:.5}}
+@keyframes stampfade{from{opacity:.5}to{opacity:.25}} /* once it has set, it sinks back behind the text */
 @media (max-width:560px){.stamp{font-size:26px;border-width:4px;padding:5px 10px 3px}}
-.stamp.still{animation:none}
-@media (prefers-reduced-motion:reduce){.stamp{animation:none}}
+.stamp.still{animation:none;opacity:.25}
+@media (prefers-reduced-motion:reduce){.stamp{animation:none;opacity:.25}}
 .modline{font-size:12.5px;line-height:1.35;color:var(--muted);height:2.7em;overflow:hidden}
 @media (max-width:760px){.modline{height:5.4em}}
 /* the top row never re-wraps as the numbers grow; the brand gives up space instead */
