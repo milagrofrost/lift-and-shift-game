@@ -32,7 +32,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 const NAMES = ("setTheme,readColors,C,aiCo,CO,letter,rumorBlock,RUMORS,crowd,userLines,alertLines,humanLines,BREAK_CLIENTS,welcomeMail,mailRecap,unicornMail,aiMail,lastMail,spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,capNext,DAY,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "K,keyHint,TOUCH,fixWord,grabWord,setSilentPlay,silentBtn,HAS_SESSION,AU,toastsCover,FIX_WORDS,rollbackTarget,tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
   "SELFTEST,loadIn,LOADIN,moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,SONGS,DONUT_SET,setMood,advanceBar,songPos,songStep,moodGain,MOOD_GAIN,curChord,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL,pipeJob,jammed,tickPipeline,sendToPipeline,fixTarget,unjam,jamUnder,laneY,pipeX,PIPE_FIX,PIPE_BREAK_LO,PIPE_BREAK_HI,patchBot,tickJamAlarm,JAM_BUZZ_FIRST,JAM_BUZZ_EVERY," +
-  "shakeOff,shakeRate,SHAKE_STICK,SHAKE_PX,stickJerk,SHAKE_MAX,SHAKE_WIN,SHAKE_SLOW,SHAKE_FAST,SHAKE_BONUS,SHAKE_LINES,SHAKE_BYE,vpLeave,hunting,spawnHunter,infected,CLONE_MAX,FORK_COST,spawnAgent,ciOffered,ciLeft,ciLockable,CI_NEW,salary,salaryText,tickSpecials,client,lvl").split(",");
+  "D2,shakeOff,shakeRate,SHAKE_STICK,SHAKE_PX,stickJerk,SHAKE_MAX,SHAKE_WIN,SHAKE_SLOW,SHAKE_FAST,SHAKE_BONUS,SHAKE_LINES,SHAKE_BYE,vpLeave,hunting,spawnHunter,infected,CLONE_MAX,FORK_COST,spawnAgent,ciOffered,ciLeft,ciLockable,CI_NEW,salary,salaryText,tickSpecials,client,lvl").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},get LOGLV(){return LOGLV},setLogLv:v=>{LOGLV=v},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -2323,6 +2323,292 @@ test("sound and music never use the game's random rolls", () => {
     if (made && made !== was.ctx) { made.close().catch(() => {}); }
     Object.assign(AU, was); if (was.ctx) W.__liftShiftAudio = was.ctx;
   }
+});
+
+/* ---------- Day 2 prototype (assets/day2.js) ---------- */
+const d2Kit = {sk:{patch:{xp:75,doc:1},ticket:{xp:60,doc:1},fire:{xp:60,doc:1},restore:{xp:55,doc:1}},tools:{bot:true,portal:true},botOk:0.84,botSeen:true,conf:45};
+const d2Tier2 = {sk:{patch:{xp:60},ticket:{xp:45},fire:{xp:45},restore:{xp:0}},tools:{bot:true,portal:false},botOk:0.66};
+test("Day 2: a normal career never turns it on, and the menu offers it only after git checkout day2", () => {
+  check(G.D2, "assets/day2.js didn't load, so D2 is null");
+  G.newRun(); check(!G.S.d2, "a Day 1 run has Day 2 state");
+  const btn = () => W.document.querySelector('#overlay [data-act="d2"]');
+  G.titleScreen(); check(!btn(), "the main menu shows Day 2 before git checkout day2");
+  G.devRun("git checkout day2"); check(!G.S.d2, "git checkout day2 changed the run");
+  G.titleScreen(); check(btn(), "git checkout day2 didn't put Day 2 on the main menu");
+  G.devRun("git checkout main"); G.titleScreen(); check(!btn(), "git checkout main didn't take Day 2 off the menu");
+  G.devRun("git checkout day2"); G.titleScreen(); check(btn(), "the main menu has no Day 2 button");
+  G.hud(); check(!W.document.body.classList.contains("d2on"), "Day 2's HUD is showing in a Day 1 run");
+});
+test("Day 2: the same handover always plays out the same night", () => {
+  const a = G.D2.simulate({prog:{...d2Tier2,shift:1}}), b = G.D2.simulate({prog:{...d2Tier2,shift:1}});
+  check(JSON.stringify(a) === JSON.stringify(b), "two identical handovers gave different nights");
+  const c = G.D2.simulate({prog:{shift:1}}), e = G.D2.simulate({prog:{shift:1}});
+  check(JSON.stringify(c) === JSON.stringify(e), "two empty handovers gave different nights");
+});
+test("Day 2: the skill ladder: patching first, then tickets and fires, then bringing servers back up", () => {
+  const pr = G.D2.freshProg(), u = k => G.D2.unlocked(pr,k);
+  check(u("patch") && !u("ticket") && !u("fire") && !u("restore"), "only patching should be open on day one");
+  pr.sk.patch.xp = 40; check(u("ticket") && u("fire") && !u("restore"), "Practiced patching should open tickets and fires, not outages");
+  pr.sk.ticket.xp = 40; check(!u("restore"), "outages need fires too");
+  pr.sk.fire.xp = 40; check(u("restore"), "Practiced tickets and fires should open outages");
+});
+test("Day 2: each rung helps, nothing is free, and the last night needs the systems too", () => {
+  const ok = r => Object.values(r.jobs).reduce((a,j) => a+j[0],0);
+  for (const shift of [0,2,4]){
+    const none = G.D2.simulate({prog:{shift}}), mid = G.D2.simulate({prog:{...d2Tier2,shift}}), kit = G.D2.simulate({prog:{...d2Kit,shift}});
+    check(!none.pass, `night ${shift+1} with no preparation passed (${none.grade})`);
+    check(!mid.pass && (mid.at > none.at || ok(mid) > ok(none)), `night ${shift+1}: half the ladder should last longer or do more than nothing, and still not pass`);
+    check(kit.grade === "independent" && kit.calls === 0, `night ${shift+1} with full preparation should be independent, got ${kit.grade}`);
+  }
+  const tools = G.D2.simulate({prog:{tools:{bot:true,portal:true},shift:0}});
+  check(!tools.pass, `tools with an untrained temp should not pass, got ${tools.grade}`);
+  // before the last night a bad night still goes on to the next morning; on the last night you retry it
+  G.D2.simulate({prog:{shift:1}});
+  check(W.document.querySelector('#overlay [data-act="d2next"]') && W.document.querySelector('#overlay [data-act="d2retry"]'), "a bad early night should offer the next morning and a redo");
+  G.D2.simulate({prog:{shift:G.D2.DAYS-1}});
+  check(!W.document.querySelector('#overlay [data-act="d2next"]') && W.document.querySelector('#overlay [data-act="d2retry"]'), "a failed last night should only offer to try it again");
+});
+test("Day 2: he learns only what he's ready for, only while his head has room, and you catch his mistakes", () => {
+  G.D2.start(); G.D2.act("d2go"); const S = G.S, d = S.d2, T = d.temp;
+  check(d.phase === "prep" && G.mode === "play", "Meet Doug didn't start the handover");
+  T.x = 900; T.y = 500; G.D2.did("patch"); check(d.prog.sk.patch.xp === 0, "he learned from a job he couldn't see");
+  T.x = S.p.x+30; T.y = S.p.y;
+  G.D2.did("ticket"); check(d.prog.sk.ticket.xp === 0 && d.head === 100, "he learned tickets before patching was Practiced");
+  G.D2.did("patch"); const first = d.prog.sk.patch.xp; check(first > 5 && d.head < 100, "watching a patch taught nothing or cost no head space");
+  for (let i = 0; i < 14; i++) G.D2.did("patch");
+  check(d.head === 0 && d.headLow, "head space didn't run out after a crammed handover");
+  check(d.prog.sk.patch.xp < 38, "watching alone should never reach Practiced");
+  const before = d.prog.sk.patch.xp; G.D2.did("patch"); check(d.prog.sk.patch.xp === before, "with no head space left, nothing new should stick");
+  // Space only hands him a job he's seen done
+  const a = S.racks.find(Boolean); a.covered = false; a.down = false; a.fire = 0;
+  d.prog.sk.patch.xp = 0; S.p.x = G.RACKS[a.slot].x; S.p.y = G.RACKS[a.slot].y+44; S.users = [];
+  G.update(1/60); G.D2.coach(); check(!T.tgt, "he took on a job he'd never seen done");
+  d.prog.sk.patch.xp = 20; G.D2.coach(); check(T.tgt && T.tgt.sup, "Space didn't hand him a job he's watched");
+  // supervised practice: a mistake you're there for does no damage
+  T.x = G.RACKS[a.slot].x; T.y = G.RACKS[a.slot].y+44; S.p.x = T.x+20; S.p.y = T.y; T.work = 0; T.need = 0;
+  W.Math.random = () => 0.999; // every roll fails
+  for (let i = 0; i < 600 && T.tgt; i++) G.update(1/60);
+  check(!T.tgt && !a.down && !a.covered, "a supervised mistake should be caught: no outage, no patch");
+});
+test("Day 2: with a working Patch Bot, Doug leaves patches to it until they're getting late", () => {
+  G.D2.start(); Object.assign(G.S.d2.prog, JSON.parse(JSON.stringify(d2Kit))); G.D2.act("d2go"); G.D2.act("d2shift");
+  const S = G.S, d = S.d2, T = d.temp, b = S.bots[0];
+  check(b && b.kind === "patch", "a configured Patch Bot should be on the night floor");
+  S.tk = []; S.users = []; T.cool = {};
+  const rs = S.racks.filter(a => a && !a.hidden); rs.forEach(a => {a.down = false; a.fire = 0; a.covered = false; a.timer = a.maxT*0.8;});
+  b.x = 900; b.y = 560; b.tgt = null;
+  const pick = () => {T.tgt = null; G.D2.frame(1/60); return T.tgt;};
+  let t = pick(); check(!t || t.kind !== "patch", "with plenty of cycle left Doug should leave the patches to the bot");
+  const late = rs.find(a => a !== b.tgt); late.timer = late.maxT*0.2; t = pick();
+  check(t && t.kind === "patch" && t.a === late, "a patch that's getting late should be his to do");
+  rs.forEach(a => a.timer = a.maxT*0.2); b.tgt = rs[0]; t = pick();
+  check(t && t.kind === "patch" && t.a !== rs[0], "he shouldn't go for the server the bot is already on");
+  rs.forEach(a => a.timer = a.maxT*0.8); b.stuck = rs[1].slot; b.tgt = null; T.cool["botfix"+rs[1].slot] = S.time+99; t = pick();   // (set aside teaching the bot itself)
+  check(t && t.kind === "patch", "with the bot stuck, he shouldn't wait for it");
+});
+test("Day 2: Patch Bot gets stuck on a case it doesn't know, and teaching it there makes it better", () => {
+  G.D2.start(); G.D2.act("d2go"); const S = G.S, d = S.d2, T = d.temp;
+  const spot = {x:180,y:524}; S.p.x = spot.x; S.p.y = spot.y; S.users = [];
+  const f = G.fixTarget(); check(f && f.kind === "d2" && f.st === "bot", "standing at Patch Bot doesn't offer to configure it");
+  G.keys.fix = true; for (let i = 0; i < 120; i++) G.update(1/60); G.keys.fix = false; G.update(1/60);
+  check(!d.prog.tools.bot && d.prog.work.bot > 1.5, "two seconds of holding E should leave partial progress");
+  check(d.prog.work.bot < 2.2, "getting Patch Bot working should take a while, not two seconds");
+  G.keys.fix = true; for (let i = 0; i < 60*23; i++) G.update(1/60); G.keys.fix = false; G.update(1/60);
+  check(d.prog.tools.bot && S.bots.length === 1, "24 seconds at Patch Bot didn't put a bot on the floor");
+  const b = S.bots[0], a = S.racks.find(Boolean); a.covered = false; a.down = false; a.fire = 0;
+  b.x = G.RACKS[a.slot].x; b.y = G.RACKS[a.slot].y+44; G.D2.botFail(b,a);
+  for (let i = 0; i < 120; i++) G.update(1/60);
+  check(b.stuck === a.slot && b.fire > 30 && !a.down && !a.fire && Math.hypot(b.x-G.RACKS[a.slot].x, b.y-G.RACKS[a.slot].y-44) < 1, "a failed bot should catch fire and stay put, and the server should be fine");
+  const odds0 = G.D2.botOdds();
+  S.p.x = b.x; S.p.y = b.y; T.x = b.x+30; T.y = b.y; T.tgt = null; G.update(1/60);
+  check(G.fixTarget() && G.fixTarget().st === "botfire" && G.fixWord() === "DOUSE", "a burning bot should be put out before anything else");
+  G.keys.fix = true; for (let i = 0; i < 170; i++) G.update(1/60); G.keys.fix = false; G.update(1/60);
+  check(!b.fire && b.stuck === a.slot, "holding E should put the bot out, and it should still be stuck on the case");
+  G.keys.fix = true; for (let i = 0; i < 200; i++) G.update(1/60); G.keys.fix = false;
+  check(b.stuck == null && a.covered && G.D2.botOdds() > odds0, "teaching the stuck bot should patch the server and raise its odds");
+  check(d.prog.botSeen, "Doug was right there and didn't learn how to teach the bot");
+  check(G.grabWord()[0] === "COACH" || G.grabWord()[0] === "SOLO", "in the handover the GRAB button should coach or send him off");
+});
+test("Day 2: while he's new, he does better with you right there; once he's good it hardly matters", () => {
+  const pr = G.D2.freshProg(); pr.conf = 40;
+  for (const sk of ["patch","ticket"]) {
+    pr.sk[sk].xp = 5; const lo = G.D2.odds(pr,sk,true) - G.D2.odds(pr,sk,false);
+    pr.sk[sk].xp = 80; const hi = G.D2.odds(pr,sk,true) - G.D2.odds(pr,sk,false);
+    check(lo > 0.15 && hi < 0.01, `${sk}: watching should help a lot early (${lo.toFixed(2)}) and not at all late (${hi.toFixed(2)})`);
+    pr.sk[sk].xp = 0; check(G.D2.odds(pr,sk,false) < 0.45, `${sk}: an untrained Doug on his own should usually get it wrong`);
+  }
+});
+test("Day 2: once a call about a problem goes to voicemail, he doesn't call about that problem again", () => {
+  G.D2.start(); G.D2.act("d2go"); G.D2.act("d2shift"); const S = G.S, d = S.d2, T = d.temp;
+  S.racks.forEach(a => a && (a.fire = 0, a.down = false, a.covered = true)); S.tk = []; T.tgt = null; S.users = [];
+  const a = S.racks.find(Boolean); a.tier = "silver"; a.down = true; d.prog.sk.patch.xp = 45;
+  const n = {}; let was = null;
+  const tick = () => { G.update(1/60); const c = d.call && d.call.t.a; if (c && c !== was) n[c.slot] = (n[c.slot]||0)+1; was = c || null; };
+  for (let i = 0; i < 60*60; i++){ tick(); a.down = true; }
+  check(n[a.slot] === 1, `one outage he can't handle should get one call, not ${n[a.slot]}`);
+  const b = S.racks.filter(Boolean)[1]; b.tier = "silver"; b.down = true;
+  for (let i = 0; i < 60*30 && !n[b.slot]; i++){ tick(); a.down = true; b.down = true; }
+  check(n[b.slot] === 1 && n[a.slot] === 1, `a new problem should still get its own call (${JSON.stringify(n)})`);
+});
+test("Day 2: Space with nothing in front of you sends him off on his own: he covers what he can, and nothing sticks", () => {
+  G.D2.start(); G.D2.act("d2go"); const S = G.S, d = S.d2, T = d.temp, pr = d.prog;
+  pr.sk.patch.xp = 50; pr.conf = 40; S.users = []; S.p.x = 700; S.p.y = 300; G.update(1/60);
+  check(!S.fix && /goes solo|on his own/.test(G.D2.coachHint()[0]) && G.grabWord()[0] === "SOLO", "standing over nothing should offer to send him off");
+  G.D2.coach(); check(d.solo, "Space over nothing didn't send him off");
+  S.racks.forEach(a => a && (a.covered = false, a.timer = a.maxT*0.1, a.fire = 0, a.down = false));
+  const xp0 = pr.sk.patch.xp, exp0 = pr.exp.patch, head0 = d.head;
+  for (let i = 0; i < 60*20; i++) G.update(1/60);
+  check(S.racks.some(a => a && (a.covered || a.down)), "on his own he should have patched something (or knocked something over)");
+  check(pr.sk.patch.xp === xp0 && d.head === head0, "work he does on his own shouldn't teach him anything");
+  check(pr.exp.patch > exp0, "work he does on his own should still be something for the runbook");
+  G.D2.did("patch"); check(pr.sk.patch.xp === xp0, "he can't learn from you while he's off on his own");
+  S.p.x = 700; S.p.y = 300; G.update(1/60); check(G.grabWord()[0] === "RECALL", "the GRAB button should call him back");
+  G.D2.coach(); check(!d.solo && (!T.tgt || !T.tgt.solo), "Space again didn't call him back");
+  T.tgt = null; T.x = S.p.x+20; T.y = S.p.y; const e1 = pr.exp.patch; G.D2.did("patch");
+  check(pr.exp.patch > e1, "a job he watched you do should be something for the runbook too");
+});
+test("Day 2: the night is hands-off, ends in a morning report, and the next morning starts from the night's mess", () => {
+  G.D2.start(); G.D2.act("d2go"); G.D2.act("d2shift");
+  const S = G.S, d = S.d2; check(d.phase === "shift" && G.D2.away(), "Go home didn't start the night");
+  const a = S.racks.find(Boolean); a.covered = false; S.p.x = G.RACKS[a.slot].x; S.p.y = G.RACKS[a.slot].y+44;
+  G.keys.fix = true; G.update(1/60); G.update(1/60); G.keys.fix = false;
+  check(!a.covered && !S.fix, "the player patched a server from home");
+  a.down = true; S.tk = [{age:0},{age:0},{age:0}];
+  d.t = G.D2.SHIFT_LEN; G.update(1/60); G.D2.frame(0);
+  check(d.phase === "review" && G.mode === "end", "the end of the night didn't open the review");
+  G.hud(); check(W.document.body.classList.contains("d2on"), "Day 2's HUD isn't showing in Day 2");
+  G.D2.act("d2next");
+  check(d.phase === "prep" && d.prog.shift === 1 && S.racks[a.slot] && S.racks[a.slot].down && S.tk.length === 3 && S.err === S.errMax, "the morning should keep the night's outage and queue, with a fresh uptime budget");
+  G.newRun(); G.hud(); check(!W.document.body.classList.contains("d2on") && W.document.getElementById("d2panel").hidden, "leaving Day 2 didn't put Day 1's HUD back");
+});
+test("Day 2: a confident Doug still calls about work he hasn't been taught", () => {
+  G.D2.start(); G.D2.act("d2go"); G.D2.act("d2shift"); const S = G.S, d = S.d2;
+  d.prog.conf = 75; d.prog.sk.patch.xp = 60; S.tk = []; S.users = [];
+  const a = S.racks.find(Boolean); a.tier = "silver"; a.down = true; a.fire = 0;
+  for (let i = 0; i < 600 && !d.call; i++) G.update(1/60);
+  check(d.call && d.call.t.kind === "restore" && d.call.t.a === a, "a silver outage he can't restore yet should still get a call");
+});
+test("Day 2: you sleep through the night; the phone rings in the dark, and picking up opens your eyes", () => {
+  G.D2.start(); G.D2.act("d2go"); G.D2.act("d2shift"); const S = G.S, d = S.d2, T = d.temp;
+  G.keys.fix = G.keys.grab = false;
+  check(d.eye === 1 && !G.D2.asleep(), "you should see him start before your eyes close");
+  for (let i = 0; i < 120 && !d.call && !G.D2.asleep(); i++) G.D2.frame(0.05);
+  G.hud(); check(d.call || (G.D2.asleep() && !W.document.getElementById("d2lids").hidden), "your eyes never closed");
+  if (!d.call){const t0 = d.t; G.D2.frame(1/60); check(d.t - t0 > 3.5/60, "asleep, the night should run faster than real time");}
+  // the phone rings: your eyes stay shut until you pick up
+  T.tgt = null; S.racks.forEach(a => a && (a.fire = 0, a.down = false)); d.eye = 0; d.upT = 0; d.openT = null;
+  const a = S.racks.find(Boolean); a.down = true; S.energy = 80; G.D2.ring({kind:"restore",a});
+  for (let i = 0; i < 10; i++) G.D2.frame(0.05);
+  G.hud(); check(d.eye === 0 && !W.document.getElementById("d2-ring").hidden, "the phone ringing should leave your eyes shut, with the ring showing in the dark");
+  { const t0 = d.t; G.D2.frame(1/60); check(d.t - t0 < 1.5/60, "the night should slow to real time while the phone rings"); }
+  const RMon = W.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const key = (type,code,k) => W.dispatchEvent(new W.KeyboardEvent(type,{code,key:k,bubbles:true}));
+  key("keydown","Space"," "); key("keyup","Space"," "); G.D2.frame(0.05);   // a quick tap, released before the frame
+  check(!d.call && d.st.calls === 1 && T.tgt && T.tgt.guided, "a tap of Space didn't pick up the phone");
+  const exp0 = d.prog.exp.restore;
+  G.D2.frame(0.4); G.hud();
+  check(RMon || (d.eye > 0 && d.eye < 0.5 && W.document.getElementById("c").style.transform.includes("scale")), `picking up should open your eyes slowly, on him (eye ${d.eye})`);
+  for (let i = 0; i < 400 && (T.tgt || !G.D2.asleep()); i++) G.D2.frame(0.05);
+  check(!a.down && G.D2.asleep(), "once he'd fixed it you should drift off again");
+  check(d.prog.exp.restore >= exp0 + 3, "a call you talked him through should be something he can add to the runbook tomorrow");
+  d.t = G.D2.SHIFT_LEN; G.D2.frame(0.05); G.D2.frame(0.05); G.hud();
+  const cv = W.document.getElementById("c");
+  check(W.document.getElementById("d2lids").hidden && !cv.style.transform && !cv.style.filter, "the review should open with your eyes open, no zoom and no glare");
+});
+test("Day 2: you write a runbook's first version (50%); he adds what he's learned, slower than you, up to 100%", () => {
+  G.D2.start(); G.D2.act("d2go"); const S = G.S, d = S.d2, T = d.temp, pr = d.prog;
+  S.users = []; S.p.x = 408; S.p.y = 68; T.x = S.p.x + 20; T.y = S.p.y + 30;
+  // your part: hold E at the wiki for the first version
+  G.keys.fix = true; for (let i = 0; i < 60*10; i++) G.update(1/60); G.keys.fix = false; G.update(1/60);
+  check(Math.abs(pr.sk.patch.doc - 0.5) < 1e-6, `holding E should write a 50% first version, got ${pr.sk.patch.doc}`);
+  // his part: what he's done becomes something to add
+  pr.sk.patch.xp = 45; pr.exp.patch = 20; const xp0 = pr.sk.patch.xp, head0 = d.head;
+  G.update(1/60);
+  check(G.D2.coachHint() && /adds what he's learned/.test(G.D2.coachHint()[0]), "standing at a runbook he can add to should offer Space");
+  G.D2.coach(); check(T.tgt && T.tgt.kind === "note", "Space at the runbook didn't send him to add to it");
+  S.p.x = 200; S.p.y = 300;   // you go off and fix things; he keeps writing
+  for (let i = 0; i < 60*8; i++) G.update(1/60);
+  check(T.tgt && pr.exp.patch > 0 && pr.sk.patch.doc > 0.5, "he should still be writing after 8 seconds, with some of it in");
+  // Space over nothing calls him back mid-write: what he's written stays, the rest waits
+  { S.p.x = 700; S.p.y = 300; const doc1 = pr.sk.patch.doc, left = pr.exp.patch; G.update(1/60); check(G.grabWord()[0] === "RECALL", "while he's writing, GRAB should call him back");
+    G.D2.coach(); check(!T.tgt && !d.solo && pr.sk.patch.doc >= doc1 && Math.abs(pr.exp.patch - left) < 0.05, "calling him back should stop him writing and keep what's left for later");
+    S.p.x = 408; S.p.y = 68; G.update(1/60); G.D2.coach(); check(T.tgt && T.tgt.kind === "note", "he should pick it back up when you send him again"); S.p.x = 200; S.p.y = 300; }
+  for (let i = 0; i < 60*20 && T.tgt; i++) G.update(1/60);
+  check(!T.tgt && pr.exp.patch === 0, `he should finish and come back (tgt ${T.tgt&&T.tgt.kind}, exp ${pr.exp.patch}, doc ${pr.sk.patch.doc}, at ${Math.round(T.x)},${Math.round(T.y)})`);
+  check(pr.sk.patch.doc > 0.8 && pr.sk.patch.doc < 1 && pr.sk.patch.xp > xp0, `a night's worth of patching should add a good chunk (doc ${pr.sk.patch.doc}) and some skill`);
+  check(d.head === head0, "adding his own experience shouldn't use head space");
+  pr.exp.patch = 40; S.p.x = 408; S.p.y = 68; T.x = S.p.x; T.y = S.p.y + 40; G.update(1/60); G.D2.coach();
+  for (let i = 0; i < 60*40 && T.tgt; i++) G.update(1/60);
+  check(pr.sk.patch.doc === 1, `a runbook should top out at 100%, got ${pr.sk.patch.doc}`);
+  G.update(1/60); check(!/adds/.test((G.D2.coachHint()||[""])[0]), "a 100% runbook has nothing more he can add");
+  G.D2.did("patch"); G.hud(); const row = k => W.document.getElementById("d2-s-"+k).querySelector("small");
+  check(!pr.exp.patch && !/to add/.test(row("patch").textContent), "a 100% runbook shouldn't collect anything to add, or show it");
+  // each new point to add flashes green in his skill row
+  pr.sk.fire.doc = 0.5; pr.exp.fire = 2; G.hud(); check(row("fire").querySelector(".d2add"), "experience to add should show in his skill row");
+  pr.exp.fire = 3; G.hud(); check(/✎3 to add/.test(row("fire").textContent) && row("fire").querySelector(".d2add.bump"), "a new point to add should flash green");
+  // no first version, nothing to add to; a rung he hasn't reached gets the runbook, not the skill
+  pr.exp.ticket = 5; S.p.x = 456; S.p.y = 68; G.update(1/60); check(!G.D2.coachHint() || !/adds/.test(G.D2.coachHint()[0]), "he shouldn't add to a runbook nobody has started");
+  pr.sk.restore.doc = 0.5; pr.exp.restore = 3; pr.sk.restore.xp = 0; S.p.x = 552; S.p.y = 68; T.x = S.p.x; T.y = S.p.y + 40; G.update(1/60); G.D2.coach();
+  for (let i = 0; i < 60*10 && T.tgt; i++) G.update(1/60);
+  check(pr.sk.restore.xp === 0 && pr.sk.restore.doc > 0.5, "a rung he hasn't reached gets the runbook, not the skill");
+});
+test("Day 2: everything he does is experience he can write up; a mistake teaches more", () => {
+  const pr = G.D2.freshProg(); pr.sk.patch.xp = 60;
+  G.D2.start(); G.D2.act("d2go"); G.D2.act("d2shift"); const d = G.S.d2; d.prog.sk.patch.xp = 60; d.prog.exp.patch = 0;
+  for (let i = 0; i < 60*60; i++) G.update(1/60);
+  check(d.prog.exp.patch >= 1, `a night of patching left nothing to write up (${d.prog.exp.patch})`);
+});
+test("Day 2: if he walks out, you talk him back in next morning, and it costs you sleep", () => {
+  G.D2.simulate({prog:{shift:0}}); const d = G.S.d2;
+  check(d.last.grade === "quit", `setup: an untrained night 1 should end with him walking out, got ${d.last.grade}`);
+  check(/Talk him back in/.test(W.document.querySelector('#overlay [data-act="d2next"]').textContent), "the button should say you're talking him back in");
+  const e = G.S.energy; G.D2.act("d2next");
+  check(Math.abs(G.S.energy - Math.max(0, e - 15)) < 0.01 && d.talkedBack, "talking him back in should cost 15 energy");
+  // twice, and that's it
+  for (const n of [1, 2]) {
+    d.prog.stress = 100; d.temp.quit = false; G.D2.act("d2shift");
+    for (let i = 0; i < 60*20 && G.S.d2.phase === "shift"; i++) { G.update(1/60); G.D2.frame(0); }
+    check(d.last && d.last.grade === "quit", `setup: he should walk out again (try ${n})`);
+    const next = W.document.querySelector('#overlay [data-act="d2next"]');
+    if (n === 1) { check(next && /last chance/.test(next.textContent), "the second walk-out should be your last chance"); G.D2.act("d2next"); }
+    else { check(!next && W.document.querySelector('#overlay [data-act="d2retry"]'), "a third walk-out should only offer to redo the night");
+      const sh = d.prog.shift; G.D2.act("d2next"); check(d.prog.shift === sh, "he shouldn't come back a third time"); }
+  }
+});
+test("Day 2: he watches you whenever you're doing something he could learn from, fires included", () => {
+  G.D2.start(); G.D2.act("d2go"); const S = G.S, d = S.d2, T = d.temp;
+  const a = S.racks.find(Boolean); a.fire = 40; a.down = false; S.users = [];
+  S.p.x = G.RACKS[a.slot].x; S.p.y = G.RACKS[a.slot].y + 44; T.x = S.p.x + 30; T.y = S.p.y; T.tgt = null;
+  G.keys.fix = true; for (let i = 0; i < 20; i++) G.update(1/60);
+  check(S.fix && S.fix.kind === "fire" && T.watching, "he should be watching while you put out a fire");
+  G.keys.fix = false; G.update(1/60); check(!T.watching, "he shouldn't stare once you stop");
+});
+test("Day 2: picking up costs your energy, sleep brings it back slowly, and too tired you sleep through the ring", () => {
+  G.D2.start(); G.D2.act("d2go"); G.D2.act("d2shift"); const S = G.S, d = S.d2, T = d.temp;
+  S.racks.forEach(a => a && (a.fire = 0, a.down = false, a.covered = true)); S.tk = []; T.tgt = null;
+  S.energy = 30; for (let i = 0; i < 60; i++) G.update(1/60);
+  check(S.energy > 30.2 && S.energy < 31, `a second asleep should restore a little energy, not the day's rate (${S.energy})`);
+  const a = S.racks.find(Boolean); a.down = true;
+  S.energy = 30; G.D2.ring({kind:"restore",a}); G.D2.coach();
+  check(!d.call && Math.abs(S.energy - 10) < 0.01, "picking up should cost 20 energy");
+  T.tgt = null; a.down = true; S.energy = 19.5; G.D2.ring({kind:"restore",a});
+  for (let i = 0; i < 120; i++) G.update(1/60);
+  check(S.energy > 20, "energy should keep coming back while a call you're too tired for rings");
+  G.D2.coach(); check(d.call && d.call.tired, "too tired when it started ringing, you shouldn't wake up even after passing 20");
+  G.hud(); check(/too tired/.test(W.document.getElementById("d2-ring").textContent), "the dark should say you're too tired to wake up");
+  for (let i = 0; i < 60*3 && d.call; i++) G.update(1/60);
+  check(!d.call && d.st.slept === 1, "the phone should ring a few times (about 4 seconds), then go to voicemail as a call you slept through");
+  const before = d.prog.stress, conf = d.prog.conf;
+  d.t = G.D2.SHIFT_LEN; G.update(1/60); G.D2.frame(0); const e = S.energy;
+  G.D2.act("d2next");
+  check(Math.abs(S.energy - e) < 0.01, "the morning should start with the energy the night left you, not a refill");
+  check(d.prog.stress === before && d.prog.conf === conf, "he never goes home: stress and confidence should carry as they are");
+});
+test("Day 2: drawing never uses the game's random rolls", () => {
+  G.D2.start(); G.D2.act("d2go"); G.D2.act("d2shift"); const d = G.S.d2;
+  d.call = {t:{kind:"ticket",a:null},left:5,ring:1};
+  const random = W.Math.random; W.Math.random = () => { throw new Error("Day 2 drawing used Math.random"); };
+  try { G.draw(); } finally { W.Math.random = random; }
 });
 
 /* ---------- runner ---------- */

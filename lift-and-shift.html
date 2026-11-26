@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap">
 <script src="./pwa.js" defer></script>
 <script src="./version-picker.js" defer></script>
+<script src="./assets/day2.js"></script>
 <style>
 /* ==== Styles ==== */
 /* Layout: one ops-console column. HUD strip on top, the game floor below, controls under it.
@@ -251,12 +252,13 @@ a.learnlink{color:var(--amber);font-size:12.5px;white-space:nowrap}
 .endhead{position:relative}
 /* the stamp sits behind the title and text, slightly see-through, like ink under the type */
 .endhead>:not(.stamp){position:relative;z-index:1}
-.stamp{position:absolute;right:6px;top:12px;z-index:0;transform:rotate(-14deg);font-family:var(--f-display);font-weight:800;font-size:38px;line-height:1;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;padding:6px 14px 4px;border:5px solid currentColor;border-radius:8px;box-shadow:inset 0 0 0 2px var(--panel),inset 0 0 0 4px currentColor;opacity:.5;pointer-events:none;animation:stampin .42s cubic-bezier(.3,1.5,.5,1) .3s both}
+.stamp{position:absolute;right:6px;top:12px;z-index:0;transform:rotate(-14deg);font-family:var(--f-display);font-weight:800;font-size:38px;line-height:1;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;padding:6px 14px 4px;border:5px solid currentColor;border-radius:8px;box-shadow:inset 0 0 0 2px var(--panel),inset 0 0 0 4px currentColor;opacity:.5;pointer-events:none;animation:stampin .42s cubic-bezier(.3,1.5,.5,1) .3s backwards,stampfade 3.5s ease-in-out 1.6s forwards}
 .stamp.fired{color:var(--danger)}.stamp.retired{color:#f2c14e}.stamp.letgo{color:var(--ai)}.stamp.outsourced{color:var(--amber)}.stamp.resigned{color:#45aefc}
 @keyframes stampin{0%{transform:rotate(-14deg) scale(3.4);opacity:0}60%{opacity:.6}100%{transform:rotate(-14deg) scale(1);opacity:.5}}
+@keyframes stampfade{from{opacity:.5}to{opacity:.25}} /* once it has set, it sinks back behind the text */
 @media (max-width:560px){.stamp{font-size:26px;border-width:4px;padding:5px 10px 3px}}
-.stamp.still{animation:none}
-@media (prefers-reduced-motion:reduce){.stamp{animation:none}}
+.stamp.still{animation:none;opacity:.25}
+@media (prefers-reduced-motion:reduce){.stamp{animation:none;opacity:.25}}
 .modline{font-size:12.5px;line-height:1.35;color:var(--muted);height:2.7em;overflow:hidden}
 @media (max-width:760px){.modline{height:5.4em}}
 /* the top row never re-wraps as the numbers grow; the brand gives up space instead */
@@ -575,10 +577,10 @@ for(let r=0;r<4;r++)for(let c=0;c<4;c++)SLOTS.push({x:652+c*80,y:100+r*116});
    No timer: an engagement ends when that client's room is empty. Between clients you get an improvement sprint.
    apps: [name, heavy, tier, license renewal $k (optional)]   hidden: [name, tier]   days: lease target (1 day = 10s) */
 const CLIENTS=[
-  {name:"Bright Smile Dental Group",short:"Bright Smile Dental",err:170,days:14,trait:null,
+  {name:"Teddy's Bright Smile Dental Group",short:"Teddy's Bright Smile Dental",err:170,days:14,trait:null,
    apps:[["Scheduling",0,"bronze"],["Patient Records",0,"silver"],["Email",0,"bronze"],["Practice Mgmt",0,"gold",20],["Billing",0,"bronze"],["X-Ray Archive",1,"silver",15],["Website",0,"bronze"],["File Share",0,"bronze"]],
    hidden:[["Front Desk PC","bronze"],["Dr. Ken's Laptop","silver"]],
-   quotes:["The dentists are thrilled. Mostly.","Dr. Ken would like his laptop back, please.","Our hygienists say the cloud is 'very fluffy.' Great work."],contact:"Office Manager, Bright Smile Dental"},
+   quotes:["The dentists are thrilled. Mostly.","Dr. Ken would like his laptop back, please.","Our hygienists say the cloud is 'very fluffy.' Great work."],contact:"Office Manager, Teddy's Bright Smile Dental"},
   {name:"Midtown Credit Union",short:"Midtown Credit Union",err:150,days:18,trait:{id:"audit",name:"Regulated",desc:"Auditors are on site, so compliance timers tick 30% faster."},
    apps:[["Wiki",0,"bronze"],["Online Banking",0,"silver"],["Email",0,"bronze"],["Core Banking",2,"gold",40],["HR Portal",0,"bronze"],["ATM Gateway",0,"silver"],["Card Processing",0,"gold",25],["File Share",0,"bronze"],["Loan Origination",1,"silver",20],["Print Server",0,"bronze"]],
    hidden:[["Linda's DB","gold"],["Cron Box","silver"]],
@@ -653,7 +655,7 @@ const getClient=n=>{if(S.tut)return TUT_CLIENT;if(isBreak(n))return BREAK_CLIENT
 const pace=()=>isBreak(S.sprint)?1:stage(S.sprint);
 const client=()=>getClient(S.sprint);
 const dayNum=()=>Math.floor(S.time/DAY)+1;
-const overdue=()=>Math.max(0,dayNum()-S.cdays);
+const overdue=()=>S.d2?0:Math.max(0,dayNum()-S.cdays); // Day 2: no lease on the clock
 /* Difficulty: how many of each client's servers you get (known + hidden), how busy the hazards are,
    and how big the uptime budget is. Normal eases in with 4 + 1 hidden at the first client. */
 const DIFFS={
@@ -835,7 +837,9 @@ function audio(){
       AU.master=AU.ctx.createGain();AU.master.gain.value=AU.on?0.55:0;
       const lim=AU.ctx.createDynamicsCompressor();lim.threshold.value=-6;lim.knee.value=0;lim.ratio.value=20;lim.attack.value=0.003;lim.release.value=0.25;
       AU.master.connect(lim);lim.connect(AU.ctx.destination);
-      AU.fx=AU.ctx.createGain();AU.fx.gain.value=FX_GAIN;AU.fx.connect(AU.master);
+      AU.muff=AU.ctx.createBiquadFilter();AU.muff.type="lowpass";AU.muff.frequency.value=20000;AU.muff.Q.value=Math.SQRT1_2;AU.muff.connect(AU.master); // Day 2: headphones on while you sleep
+      AU.fx=AU.ctx.createGain();AU.fx.gain.value=FX_GAIN;AU.fx.connect(AU.muff);
+      AU.clear=AU.ctx.createGain();AU.clear.gain.value=FX_GAIN;AU.clear.connect(AU.master); // effects that cut through the headphones
       const b=AU.ctx.createBuffer(1,AU.ctx.sampleRate,AU.ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=sndRand()*2-1;AU.noise=b;
     }catch(e){AU.ctx=null;return null;}
   }
@@ -845,11 +849,11 @@ function audio(){
   return AU.ctx;
 }
 // raw: straight to the master, skipping the sound-effect bus (the boot chime, the hard drive and the stamp keep their own levels)
-function tone(f,dur,{type="sine",vol=0.3,slide=0,delay=0,attack=0.006,raw=false}={}){
+function tone(f,dur,{type="sine",vol=0.3,slide=0,delay=0,attack=0.006,raw=false,clear=false}={}){
   const c=audio();if(!c)return;const t=c.currentTime+delay,o=c.createOscillator(),g=c.createGain();
   o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+dur);
   g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+attack);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-  o.connect(g);g.connect(raw?AU.master:AU.fx);o.start(t);o.stop(t+dur+0.05);
+  o.connect(g);g.connect(raw?AU.master:clear?AU.clear:AU.fx);o.start(t);o.stop(t+dur+0.05);
 }
 function noiseBurst(dur,{vol=0.2,freq=1200,q=1,type="bandpass",delay=0,raw=false}={}){
   const c=audio();if(!c)return;const t=c.currentTime+delay,s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();
@@ -872,6 +876,8 @@ const SFX={
   audit:()=>{tone(180,0.18,{type:"square",vol:0.1});tone(150,0.25,{type:"square",vol:0.1,delay:0.18});},
   ticket:()=>tone(1250,0.05,{vol:0.06}),
   email:()=>{tone(950,0.06,{vol:0.08});tone(1400,0.08,{vol:0.08,delay:0.06});},
+  phone:()=>{for(let i=0;i<14;i++)tone(i%2?1180:960,0.045,{vol:0.07,delay:i*0.05,clear:true});}, // Day 2: the phone by your bed, through the headphones
+  phoneDull:()=>{for(let i=0;i<14;i++)tone(i%2?1180:960,0.045,{vol:0.07,delay:i*0.05});}, // ...or not: too tired, it's just part of the muffle
   sent:()=>noiseBurst(0.18,{vol:0.1,freq:2600,q:2}),
   closed:()=>tone(700,0.07,{type:"triangle",vol:0.12}),
   escalate:()=>tone(380,0.45,{type:"sawtooth",vol:0.09,slide:700}),
@@ -907,6 +913,8 @@ function sfx(n){
   if(now-(AU.last[n]||0)<70)return;AU.last[n]=now; // don't stack the same sound in one burst
   try{SFX[n]();}catch(e){}
 }
+// Day 2's night: headphones on while your eyes are shut (only the phone you can answer cuts through)
+function setMuffle(on){if(!AU.muff)return;AU.muff.frequency.setTargetAtTime(on?420:20000,AU.ctx.currentTime,on?0.35:0.15);}
 // a steady foam hiss while you, a temp or the AI agent spray an extinguisher
 function setHiss(on){
   const c=AU.ctx;if(!c)return;
@@ -1450,7 +1458,7 @@ function musicResume(){MUS.stut=null;MUS.halt=false;}
 function startMusic(){
   if(MUS.started||!AU.ctx)return;MUS.started=true;const c=AU.ctx;
   MUS.filt=c.createBiquadFilter();MUS.filt.type="lowpass";MUS.filt.frequency.value=18000;
-  MUS.bus=c.createGain();MUS.bus.gain.value=0;MUS.filt.connect(MUS.bus);MUS.bus.connect(AU.master);
+  MUS.bus=c.createGain();MUS.bus.gain.value=0;MUS.filt.connect(MUS.bus);MUS.bus.connect(AU.muff||AU.master);
   MUS.next=c.currentTime+0.1;window.__liftShiftMusicTimer=setInterval(musicTick,40);
 }
 function setMusic(on){
@@ -1673,8 +1681,11 @@ function drawPickup(s){
   ctx.globalAlpha=1;
 }
 function smallBubble(text,x,y,bg,fg){
-  ctx.font=`600 9.5px ${BODY}`;const w=Math.min(150,ctx.measureText(text).width+12),bx=clamp(x,w/2+4,W-w/2-4);
-  ctx.fillStyle=bg;rr(bx-w/2,y-16,w,16,5);ctx.fill();tx(text,bx,y-8,9.5,fg,{font:BODY,weight:600,max:w-8});
+  ctx.font=`600 9.5px ${BODY}`;const lines=[];let cur="";
+  for(const word of String(text).split(" ")){const t=cur?cur+" "+word:word;if(cur&&ctx.measureText(t).width>138){lines.push(cur);cur=word;}else cur=t;}
+  if(cur)lines.push(cur); // long lines wrap (the bubble grows upward) instead of squeezing past its edge
+  const w=Math.min(150,Math.max(...lines.map(l=>ctx.measureText(l).width))+12),h=16+11*(lines.length-1),bx=clamp(x,w/2+4,W-w/2-4);
+  ctx.fillStyle=bg;rr(bx-w/2,y-h,w,h,5);ctx.fill();lines.forEach((l,i)=>tx(l,bx,y-h+8+11*i,9.5,fg,{font:BODY,weight:600,max:w-8}));
 }
 /* ---------- special hallway pickups: temp worker, maintenance window, pizza party, headphones ---------- */
 const SPECIALS={temp:{label:"TEMP",col:"#4fd1c5"},window:{label:"MAINT. WINDOW",col:"#45aefc"},pizza:{label:"PIZZA",col:"#ff8a3d"},headphones:{label:"HEADPHONES",col:"#b896ff"}};
@@ -1682,7 +1693,7 @@ function tickSpecials(dt){
   if(S.window>0){S.window-=dt;if(S.window<=0)toast("🕐 The maintenance window closed.");}
   if(S.focus>0){S.focus-=dt;if(S.focus<=0)toast("🎧 Headphones off. The pings resume.");}
   if(S.pizza){S.pizza.t-=dt;if(S.pizza.t<=0){S.pizza=null;toast("🍕 The pizza's gone. Everyone wanders back.");}}
-  if(S.tut)return; // no surprise specials in the tutorial
+  if(S.tut||S.d2)return; // no surprise specials in the tutorial or Day 2
   S.spT-=dt;
   // a pizza chain throws pizza parties: specials come 40% sooner and most of them are pizza (still one roll each)
   const slice=client().name.startsWith("Big Slice");
@@ -2987,6 +2998,7 @@ function fixTarget(){
   {const u=jamUnder(P);if(u)take({kind:"unjam",j:u.j,a:u.j.a,pos:{x:pipeX(u.j),y:laneY(u.j.lane)},key:"u"+u.j.lane},u.d);}
   if(S.tk.length){const d=dist(P,DESK);if(d<75)take({kind:"ticket",t:S.tk[0],pos:DESK,key:"desk"},d);}
   if(S.em.length){const d=dist(P,INBOX);if(d<75)take({kind:"email",m:urgentEmail(),pos:INBOX,key:"inbox"},d);}
+  if(S.d2)for(const t of D2.targets(P))take(t,t.d); // Day 2 handover: runbooks, tools, root-cause fixes
   return best;
 }
 function fixCost(f){return f.kind==="patch"?Math.round(onpremCost(12)):f.kind==="leak"?Math.round(cloudCost(10)):f.kind==="email"?0:Math.round(cloudCost(3));}
@@ -3048,6 +3060,7 @@ function doFix(dt){
   if(!keys.fix||!f||S.p.stun>0||S.fixLock){S.fixP=0;S.fixKey=null;return;}
   humanWork(S.fixHeld!==f.key,f.kind);S.fixHeld=f.key;
   if(S.fixKey!==f.key){S.fixKey=f.key;S.fixP=0;}
+  if(f.kind==="d2"){S.fixNeed=f.need;S.fixP=D2.work(f,dt);if(S.fixP>=f.need-1e-6){S.fixP=0;S.fixLock=true;}return;} // Day 2 handover stations
   if(f.kind==="discover"){
     // investigating an unknown rack: slow but free, keeps progress, and finding it early means it isn't overdue yet
     f.a.disc=(f.a.disc||0)+dt;f.a.discT=S.t;S.fixNeed=discoverTime();S.fixP=f.a.disc;
@@ -3078,7 +3091,7 @@ function doFix(dt){
     f.a.prog+=dt;S.fixNeed=need;S.fixP=f.a.prog;
     if(f.a.prog<need)return;
     f.a.prog=0;S.fixP=0;S.fixLock=true;
-    if(f.kind==="restore"){sfx("online");noteRestored(f.a);f.a.down=false;f.a.timer=Math.max(f.a.timer,f.a.maxT*0.5);fl(f.pos,"Back online",C.ok);clipEv("restore");}
+    if(f.kind==="restore"){sfx("online");noteRestored(f.a);f.a.down=false;f.a.timer=Math.max(f.a.timer,f.a.maxT*0.5);fl(f.pos,"Back online",C.ok);clipEv("restore");if(S.d2)D2.did("restore");}
     else{sfx("sealed");f.a.age=0;f.a.breach=false;f.a.leak=0;f.a.grace=6;fl(f.pos,"Breach contained",C.ok);clipEv("contained");}
     return;
   }
@@ -3089,7 +3102,7 @@ function doFix(dt){
     S.ext={pos:f.pos,a:f.a,t:S.t,slow:!fast};
     f.a.fire-=r*dt;if(fast)S.energy=Math.max(0,S.energy-onpremCost(7)*dt);
     // release E before the next action, so holding it doesn't roll straight into a patch
-    if(f.a.fire<=0){f.a.fire=0;S.fixLock=true;sfx("fireOut");fl(f.pos,"Fire out",C.ok);clipEv("fireout");}
+    if(f.a.fire<=0){f.a.fire=0;S.fixLock=true;sfx("fireOut");fl(f.pos,"Fire out",C.ok);clipEv("fireout");if(S.d2)D2.did("fire");}
     return;
   }
   const need=f.kind==="patch"?0.8:f.kind==="leak"?1.3:f.kind==="email"?0.7:0.6,c=fixCost(f);
@@ -3098,12 +3111,12 @@ function doFix(dt){
   S.fixNeed=need;S.fixP+=dt;
   if(S.fixP<need)return;
   S.energy-=c;S.fixP=0;S.fixKey=null;
-  if(f.kind==="patch"){sfx("patch");applyPatch(f.a);fl(f.pos,"✓ Covered this cycle",C.ok);clipEv("patch");}
+  if(f.kind==="patch"){sfx("patch");applyPatch(f.a);fl(f.pos,"✓ Covered this cycle",C.ok);clipEv("patch");if(S.d2)D2.did("patch");}
   else if(f.kind==="leak"){sfx("sealed");f.a.age=0;f.a.leakOn=false;f.a.leak=0;f.a.grace=4;fl(f.pos,"Sealed by hand",C.ok);clipEv("sealed");}
   else if(f.kind==="email"){sfx("sent");S.em=S.em.filter(x=>x!==f.m);if(f.m.type==="vendor")S.run.vendor++;
     // answering a finance email negotiates a 20s extension on the license closest to renewing
     clipEv(f.m.type==="vendor"?"vendor":"email");if(f.m.type==="finance")financeExtension("player");fl(f.pos,f.m.type==="vendor"?"Replied to a vendor. Why?":"Replied",f.m.type==="vendor"?C.muted:C.ok);}
-  else{sfx("closed");S.tk=S.tk.filter(x=>x!==f.t);fl(f.pos,"Ticket closed",C.ok);clipEv("ticket");}
+  else{sfx("closed");S.tk=S.tk.filter(x=>x!==f.t);fl(f.pos,"Ticket closed",C.ok);clipEv("ticket");if(S.d2)D2.did("ticket");}
 }
 // answering a finance email (player or manager) negotiates a 20s extension on the license closest to renewing;
 // the server that got it glitters briefly so you can see which one it was
@@ -3200,9 +3213,9 @@ function spawns(dt){
   // a full queue takes nothing new: the bars show everything that is waiting, so there is never a hidden backlog.
   // (a full ticket queue keeps escalating and a full inbox keeps sending VPs until you work it down)
   if(!(S.focus>0))S.emT-=dt; // headphones: nothing new arrives while you're in focus mode
-  if(S.emT<=0){S.emT=rand(7,11)/(modId()==="contract"?2:1)/haz();const k=pickEmailType();if(k==="vendor"||importantMail().length<inboxLimit()){sfx("email");S.em.push({type:k,age:0,life:EMAIL[k].life});fl(INBOX,"+1 email",C.muted);}}
+  if(S.emT<=0&&!S.d2){S.emT=rand(7,11)/(modId()==="contract"?2:1)/haz();const k=pickEmailType();if(k==="vendor"||importantMail().length<inboxLimit()){sfx("email");S.em.push({type:k,age:0,life:EMAIL[k].life});fl(INBOX,"+1 email",C.muted);}}
   if(!(S.focus>0))S.tkT-=dt;
-  if(S.tkT<=0){S.tkT=rand(6,9)/(modId()==="storm"?2:modId()==="hospital"?1.5:1)/Math.pow(0.85,lvl("portal"))/haz();if(S.tk.length<ticketLimit()){S.tk.push({age:0});sfx("ticket");fl(DESK,"+1 ticket",C.muted);}}
+  if(S.tkT<=0){S.tkT=rand(6,9)/(modId()==="storm"?2:modId()==="hospital"?1.5:1)/Math.pow(0.85,lvl("portal"))/haz()/(S.d2?S.d2.tk:1);if(S.tk.length<ticketLimit()){S.tk.push({age:0});sfx("ticket");fl(DESK,"+1 ticket",C.muted);}}
   }
   S.stT-=dt;
   // snack budget: more coffee and donuts, more often
@@ -3272,8 +3285,9 @@ const PATCHBOT_SPEED=[85,85,110,140],patchBotSpeed=()=>PATCHBOT_SPEED[Math.max(1
 const INFECT_SPEED=1.6,INFECT_COST=0.4;
 const infected=b=>!b.temp&&lvl("agent")>=4;
 function infectBill(b){spend("ai",INFECT_COST);S.ss.ai.cost+=INFECT_COST;S.ss.ai.infect=(S.ss.ai.infect||0)+1;fl({x:b.x,y:b.y-26},`🪙 −$${INFECT_COST.toFixed(1)}k`,C.ai,3);}
-const botPatchOk=b=>{const base=BOT_PATCH_OK[Math.max(1,lvl("patchbot"))];return infected(b)?Math.max(base,agentOdds("patch",4).ok):base;};
+const botPatchOk=b=>{if(S.d2)return D2.botOdds(); /* Day 2: the bot learns from every case you teach it */const base=BOT_PATCH_OK[Math.max(1,lvl("patchbot"))];return infected(b)?Math.max(base,agentOdds("patch",4).ok):base;};
 function patchBot(b,dt,sp){
+  if(S.d2&&D2.botStuck(b,dt))return; // Day 2: a failed bot stays stuck at that server until someone teaches it the case
   const ok=a=>a&&!a.hidden&&!a.down&&a.fire===0&&!a.botErr&&S.racks[a.slot]===a;
   if(!ok(b.tgt)||!patchDue(b.tgt)){
     b.tgt=null;b.work=0;let best=null,sc=0;
@@ -3288,8 +3302,9 @@ function patchBot(b,dt,sp){
   b.work+=dt;
   if(b.fail&&b.work>=b.failAt){
     // the automation broke partway through: flag the rack for a human
+    if(S.d2){botWork();D2.botFail(b,a);return;}
     a.botErr=true;b.work=0;b.tgt=null;b.flash=1.5;botWork();if(infected(b))infectBill(b);sfx("audit");fl(p,"⚠ AUTOMATION ERROR",C.danger);clipEv("boterr");
-    toast(`🤖 Patch Bot couldn't patch ${a.name} (automation error). ${S.agent&&agentCanTouch(a)?"The AI agent is going to take a look. Good luck.":"It needs a human: patch it yourself."}`);return;
+    toast(`🤖 Patch Bot couldn't patch ${a.name} (automation error). ${S.agent&&agentCanTouch(a)?"The AI agent is going to take a look. Good luck.":S.d2?"It needs a human: the temp has to clear it.":"It needs a human: patch it yourself."}`);return;
   }
   if(b.work<b.need)return;
   b.work=0;b.tgt=null;botWork();if(infected(b))infectBill(b);
@@ -3336,7 +3351,8 @@ function buildPrompt(){
     else if(z===0)say(copy?"Space: discard the copy":rackUnder()>=0?"Space: put it down here":"Walk onto an empty rack to put it down",copy?"Space: discard":rackUnder()>=0?"Space: put down":null);
     else say(copy?"Carry the copy to the cloud → (on-prem stays live)":"Carry it to the cloud →",null);}
   else{
-    const g=grabTarget();
+    const g=S.d2?null:grabTarget(); // Day 2 has no migrations; Space hands the job to the temp instead
+    if(S.d2){const c=D2.coachHint();if(c)say(c[0],c[1]);}
     if(g&&g.fire===0&&!g.down&&!S.alert&&tutGrabOK()){
       if(S.frozen)say("⛔ Can't move: a server is offline","⛔ Offline");
       else if(pipeLanes()>0){const pp=Math.round(Math.min(1,successChance(g.tier)+0.1)*100),free=freePipelineLane()>=0;
@@ -3347,7 +3363,8 @@ function buildPrompt(){
     const f=S.fix;
     if(S.cloud.some((a,i)=>a&&a.rsTag&&dist(P,SLOTS[i])<RS_REACH))say("E: approve FinOps saving (hold E to approve as you walk)","E: approve $");
     if(!f&&S.alert)say("RED ALERT: go to a flashing incident","🚨 Find the incident");
-    if(f){if(f.kind==="discover")say(`Hold E: investigate unknown server (${Math.max(0,discoverTime()-(f.a.disc||0)).toFixed(1)}s, free)`,"Hold E: investigate");
+    if(f){if(f.kind==="d2")say(f.info,f.warn);
+      else if(f.kind==="discover")say(`Hold E: investigate unknown server (${Math.max(0,discoverTime()-(f.a.disc||0)).toFixed(1)}s, free)`,"Hold E: investigate");
       else if(f.kind==="cloudrestore")say(`Hold E: retry cutover (${Math.max(0,cloudRebuild(f.a.tier)-f.a.prog).toFixed(1)}s, ${Math.round(successChance(f.a.tier)*100)}%)`,`Hold E: retry ${Math.round(successChance(f.a.tier)*100)}%`,"Hold E");
       else if(f.kind==="restore")say(`Hold E: bring back up (${Math.max(0,TIER[f.a.tier].restore*Math.pow(0.8,retro("firedrill"))-f.a.prog).toFixed(1)}s, free)`,"Hold E: restore","Hold E");
       else if(f.kind==="unjam")say(`Hold E: repair the jammed pipeline (${Math.max(0,PIPE_FIX-(f.j.fix||0)).toFixed(1)}s, free)`,"Hold E: repair pipeline","Hold E");
@@ -3383,8 +3400,9 @@ function update(dt){
   let sp=175*(S.upgrades.coffee?1.15:1)*(P.boost>0?1.3:1);
   if(S.carry)sp*=S.carry.heavy===2?0.5:S.carry.heavy?0.62:0.78;
   if(P.stun>0)sp=0;
-  moveEnt(P,mx/m*sp*dt,my/m*sp*dt,playerR());doorCross(P,false);
-  tickFreeze(dt);tickUsers(dt);tickShouts(dt);if(!freezeActive())tickChatbots(dt);tickSpecials(dt);tickTemp(dt);if(S.temp)doorCross(S.temp,false);tickManager(dt);if(S.mgr)doorCross(S.mgr,false);tickAgent(dt);
+  const away=!!S.d2&&D2.away(); // Day 2's night shift: you're at home, the temp has the floor
+  if(!away){moveEnt(P,mx/m*sp*dt,my/m*sp*dt,playerR());doorCross(P,false);}
+  tickFreeze(dt);tickUsers(dt);tickShouts(dt);if(!freezeActive())tickChatbots(dt);tickSpecials(dt);if(S.d2)D2.tick(dt);else tickTemp(dt);if(S.temp)doorCross(S.temp,false);tickManager(dt);if(S.mgr)doorCross(S.mgr,false);tickAgent(dt);
   // red alert: any gold server offline or any cloud breach
   const crit=critList(),was=S.alert;S.alert=crit.length>0;
   if(S.alert&&!was){
@@ -3402,15 +3420,15 @@ function update(dt){
   const frozen=downCount()>0;
   if(frozen&&!S.frozen){
     if(S.carry){const copy=liveCopy(S.carry);returnToRack(S.carry);S.carry=null;fl(P,copy?"Copy discarded: a server is offline":"Put it back: a server is offline",C.danger);}
-    toast("⛔ A server is offline. No migrations until it's back up.");
+    if(!S.d2)toast("⛔ A server is offline. No migrations until it's back up.");
   }
   S.frozen=frozen;
   // rollback: hold Space at an offline cloud app (works during red alerts and move freezes; it's the escape hatch)
   const rbt=rollbackTarget();
   if(rbt&&keys.grab&&P.stun<=0){grabPressed=false;rbt.a.rb+=dt;S.rbT=rbt;if(rbt.a.rb>=ROLLBACK_TIME)doRollback(rbt.i);}
   else{S.rbT=null;S.cloud.forEach(a=>{if(a&&a.rb&&!keys.grab)a.rb=0;});}
-  if(grabPressed){grabPressed=false;grabOrPipeline();}
-  doFix(dt);
+  if(grabPressed){grabPressed=false;if(S.d2)D2.coach();else grabOrPipeline();} // Day 2 has no migrations: Space hands the job to the temp
+  if(!away)doFix(dt);
   tickPipeline(dt);
   // a server being moved is in its cutover window: it counts as down at a quarter of the outage rate (MIGRATE_BURN)
   {const moving=shutDownMoving(),m=migrateMult();
@@ -3424,7 +3442,7 @@ function update(dt){
   // clean streak: after 20s with no breach or failed audit (and no breach open), security slowly recovers
   S.secCalm=(S.secCalm||0)+dt;
   if(S.secCalm>20&&!S.cloud.some(a=>a&&a.breach)&&S.security<100){S.security=Math.min(100,S.security+0.3*dt);if(S.security>=30)S.secWarned=false;}
-  S.energy=clamp(S.energy+(S.upgrades.oncall?0.9:0.6)*dt,0,100);
+  if(!away)S.energy=clamp(S.energy+(S.upgrades.oncall?0.9:0.6)*dt,0,100); // Day 2's night: sleep restores it instead (day2.js)
   tutTick(dt);tickClip(dt);
   buildPrompt();
   // running costs. The report also tracks what the cloud apps would have cost had they stayed on-prem;
@@ -3432,10 +3450,10 @@ function update(dt){
   spend("run",burnRate()*dt);
   S.runSaved=(S.runSaved||0)+(cloudCount()*ONPREM_RATE*leaseMult()-cloudSpend())*dt;
   S.err=Math.max(S.err,Math.min(uptimeCap(),S.err+uptimeRegen()*dt));
-  if(S.err<=0)return showEnd("uptime");
-  if(S.security<=0)return showEnd("security");
+  if(S.err<=0)return S.d2?D2.collapse("uptime"):showEnd("uptime");
+  if(S.security<=0)return S.d2?D2.collapse("security"):showEnd("security");
   // engagement done: the client's server room is empty and nothing is stuck offline in the cloud
-  if(engagementReady()){
+  if(!S.d2&&engagementReady()){
     if(S.wave.length)deliverWave();else return startCelebration();
   }
   
@@ -3466,7 +3484,7 @@ function drawFloor(){
   ctx.fillStyle=C.wall;for(const w of WALLS){ctx.fillRect(w.x,w.y,w.w,w.h);}
   ctx.fillStyle=C.amber;ctx.globalAlpha=.35;for(const x of[354,594])for(let y=DY0+6;y<DY1;y+=16)ctx.fillRect(x+3,y,6,8);ctx.globalAlpha=1;
   const late=overdue();
-  tx(late?`ON-PREM · LEASE OVERDUE (+${Math.round((leaseMult()-1)*100)}% COST)`:`ON-PREM · ${client().short.toUpperCase()}`,16,22,13,late?C.danger:C.amber,{font:DISP,align:"left",weight:700,max:330});
+  tx(late?`ON-PREM · LEASE OVERDUE (+${Math.round((leaseMult()-1)*100)}% COST)`:`ON-PREM · ${S.d2?D2.SITE:client().short.toUpperCase()}`,16,22,13,late?C.danger:C.amber,{font:DISP,align:"left",weight:700,max:330});
   tx("CLOUD · us-east-1",944,22,13,C["sky-ink"],{font:DISP,align:"right",weight:700});
   if(S.lz)tx(`☁ landing zone: ${S.lz} apps`,944,54,10,C["sky-ink"],{align:"right",weight:600});
   if(S.wave&&S.wave.length)tx(`🚚 ${S.wave.length} more servers still at the other building`,16,40,10,C.amber,{align:"left",weight:600});
@@ -3899,9 +3917,10 @@ function draw(){
   drawFx();
   drawFinops();
   if(S.upgrades.observe)drawWarnings();
-  drawInbox();
+  if(!S.d2)drawInbox(); // Day 2: the wiki hangs where the inbox was
   for(const s of S.st)drawPickup(s);
   drawDesk();
+  if(S.d2)D2.drawUnder();
   for(const e of S.atk){ctx.fillStyle="rgba(255,93,77,.3)";ctx.beginPath();ctx.arc(e.x,e.y,18+3*Math.sin(decoT()*14),0,7);ctx.fill();em("🚨",e.x,e.y,22);tx(e.waiting?"WAITING":"ESCALATION",e.x,e.y+20,8.5,C.danger,{weight:600});}
   for(const u of S.users){drawUser(u);if(freezeActive()){ctx.fillStyle="rgba(180,230,255,.3)";rr(u.x-17,u.y-24,34,47,8);ctx.fill();}}
   for(const c of S.cbots)drawChatbot(c);
@@ -3911,12 +3930,13 @@ function draw(){
   drawAgentMarks();
   for(const b of S.bots)drawBot(b);
   if(S.fix&&S.fixP>0){const p=S.fix.pos;ctx.strokeStyle=C.leak;ctx.lineWidth=4;ctx.beginPath();ctx.arc(p.x,p.y,24,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,S.fixP/S.fixNeed));ctx.stroke();}
-  drawPlayer();
+  if(!(S.d2&&D2.away()))drawPlayer(); // Day 2's night shift: you're at home
   drawCompanion();
   drawExtinguish();
   drawEnergyFx();
   drawHoldBubble();
   drawTempBubble();
+  if(S.d2)D2.drawOver();
   drawShouts();
   if(S.alert)drawAlert();
   drawSlowmo();
@@ -3966,11 +3986,13 @@ const FIX_WORDS={discover:"PROBE",restore:"REBOOT",cloudrestore:"RETRY",breach:"
 function fixWord(){
   const P=S.p,M=S.mgr;
   if(M&&M.state==="patch"&&M.work>0&&M.tgt&&dist(P,RACKS[M.tgt.slot])<80)return"SHOO";
-  if(S.fix)return FIX_WORDS[S.fix.kind]||"FIX";
+  if(S.d2&&D2.away())return D2.words().fix;
+  if(S.fix)return S.fix.word||FIX_WORDS[S.fix.kind]||"FIX";
   if(!S.carry&&S.cloud.some((a,i)=>a&&a.rsTag&&dist(P,SLOTS[i])<RS_REACH))return"APPROVE";
   return null;
 }
 function grabWord(){
+  if(S.d2)return D2.words().grab;
   if(S.carry){const z=zoneOf(S.p.x),copy=liveCopy(S.carry);
     if(z===2)return["DEPLOY",slotUnder()>=0];
     if(z===0)return[copy?"TOSS":"DROP",copy||rackUnder()>=0];
@@ -4019,7 +4041,9 @@ function hud(){
   const aiRate=S.agent&&S.ss.ai.cost&&S.time>5?` 🧠 AI spend: −$${(S.ss.ai.cost/(S.time/60)).toFixed(1)}k/min.`:"";
   const odds=`Cutover odds: bronze ${Math.round(successChance("bronze")*100)}% · silver ${Math.round(successChance("silver")*100)}% · gold ${Math.round(successChance("gold")*100)}%.`;
   // the urgent part goes first: this line has a fixed height so a long message can't push the map down
+  if(S.d2)return D2.hud(); // Day 2 keeps its own panel and header line
   $("h-mod").innerHTML=(late?`<b>Lease overdue:</b> on-prem costs +${Math.round((leaseMult()-1)*100)}%. `:"")+`<b>${c.name}</b>${S.mod?` · ${S.mod.name}: ${S.mod.desc}`:" · A small first client. Learn the ropes."} You: ${careerTitle()}. ${odds}${aiRate}`;
+  if(D2)D2.hud(); // hides Day 2's panel again after you leave it
 }
 
 /* ==== Screens: menu, tutorial, notes, how to play ==== */
@@ -4071,6 +4095,7 @@ function setDifficulty(d,hardcore){
 const restoresForRun=()=>HARDCORE?0:DIFFS[DIFF].restores; // Hardcore is Hard with no restores; nothing else changes
 const diffLabel=()=>S.hardcore?"Hardcore":diff().label;
 const LOGO="assets/lift-and-shift-logo.png";
+let D2ON=false; // the menu's Day 2 button shows only after `git checkout day2` in the terminal, for this visit (outside S)
 function titleScreen(){
   mode="title";let best=null,bestN=0;try{const s=localStorage.getItem("liftshift-best");best=s===null?null:+s;bestN=+(localStorage.getItem("liftshift-best-n")||0);}catch(e){}
   const opts=Object.entries(DIFFS).map(([k,d])=>`<div class="diffcol"><button class="diff ${k===DIFF?"on":""}" data-diff="${k}" aria-pressed="${k===DIFF}"><b>${d.label}</b><span>${d.desc}</span><small>First client: ${d.counts[0][0]} servers + ${d.counts[0][1]} hidden · ${d.restores} restore${d.restores===1?"":"s"}</small></button>${k==="hard"?`<label class="hardcore"><input type="checkbox" id="hardcore" ${HARDCORE?"checked":""}><span><b>Hardcore:</b> no restores</span></label>`:""}</div>`).join("");
@@ -4081,7 +4106,7 @@ function titleScreen(){
   <div class="diffs">${opts}</div>
   <label class="hardcore noai"><input type="checkbox" id="noai" ${NOAI?"checked":""}><span><b>Old school:</b> no AI upskills. The AI Agent and AI Chatbots never reach the shop. Keep it up long enough with only checklist work left and the job may get outsourced.</span></label>
   <div class="avatar"><label for="avatar"><b>Your avatar:</b></label><input id="avatar" value="${AVATAR}" aria-label="Your avatar: type or paste any emoji" autocomplete="off" spellcheck="false">${AVATAR_PICKS.map(a=>`<button type="button" class="avpick${a===AVATAR?" on":""}" data-avatar="${a}" aria-label="Use ${a} as your avatar" aria-pressed="${a===AVATAR}">${a}</button>`).join("")}<small>or any emoji (Win + . / Ctrl + Cmd + Space)</small></div>
-  <div class="row startrow"><button class="btn" data-act="start">Start new career</button></div>
+  <div class="row startrow"><button class="btn" data-act="start">Start new career</button>${D2&&D2ON?`<button class="btn ghost" data-act="d2" title="Prototype: get the last temp ready to run the night shift without you">🌙 Day 2 (prototype)</button>`:""}</div>
   <div class="row menulinks">
     <button class="btn ghost sm" data-act="tut">Tutorials</button>
     <button class="btn ghost sm" data-act="howto">How to play</button>
@@ -5439,7 +5464,7 @@ const CLI={
   dig:cli("Look up a DNS name",{"<name>":cli("Any name")}),
   exit:cli("Close the terminal"),
   foxsay:cli("A fox says it",{"<text>":cli("Ignored. It's a fox.")}),
-  git:cli("Assign responsibility",{blame:cli("Find out whose fault this is")}),
+  git:cli("Assign responsibility",{blame:cli("Find out whose fault this is"),checkout:cli("Switch branches",{"<branch>":cli("A branch")})}),
   help:cli("How to get help"),
   history:cli("Show earlier commands"),
   journalctl:cli("Show this client's event log"),
@@ -5532,7 +5557,12 @@ function cliRun(cmd,raw=cmd){
     else if(rest==="resume_final_v7_real.docx")out=`${careerTitle()}\n${RESUME[Math.min(S.career.length,RESUME.length-1)]}`;
     else out=`cat: ${rest||"what"}: No such file. Have you tried opening a ticket?`;
   }
-  else if(h==="git")out=rest==="blame"?(S.career.length>=3?"a3f9c1d (You, just now) # TODO: fix before go-live":"a3f9c1d (Previous Consultant, 3 years ago) # TODO: fix before go-live"):"git: Only blame is supported here.";
+  else if(h==="git"&&a[0]==="checkout"){const b=a.slice(1).join(" ");
+    if(b==="day2"&&D2){D2ON=true;out="Switched to branch 'day2'.\nYour branch is ahead of 'origin/day1' by 1 temp.\n🌙 Day 2 (prototype) is on the main menu until you reload.";}
+    else if((b==="main"||b==="day1")&&D2ON){D2ON=false;out=`Switched to branch '${b}'.\nDay 2 is off the menu again.`;}
+    else if(b==="main"||b==="day1")out=`Already on '${b}'.`;
+    else out=`error: pathspec '${b||"<branch>"}' did not match any file(s) known to git.`;}
+  else if(h==="git")out=rest==="blame"?(S.career.length>=3?"a3f9c1d (You, just now) # TODO: fix before go-live":"a3f9c1d (Previous Consultant, 3 years ago) # TODO: fix before go-live"):"git: Only blame and checkout are supported here.";
   else if(h==="terraform")out=rest==="plan"?"Plan: 0 to add, 0 to change, 1 career to destroy.":"terraform: Only plan is approved. Apply needs a CAB request.";
   else if(h==="kubectl")out=rest==="get pods"?"No pods. You sell donuts.":"kubectl: The cluster is a spreadsheet.";
   else if(h==="ping")out=rest==="linda"?"Request timed out. Linda is at lunch.":rest?"Request timed out.":"usage: ping <host>";
@@ -5562,6 +5592,7 @@ function devClose(){
   $("devterm").hidden=true;BK.armed=null;BK.open=false;
   if(DEV.prev==="play"){mode="play";if(DEV.unlocked)clipEv("cheat");} // back from the cheat menu: he saw that
   else if(DEV.prev==="review")review();
+  else if(DEV.prev==="title")titleScreen(); // git checkout day2 may have changed the menu
   DEV.prev=null;
 }
 $("devbtn").addEventListener("click",()=>{if($("devterm").hidden)devShow();else devClose();});
@@ -5584,7 +5615,9 @@ function silentBtn(){return HAS_SESSION?`<button class="btn ghost" data-act="sil
 function themeBtn(){const l=THEME==="light";return `<button class="btn ghost" data-act="theme" aria-label="${l?"Switch to dark mode":"Switch to light mode"}" title="${l?"Light mode. Click for dark mode":"Dark mode. Click for light mode"}">${l?"☀️":"🌙"}</button>`;}
 function logLevelBtn(){return `<button class="btn ghost" data-act="loglevel" title="${LOG_TIPS[LOGLV]} (click to change)">Logging level: ${LOG_LEVELS[LOGLV]}</button>`;}
 function togglePause(){
-  if(mode==="play"&&S.tut){mode="paused";show(`<h2>Paused</h2><p>The paperclip will wait. It's very patient. It's a paperclip.</p>
+  if(mode==="play"&&S.d2){mode="paused";show(`<h2>Paused</h2><p>${D2.pauseText()}</p>
+    <div class="row"><button class="btn" data-act="resume">Resume</button>${themeBtn()}${logLevelBtn()}${silentBtn()}<button class="btn ghost" data-act="d2retry">Restart this handover</button><button class="btn ghost" data-act="menu">Leave Day 2</button></div>`);}
+  else if(mode==="play"&&S.tut){mode="paused";show(`<h2>Paused</h2><p>The paperclip will wait. It's very patient. It's a paperclip.</p>
     <div class="row"><button class="btn" data-act="resume">Resume</button>${themeBtn()}${logLevelBtn()}${silentBtn()}<button class="btn ghost" data-act="menu">Leave tutorial</button></div>`);}
   else if(mode==="play"){mode="paused";show(`<h2>Paused</h2><p>The fires are paused too. This is the only time that happens.</p>
     <div class="row"><button class="btn" data-act="resume">Resume</button>${themeBtn()}${logLevelBtn()}${silentBtn()}<button class="btn ghost" data-act="restart">Restart run</button><button class="btn ghost" data-act="quit">Give up</button></div>
@@ -5612,6 +5645,7 @@ ov.addEventListener("click",e=>{
   if(b.dataset.avatar){setAvatar(b.dataset.avatar);return titleScreen();}
   if(b.dataset.diff){setDifficulty(b.dataset.diff,false);return titleScreen();}
   const a=b.dataset.act;
+  if(a&&/^d2/.test(a)&&D2)return D2.act(a); // Day 2 prototype screens
   if(a==="restorelog"){devShow();BK.open=true;bkRender();}
   else if(a==="start"){newRun();welcomeMail();}
   else if(a==="hired"){toast(`${diffLabel()} career. First client: ${client().name}${endDot(client().name)} Grab an app and carry it right.`);silentTip();play();}
@@ -5653,12 +5687,16 @@ let last=performance.now(),hudT=0;
 function frame(now){
   if(stale())return; // a newer copy of the game took over this page
   const dt=Math.min(0.05,(now-last)/1000);last=now;
-  if(mode==="play"){update(dt);backupTick();}else if(mode==="restoring")tickRestore(dt);else if(mode==="celebrate")tickCelebration(dt);else if(S)S.t+=dt*0.3;
-  if(AU.ctx){setHiss(mode==="play"&&!!S&&(spraying(S.ext)||!!(S.temp&&spraying(S.temp.ext))||agentSpraying()));heartTick();driveTick();}
+  if(mode==="play"){if(S.d2)D2.frame(dt);else{update(dt);backupTick();}}else if(mode==="restoring")tickRestore(dt);else if(mode==="celebrate")tickCelebration(dt);else if(S)S.t+=dt*0.3;
+  if(AU.ctx){setHiss(mode==="play"&&!!S&&(spraying(S.ext)||!!(S.temp&&spraying(S.temp.ext))||agentSpraying()||(!!S.d2&&D2.spraying())));heartTick();driveTick();}
   draw();
   if(now-hudT>100){hud();hudT=now;}
   requestAnimationFrame(frame);
 }
+/* Day 2 prototype (assets/day2.js, loaded before this script): it gets a bridge to what it reuses and comes back as D2.
+   Every Day 1 hook is behind S.d2, which only Day 2 sets. If the file didn't load, D2 is null and the menu hides it. */
+const D2=typeof window.LasDay2==="function"?window.LasDay2({get S(){return S},get mode(){return mode},set mode(v){mode=v},keys,W,H,RACKS,DESK,TIER,C,ctx,DISP,BODY,MONO,RM,BK,
+  tx,rr,em,bar,smallBubble,fl,toast,sfx,goTo,dist,clamp,$,K,show,play,newRun,update,vpMail,setMuffle,applyPatch,patchDue,noteRestored,ticketLimit,mkBot,logLv,decoT,doorCross,spraying,drawSpray}):null;
 newRun();titleScreen();requestAnimationFrame(frame);
 })();
 </script>
