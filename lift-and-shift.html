@@ -992,40 +992,14 @@ function setSound(on){
   if(on)sfx("click");
 }
 /* ---------- adaptive music: a tiny 16-step sequencer that changes mood with the situation ---------- */
-const MUS={on:true,bus:null,filt:null,step:0,next:0,mood:"calm",started:false};
+const MUS={on:true,bus:null,filt:null,step:0,next:0,mood:"calm",started:false,pos:{idx:0,bar:0},ss:0,gm:1};
 try{MUS.on=localStorage.getItem("liftshift-music")!=="off";}catch(e){}
 const mtof=m=>440*Math.pow(2,(m-69)/12);
 // chords are MIDI notes; each mood is 4 bars of 16 sixteenth-notes
 const MOODS={
   calm:{bpm:84,chords:[[60,64,67],[57,60,64],[53,57,60],[55,59,62]],bass:[0,8],arp:[0,6,12],hat:[4,12],kick:[0],snare:[],lead:"triangle",pad:true,arpLen:3,arpVol:0.035},
-  work:{bpm:112,chords:[[57,60,64],[53,57,60],[60,64,67],[55,59,62]],bass:[0,4,8,12],arp:[0,2,4,6,8,10,12,14],hat:[2,6,10,14],kick:[0,8],snare:[4,12],lead:"square"},
-  tense:{bpm:124,chords:[[57,60,64],[50,53,57],[52,56,59],[57,60,64]],bass:[0,2,4,6,8,10,12,14],arp:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],hat:[0,2,4,6,8,10,12,14],kick:[0,8,10],snare:[4,12],lead:"square"},
-  alert:{bpm:140,chords:[[50,53,57],[46,50,53],[43,46,50],[45,49,52]],bass:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],arp:[0,3,6,8,11,14],hat:[2,6,10,14],kick:[0,4,8,12],snare:[4,12],lead:"sawtooth",hop:true},
-  // the donut shop, under pressure: same tune, faster, with the tense sets' driving bass, 16th arps and hats
-  tenseDonut:{bpm:130,chords:[[53,57,60],[50,53,57],[46,50,53],[48,52,55]],bass:[0,2,4,6,8,10,12,14],bassUp:[2,6,10,14],arp:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],hat:[0,2,4,6,8,10,12,14],kick:[0,8,10],snare:[4,12],lead:"triangle",arpVol:0.026},
-  donut:{bpm:118,chords:[[53,57,60],[50,53,57],[46,50,53],[48,52,55]],bass:[0,3,8,11],arp:[0,3,4,7,8,11,12,15],hat:[2,6,10,14],kick:[0,8],snare:[4,12],lead:"triangle"},
   victory:{bpm:132,chords:[[60,64,67],[65,69,72],[67,71,74],[72,76,79]],bass:[0,4,8,12],arp:[0,2,4,6,8,10,12,14],hat:[2,6,10,14],kick:[0,4,8,12],snare:[4,12],lead:"square"},
-  /* Song set 2, "Ticket Funk": E minor, swung, with a lead melody. mel = per bar, [step, MIDI note, length in 16ths] */
-  work2:{bpm:104,swing:0.18,chords:[[52,55,59],[48,52,55],[55,59,62],[50,54,57]],bass:[0,3,6,10,12],bassUp:[6,12],arp:[2,6,10,14],hat:[0,2,4,6,8,10,12,14],kick:[0,7,10],snare:[4,12],lead:"triangle",arpVol:0.018,
-    mel:[[[0,71,3],[3,74,1],[4,71,2],[6,69,2],[8,67,4],[12,64,4]],[[0,67,2],[2,69,2],[4,71,4],[10,67,2],[12,64,4]],
-         [[0,74,3],[3,71,1],[4,74,2],[6,76,2],[8,74,4],[12,71,2],[14,69,2]],[[0,69,6],[6,66,2],[8,69,4],[12,62,4]]]},
-  tense2:{bpm:126,swing:0.06,chords:[[52,55,59],[48,52,55],[55,59,62],[50,54,57]],bass:[0,2,4,6,8,10,12,14],hop:true,arp:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],hat:[0,2,4,6,8,10,12,14],kick:[0,8,10],snare:[4,12],lead:"square",arpVol:0.024,melLead:"sawtooth",melVol:0.03},
-  alert2:{bpm:146,chords:[[52,55,59],[48,52,55],[55,59,62],[47,51,54]],bass:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],hop:true,arp:[0,3,6,8,11,14],hat:[2,6,10,14],kick:[0,4,8,12],snare:[4,12],lead:"sawtooth",arpVol:0.02,melLead:"square",melVol:0.034,
-    mel:[[[0,76,2],[2,79,2],[4,76,2],[6,74,2],[8,76,4],[12,71,4]],[[0,72,2],[2,76,2],[4,72,2],[6,71,2],[8,72,4],[12,67,4]],
-         [[0,74,2],[2,79,2],[4,74,2],[6,76,2],[8,79,4],[12,74,4]],[[0,75,2],[2,78,2],[4,75,2],[6,71,2],[8,75,4],[12,78,4]]]},
-  /* Song set 3, "Lo-fi Landing Zone": D major, laid back, sine-lead melody */
-  work3:{bpm:94,swing:0.14,chords:[[62,66,69],[59,62,66],[55,59,62],[57,61,64]],bass:[0,7,10],arp:[4,12],hat:[2,6,10,14],kick:[0,7,10],snare:[4,12],lead:"triangle",pad:true,padVol:0.02,arpLen:2,arpVol:0.02,melLead:"sine",melVol:0.06,
-    mel:[[[0,74,4],[4,76,2],[6,78,6],[12,76,4]],[[0,74,6],[6,71,2],[8,73,4],[12,74,4]],
-         [[0,71,4],[4,74,4],[8,79,6],[14,78,2]],[[0,76,8],[8,73,4],[12,69,4]]]},
-  tense3:{bpm:120,chords:[[62,66,69],[59,62,66],[55,59,62],[57,61,64]],bass:[0,2,4,6,8,10,12,14],bassUp:[2,6,10,14],arp:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],hat:[0,2,4,6,8,10,12,14],kick:[0,8,10],snare:[4,12],lead:"square",arpVol:0.024,melLead:"triangle",melVol:0.05},
-  alert3:{bpm:138,chords:[[62,65,69],[58,62,65],[55,59,62],[57,61,64]],bass:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],hop:true,arp:[0,3,6,8,11,14],hat:[2,6,10,14],kick:[0,4,8,12],snare:[4,12],lead:"sawtooth",arpVol:0.02,melLead:"square",melVol:0.034,
-    mel:[[[0,74,2],[2,77,2],[4,81,4],[8,77,2],[10,74,2],[12,77,4]],[[0,74,2],[2,77,2],[4,82,4],[8,77,2],[10,74,2],[12,70,4]],
-         [[0,74,2],[2,79,2],[4,83,4],[8,79,2],[10,74,2],[12,79,4]],[[0,73,2],[2,76,2],[4,81,6],[10,76,2],[12,73,4]]]},
 };
-// the escalated versions play the same tune as their song, faster and harder
-MOODS.tense2.mel=MOODS.work2.mel;MOODS.tense3.mel=MOODS.work3.mel;
-// each client plays one set: normal, tense and red-alert music that belong together; the set rotates client to client
-const SONG_SETS=[["work","tense","alert"],["work2","tense2","alert2"],["work3","tense3","alert3"]];
 function mNote(f,t,dur,type,vol){const c=AU.ctx,o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.connect(g);g.connect(MUS.filt);o.start(t);o.stop(t+dur+0.03);}
 function mDrum(kind,t){
   const c=AU.ctx;
@@ -1048,6 +1022,352 @@ function scheduleStep(step,t){
   if(M.snare.includes(s)||(hot&&bar===3&&s>=13))mDrum("snare",t);
   if(M.hat.includes(s)||hot)mDrum("hat",t);
 }
+/* ---------- Matt's song sets: the author's own band's songs, transcribed from MIDI ----------
+   Each was built and approved by ear as a preview page (.claude/music/<song>-preview.html, local only), using this same
+   synth; the data below is copied from those pages, and songStep() is their engine. A SONG is sections of bars played in
+   a form (A, A, bridge); a step is a 16th (Rain: 32 steps a bar; Sick Day: 12 steps of 3/4, beat 4). Per bar: chords
+   (a chord can change mid-bar: [chord, step, chord2]), mel/mel2/bassline [step, MIDI note, length in steps], stab (full-chord
+   hits), drums, sig (an off-grid signal line). Each song has three moods: Normal (chill: legato/thin smooth the melody),
+   Tense (with its own On fire layer, hot) and Red alert (faster, the song's alarm arpeggio bell/bellVoice; once it reaches
+   the bridge it holds it, loopBridge). B = changes in the bridge; form = a mood's own form (8 Bit Love).
+   The song's position (MUS.pos) carries across its mood changes; a new song starts from its top. */
+const SONGS={};
+SONGS.experiment=(()=>{ // The Experiment
+/* ---- the song: sections are lists of bars; each bar has a chord and melody [step, MIDI note, length in 16ths] ---- */
+const Cm=[60,63,67],F=[53,57,60],Ab=[56,60,63],Bb=[58,62,65],G=[55,62,67]; // G is a power chord: the song never uses B
+const SONG={
+  form:["A","A","B"],
+  A:{name:"A section",note:"hook (bars 93–100 of the MIDI)",chords:[Cm,F,Ab,Bb,Cm,F,Ab,G],names:["Cm","F","A♭","B♭","Cm","F","A♭","G"],
+    mel:[[[4,75,3],[8,75,2],[10,74,4],[14,72,2]],[[2,72,2],[4,75,4],[8,75,2],[10,74,6]],
+         [[4,75,3],[8,75,2],[10,74,2],[12,72,2],[14,77,2]],[[2,72,2],[4,75,2],[6,77,2],[8,79,2],[10,82,2],[12,77,2],[14,79,2]],
+         [[4,75,3],[8,75,2],[10,74,4],[14,72,2]],[[4,75,3],[8,75,2],[10,74,6]],
+         [[4,75,3],[8,75,2],[10,74,2],[14,72,2]],[[4,77,3],[8,77,2],[10,72,6]]]},
+  B:{name:"Bridge",note:"lead line (bars 79–86)",chords:[Ab,Bb,Cm,F,Ab,G,Cm,Bb],names:["A♭","B♭","Cm","F","A♭","G","Cm","B♭"],
+    mel:[[[11,75,1],[12,75,2],[14,77,1],[15,75,1]],
+         [[1,74,1],[2,77,2],[4,75,2],[6,77,2],[8,79,2],[10,84,2],[12,79,2],[14,77,2]],
+         [[2,72,2],[4,75,2],[6,72,2],[8,75,2],[10,86,2],[12,67,2],[14,72,2]],
+         [[2,72,2],[4,75,2],[6,69,2],[8,75,2],[10,74,2],[12,77,2],[14,74,2]],
+         [[2,67,1],[3,70,1],[4,75,2],[6,70,2],[8,75,2],[10,74,2],[12,75,2],[14,70,2]],
+         [[4,77,2],[6,67,2],[8,77,2],[10,72,2],[12,77,2],[14,72,2]],
+         [[2,72,2],[4,75,2],[6,72,2],[8,75,2],[10,86,2],[12,67,2],[14,72,2]],
+         [[2,74,2],[4,75,2],[7,74,1],[8,75,2],[10,86,2],[12,75,2],[14,74,2]]]},
+};
+const ALL=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],EIGHTHS=[0,2,4,6,8,10,12,14];
+const MOODS={
+  work4:{bpm:112,legato:true,thin:true,bass:[0,8],bassUp:[],arp:[0,4,8,12],arpLen:3,arpVol:0.016,pad:true,padVol:0.018,hat:[2,6,10,14],kick:[0,8],snare:[4,12],lead:"triangle",melLead:"triangle",melVol:0.05,
+    B:{kick:[0],snare:[8],hat:[4,12],bass:[0],arp:[0,8],arpLen:6,padVol:0.026,melVol:0.04}}, // half-time breakdown
+  tense4:{bpm:136,bass:EIGHTHS,hop:true,arp:ALL,hat:EIGHTHS,kick:[0,5,8,13],snare:[4,12],lead:"square",arpVol:0.022,melLead:"sawtooth",melVol:0.03,
+    B:{arp:EIGHTHS,pad:true,padVol:0.02},
+    // on fire: rolling 16th bass, the pulse jumps up an octave, a loud octave over the lead, and a snare on every off-beat quarter
+    hot:{bass:ALL,arpShift:12,arpVol:0.02,hotVol:0.032,snare:[4,12,14]}},
+  // Red alert kick in 3-3-2 groups (Matt, 2026-11-25): no faster, never more kicks than before
+  alert4:{bpm:160,loopBridge:true, // red alert: once the song reaches the bridge, it stays there until the alert is over
+    bell:ALL,bellShift:12,bellVoice:"pluck",bellVol:0.014,bass:ALL,hop:true,arp:[],hat:[2,6,10,14],kick:[0,6,12],snare:[4,12],lead:"sawtooth",melLead:"square",melVol:0.034,melShift:12,
+    B:{melShift:0,melVol:0.03}},
+};
+return{title:"The Experiment",SONG,normal:MOODS.work4,tense:MOODS.tense4,alert:MOODS.alert4};})();
+SONGS.sickDay=(()=>{ // Sick Day
+/* ---- the song. A game bar = a song bar (3/4); a step = a 16th, 4 to the beat. mel = per bar [step, MIDI note, length in steps] ---- */
+const Bbm=[58,61,65],Fm=[53,56,60],EbG=[55,58,63],AbG=[56,60,63],Ab=[56,60,63],Abmaj7=[56,60,63,67],FmEb=[53,56,60],CmEb=[55,60,63],FA=[57,60,65],Db=[56,61,65],EbBb=[55,58,63];
+// Matt's pick (2026-11-25): A = the intro theme, bridge = the riff. The other candidates are in the preview page.
+const F5=[53,60,65],Db5=[49,56,61],Bb5=[58,65,70],C5=[48,55,60],Cm_=[60,63,67],Db_=[61,65,68],Eb=[63,67,70],CmG=[55,60,63],DbAb=[56,61,65];
+const SONG={
+  steps:12,beat:4,legMax:12,form:["A","A","B"],
+  A:{name:"A section",note:"bars 1–6: the celesta's opening theme, quarter notes, over an F pedal; it was written in 4/4 and lands as four 3/4 bars",
+    chords:[Db_,Eb,Cm_,Fm,Db_,Eb,Cm_,Fm],names:["D♭/F","E♭/F","Cm/F","Fm","D♭/F","E♭/F","Cm/F","Fm"],
+    mel:[[[0,73,4],[4,77,4],[8,80,4]],[[0,75,4],[4,79,4],[8,82,4]],[[0,72,4],[4,75,4],[8,79,4]],[[0,72,4],[4,77,4],[8,80,4]],[[0,73,4],[4,77,4],[8,80,4]],[[0,75,4],[4,79,4],[8,82,4]],[[0,72,4],[4,75,4],[8,79,4]],[[0,72,4],[4,77,4],[8,80,4]]],bassline:[[[0,41,4],[4,41,4],[8,41,4]],[[0,41,4],[4,41,4],[8,41,4]],[[0,41,4],[4,41,4],[8,41,4]],[[0,41,4],[4,41,4],[8,41,4]],[[0,41,4],[4,41,4],[8,41,4]],[[0,41,4],[4,41,4],[8,41,4]],[[0,41,4],[4,41,4],[8,41,4]],[[0,41,4],[4,41,4],[8,41,4]]]},
+  B:{name:"Bridge",note:"bars 177–192: the synth riff (F, C, E♭) over the climbing bass, with the celesta's held notes; mid chords on beats 2 and 3 and a gritty bass octave",
+    stab:Array(16).fill([4,8]),stabLead:"sawtooth",stabVol:0.016,stabLen:2,bassGrit:0.03, // the riff alone leaves the middle empty: an oom-pah-pah comp and a saw an octave over the bass
+    chords:[Fm,Fm,CmG,CmG,Ab,Ab,EbG,EbG,Fm,Fm,CmG,CmG,FA,FA,FA,FA],names:["Fm","Fm","Cm/G","Cm/G","A♭","A♭","E♭","E♭","Fm","Fm","Cm/G","Cm/G","F/A","F/A","F/A","F/A"],
+    mel:[[[6,65,6]],[[0,65,4],[4,72,2],[6,72,2],[8,75,2],[10,75,2]],[[0,65,4],[4,65,4],[8,65,4]],[[0,65,4],[4,72,2],[6,72,2],[8,75,2],[10,75,2]],[[0,65,4],[4,65,4],[8,65,1],[10,65,2]],[[0,65,4],[4,75,2],[6,75,2],[8,72,2],[10,72,2]],[[0,65,2],[2,65,2],[6,65,4],[10,65,2]],[[2,65,2],[4,77,2],[6,77,2],[10,72,2]],[[0,65,2],[2,65,2],[4,65,4]],[[0,65,2],[2,65,2],[4,72,2],[6,72,2],[8,75,2],[10,75,2]],[[0,65,2],[2,65,2],[4,65,4],[8,65,4]],[[0,65,4],[6,75,4],[10,72,2]],[[6,65,4],[10,65,2]],[[0,65,4],[6,77,4],[10,72,2]],[[0,72,4],[4,65,2],[6,77,2],[8,77,4]],[[0,72,4],[4,77,2],[6,65,2],[8,72,4]]],mel2:[[],[],[],[],[[0,75,12]],[],[[0,75,12]],[],[[0,80,12]],[],[[0,75,12]],[],[[0,80,12]],[],[],[]],bassline:[[[0,41,2],[2,41,2],[4,41,2],[6,41,2],[8,41,2],[10,41,2]],[[0,41,2],[2,41,2],[4,41,2],[6,41,2],[8,41,2],[10,41,2]],[[0,43,2],[2,43,2],[4,43,2],[6,43,2],[8,43,2],[10,43,2]],[[0,43,2],[2,43,2],[4,43,2],[6,43,2],[8,43,2],[10,43,2]],[[0,44,2],[2,44,2],[4,44,2],[6,44,2],[8,44,2],[10,44,2]],[[0,44,2],[2,44,2],[4,44,2],[6,44,2],[8,44,2],[10,44,2]],[[0,39,2],[2,39,2],[4,39,2],[6,39,2],[8,39,2],[10,39,2]],[[0,39,2],[2,39,2],[4,39,2],[6,39,2],[8,39,2],[10,39,2]],[[0,41,2],[2,41,2],[4,41,2],[6,41,2],[8,41,2],[10,41,2]],[[0,41,2],[2,41,2],[4,41,2],[6,41,2],[8,41,2],[10,41,2]],[[0,43,2],[2,43,2],[4,43,2],[6,43,2],[8,43,2],[10,43,2]],[[0,43,2],[2,43,2],[4,43,2],[6,43,2],[8,43,2],[10,43,2]],[[0,45,2],[2,45,2],[4,45,2],[6,45,2],[8,45,2],[10,45,2]],[[0,45,2],[2,45,2],[4,45,2],[6,45,2],[8,45,2],[10,45,2]],[[0,45,2],[2,45,2],[4,45,2],[6,45,2],[8,45,2],[10,45,2]],[[0,45,2],[2,45,2],[4,45,2],[6,45,2],[8,45,2],[10,45,2]]]},
+};
+const ALL=[0,1,2,3,4,5,6,7,8,9,10,11],E=[0,2,4,6,8,10]; // 16ths and 8ths in a 3/4 bar
+const MOODS={
+  work12:{bpm:112,legato:true,thin:2,bass:[0],bassUp:[],arp:[0,4,8],arpLen:3,arpVol:0.016,stab:null,pad:true,padVol:0.018,hat:[4,10],kick:[0],snare:[6],lead:"triangle",melLead:"triangle",melVol:0.05,mel2Lead:"sine",mel2Vol:0.024,
+    B:{kick:[0],snare:[],hat:[6],arp:[],padVol:0.024,mel2Vol:0.018}}, // half-time
+  tense12:{bpm:160,bass:E,bassDrive:E,arp:[],stab:null,hat:E,kick:[0,6],snare:[6],lead:"square",melLead:"sawtooth",melVol:0.03,mel2Lead:"triangle",mel2Vol:0.022,
+    B:{pad:true,padVol:0.02},
+    hot:{bassDrive:ALL,arp:ALL,arpShift:12,arpVol:0.014,hotVol:0.03,snare:[6,10]}},
+  alert12:{bpm:180,loopBridge:true, // red alert: once the song reaches the bridge, it stays there until the alert is over
+    bass:ALL,bassDrive:E,arp:[],bell:ALL,bellShift:12,bellVoice:"beep",bellVol:0.014,stab:null,hat:[2,10],kick:[0,4,6,8],snare:[6],lead:"square",melLead:"square",melVol:0.03,mel2Lead:"triangle",mel2Vol:0.02},
+};
+return{title:"Sick Day",SONG,normal:MOODS.work12,tense:MOODS.tense12,alert:MOODS.alert12};})();
+SONGS.sos=(()=>{ // S.O.S.
+/* ---- the song. A game bar = a song bar (144 BPM, the real tempo); a step = a 16th. mel = per bar [step, MIDI note, length in steps] ---- */
+const Bb=[58,62,65],Db=[61,65,68],Gb=[58,61,66],Ab=[56,60,63],F=[57,60,65];
+// two parts of the song, both on B♭, D♭, G♭, A♭ (all major): the tune (A) and the breakdown (bridge)
+// sig: per bar [step (may fall between steps), MIDI note, length in steps]; played as is in every mood (no smoothing)
+const SOS=(n=>[[0,n,0.8],[1,n,0.8],[2,n,0.8],[4,n,1.8],[6,n,1.8],[8,n,1.8],[12,n,0.8],[13,n,0.8],[14,n,0.8]])(82); // B♭5, as Matt wrote it out: beat 1 three 16ths + a 16th rest, beat 2 two 8ths, beat 3 an 8th + an 8th rest, beat 4 three 16ths + a 16th rest
+const PARTS={
+  tune:{name:"Tune",note:"bars 28–35: the electric piano tune over the full band, the synth's repeated 16ths above it",chords:[Bb,Db,Ab,Gb,Bb,Db,Gb,Ab],names:["B♭","D♭","A♭","G♭","B♭","D♭","G♭","A♭"],
+    mel:[[[4,65,1],[6,58,1],[8,65,1],[10,66,1],[14,66,1]],[[2,65,2],[8,65,1]],[[4,65,1],[8,65,1],[10,66,1],[14,66,2]],[[2,65,2],[8,72,1]],[[4,65,1],[6,58,1],[8,65,1],[10,66,1],[14,66,1]],[[2,65,2],[8,65,1]],[[4,65,1],[8,65,1],[10,66,1],[14,66,2]],[[2,65,2],[8,72,1]]],mel2:[[[1,70,1],[2,70,1],[3,70,1],[4,70,1],[5,70,1],[6,70,1],[7,70,1],[8,70,1],[9,70,1],[10,70,1],[11,70,1],[12,70,1],[14,70,1]],[[0,72,1],[1,72,1],[2,72,1],[3,72,1],[4,72,1],[5,72,1],[6,72,1],[7,72,1],[8,72,1],[9,72,1],[10,72,1],[11,72,1],[12,72,1],[13,72,1],[14,72,1],[15,73,1]],[[0,73,1],[1,73,1],[2,73,1],[3,73,1],[4,73,1],[5,73,1],[6,73,1],[7,73,1],[8,73,1],[9,73,1],[10,73,1],[11,73,1],[12,73,1],[13,73,1],[14,73,1]],[[0,72,1],[1,72,1],[2,72,1],[3,72,1],[4,72,1],[5,72,1],[6,72,1],[7,72,1],[8,72,1],[9,72,1],[10,72,1],[11,72,1],[12,72,1],[13,72,1],[14,73,1]],[[1,70,1],[2,70,1],[3,70,1],[4,70,1],[5,70,1],[6,70,1],[7,70,1],[8,70,1],[9,70,1],[10,70,1],[11,70,1],[12,70,1],[14,70,1]],[[0,72,1],[1,72,1],[2,72,1],[3,72,1],[4,72,1],[5,72,1],[6,72,1],[7,72,1],[8,72,1],[9,72,1],[10,72,1],[11,72,1],[12,72,1],[13,72,1],[14,72,1],[15,73,1]],[[0,73,1],[1,73,1],[2,73,1],[3,73,1],[4,73,1],[5,73,1],[6,73,1],[7,73,1],[8,73,1],[9,73,1],[10,73,1],[11,73,1],[12,73,1],[13,73,1],[14,73,1]],[[0,72,1],[1,72,1],[2,72,1],[3,72,1],[4,72,1],[5,72,1],[6,72,1],[7,72,1],[8,72,1],[9,72,1],[10,72,1],[11,72,1],[12,72,1],[13,72,1],[14,73,1]]],bassline:[[[0,46,16]],[[0,37,16]],[[0,44,16]],[[0,42,16]],[[0,46,16]],[[0,37,16]],[[0,42,16]],[[0,44,16]]]},
+  breakdown:{name:"Breakdown",sig:[SOS,[],SOS,[],SOS,[],SOS,[]],note:"bars 53–60: the big held chords, where the drums go full tilt, and the S.O.S. signal on one note in every other bar",chords:[Bb,Db,Gb,Ab,Bb,Db,Gb,Ab],names:["B♭","D♭","G♭","A♭","B♭","D♭","G♭","A♭"],
+    mel:[[[0,63,16]],[[0,70,16]],[[0,68,16]],[[0,60,16]],[[0,63,16]],[[0,70,16]],[[0,68,16]],[[0,65,16]]],bassline:[[[0,46,12],[12,46,2],[14,41,2]],[[0,37,12],[12,46,2],[14,41,2]],[[0,42,12],[12,46,2],[14,41,2]],[[0,44,12],[12,46,2],[14,41,2]],[[0,46,12],[12,46,2],[14,41,2]],[[0,37,12],[12,46,2],[14,41,2]],[[0,42,12],[12,46,2],[14,41,2]],[[0,44,12],[12,46,2],[14,41,2]]]},
+};
+const SONG={steps:16,form:["A","A","B"],A:PARTS.tune,B:PARTS.breakdown};
+const ALL=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],EIGHTHS=[0,2,4,6,8,10,12,14];
+const MOODS={
+  work15:{bpm:112,sigVol:0.016,legato:true,thin:true,bass:[0,8],bassUp:[],arp:[0,4,8,12],arpLen:3,arpVol:0.016,stab:null,pad:true,padVol:0.018,hat:[2,6,10,14],kick:[0,8],snare:[4,12],lead:"triangle",melLead:"triangle",melVol:0.05,mel2Lead:"sine",mel2Vol:0.02,
+    B:{kick:[0],snare:[8],hat:[4,12],arp:[0,8],arpLen:6,padVol:0.024}}, // half-time
+  tense15:{bpm:144,sigVol:0.026,bass:EIGHTHS,bassDrive:EIGHTHS,arp:[],stab:null,hat:EIGHTHS,kick:[0,4,8,12],snare:[4,12],lead:"square",melLead:"sawtooth",melVol:0.03,mel2Lead:"triangle",mel2Vol:0.018,
+    B:{pad:true,padVol:0.02},
+    hot:{bassDrive:ALL,arp:ALL,arpShift:12,arpVol:0.014,hotVol:0.03,snare:[4,12,14]}},
+  // Red alert kick in 3-3-2 groups, as on every 4/4 song
+  alert15:{bpm:168,sigVol:0.034,sigOct:true, // the S.O.S. signal gets louder each stage; Red alert doubles it an octave up
+    loopBridge:true, // red alert: once the song reaches the bridge, it stays there until the alert is over
+    bass:ALL,bassDrive:EIGHTHS,arp:[],bell:ALL,bellShift:12,bellVoice:"bell",bellVol:0.014,stab:null,hat:[2,6,10,14],kick:[0,6,12],snare:[4,12],lead:"square",melLead:"square",melVol:0.03,mel2Lead:"triangle",mel2Vol:0.018},
+};
+return{title:"S.O.S.",SONG,normal:MOODS.work15,tense:MOODS.tense15,alert:MOODS.alert15};})();
+SONGS.rain=(()=>{ // Rain
+/* ---- the song. A game bar = two MIDI bars; a step = a MIDI 16th (a 32nd here). mel = per bar [step, MIDI note, length in steps] ---- */
+const Am=[57,60,64],G=[55,59,62],F=[53,57,60],Dm=[62,65,69],Cmaj7=[60,64,67,71],G7=[55,59,62,65],Em=[64,67,71];
+const SONG={
+  steps:32,form:["A","A","B"],
+  A:{name:"A section",note:"bars 71–86: the synth riff bouncing off E over the bass walk (E, D, C into each root)",chords:[Am,Am,G,G,F,F,Dm,Dm],names:["Am","Am","G","G","F","F","Dm","Dm"],
+    mel:[[[0,71,2],[2,64,2],[4,71,2],[6,64,2],[8,71,2],[10,64,2],[12,72,2],[14,64,2],[16,72,2],[18,72,2],[20,72,2],[22,72,2],[24,72,2],[26,72,2],[28,72,2],[30,64,2]],[[0,71,2],[2,72,2],[4,72,2],[6,64,2],[8,64,2],[10,62,2],[12,72,2],[14,64,2],[16,72,2],[18,72,2],[20,72,2],[22,72,2],[24,72,2],[26,72,2],[28,72,2],[30,72,2]],[[0,71,2],[2,64,2],[4,71,2],[6,64,2],[8,71,2],[10,64,2],[12,72,2],[14,64,2],[16,72,2],[18,72,2],[20,72,2],[22,72,2],[24,72,2],[26,72,2],[28,72,2],[30,64,2]],[[0,71,2],[2,64,2],[4,71,2],[6,64,2],[8,71,2],[10,64,2],[12,72,1],[13,72,1],[14,64,2],[16,72,2],[18,64,2],[20,72,2],[22,64,2],[24,72,2],[26,62,2],[28,72,2],[30,64,2]],[[0,71,2],[2,62,2],[4,71,2],[6,62,2],[8,71,2],[10,62,2],[12,71,2],[14,64,2],[16,71,2],[18,62,2],[20,71,2],[22,64,2],[24,72,2],[26,62,2],[28,72,2],[30,64,2]],[[0,71,2],[2,62,2],[4,71,2],[6,62,2],[8,71,2],[10,62,2],[12,71,2],[14,64,2],[16,71,2],[18,62,2],[20,71,2],[22,64,2],[24,72,2],[26,62,2],[28,72,2],[30,64,2]],[[0,71,2],[2,62,2],[4,71,2],[6,60,2],[8,71,2],[10,60,2],[12,69,2],[14,60,2],[16,69,2],[18,60,2],[20,69,2],[22,60,2],[24,69,2],[26,60,2],[28,69,2],[30,60,2]],[[0,71,2],[2,60,2],[4,71,2],[8,71,2],[10,60,2],[12,69,2],[14,59,2],[16,69,2],[18,60,2],[20,69,2],[22,60,2],[24,69,2],[26,60,2],[28,69,2],[30,60,2]]],
+    mel2:[[[8,64,2],[16,64,2],[18,62,2],[20,60,2],[22,64,2],[24,64,2],[26,62,2],[28,60,2]],[[0,64,2],[2,62,2],[4,60,2],[16,64,2],[18,62,2],[20,60,2],[22,64,2],[24,64,2],[26,62,2],[28,60,2],[30,64,2]],[[0,64,2],[2,62,2],[4,60,2],[8,64,2],[16,64,2],[18,62,2],[20,60,2],[22,64,2],[24,64,2],[26,62,2],[28,60,2]],[[0,64,2],[2,62,2],[4,60,2],[8,64,2],[12,60,1],[13,60,1],[16,64,2],[24,64,2],[30,60,2]],[[0,64,2],[8,64,2],[12,60,2],[16,64,2],[20,60,2],[24,64,2],[28,60,2]],[[0,64,2],[8,64,2],[12,60,2],[16,64,2],[20,60,2],[24,64,2],[30,60,2]],[[8,62,2],[12,59,2],[20,59,2],[24,62,2],[28,59,2]],[[4,59,2],[8,62,2],[12,60,2],[24,62,2],[28,59,2]]], // the lower note of the riff's pairs
+    bassline:[[[0,45,4],[6,45,2],[8,52,2],[10,50,2],[12,48,2],[14,45,6],[20,45,4],[24,52,2],[26,50,2],[28,48,2],[30,45,2]],[[4,45,4],[8,52,2],[10,50,2],[12,48,2],[14,57,2],[16,45,4],[20,45,4],[24,52,2],[26,50,2],[28,48,2],[30,57,2]],[[0,43,4],[4,52,2],[6,43,2],[8,52,2],[10,50,2],[12,48,2],[14,55,2],[16,43,4],[20,43,4],[24,52,2],[26,50,2],[28,48,2],[30,43,2]],[[4,43,4],[8,52,2],[10,50,2],[12,48,1],[13,55,1],[16,43,4],[20,52,2],[22,43,2],[24,52,2],[26,50,4],[30,48,2]],[[0,41,4],[6,41,2],[8,52,2],[10,50,2],[12,48,2],[14,53,2],[16,41,4],[22,41,2],[24,52,2],[26,50,2],[28,48,2],[30,53,2]],[[0,41,4],[6,41,2],[8,52,2],[10,50,2],[12,48,2],[14,53,2],[16,41,4],[22,41,2],[24,52,2],[26,50,4],[30,48,2]],[[0,38,4],[6,38,2],[8,50,2],[10,48,2],[12,47,2],[14,59,2],[16,38,4],[20,38,4],[24,50,2],[26,48,2],[28,47,4]],[[0,38,4],[6,38,2],[8,50,2],[10,48,2],[14,47,2],[16,38,4],[22,38,2],[24,50,2],[26,48,2],[28,47,4]]]},
+  B:{name:"Bridge",note:"bars 21–36: the intro's raindrop arpeggio",chords:[[Cmaj7,16,Am],[Cmaj7,16,Am],[Cmaj7,16,Am],[Cmaj7,16,Am],[G7,16,Em],[G7,16,Em],[G7,16,Am],[G7,16,Am]],names:["Cmaj7 · Am","Cmaj7 · Am","Cmaj7 · Am","Cmaj7 · Am","G7 · Em","G7 · Em","G7 · Am","G7 · Am"],
+    mel:[[[0,60,2],[2,71,1],[3,67,1],[4,64,2],[6,71,1],[7,67,1],[8,64,2],[10,71,1],[11,67,1],[12,64,2],[14,72,1],[15,69,1],[16,64,2],[18,72,1],[19,69,1],[20,72,2],[22,72,1],[23,69,1],[24,72,2],[26,72,1],[27,69,1],[28,72,2],[30,72,1],[31,69,1]],[[0,72,2],[2,71,1],[3,67,1],[4,72,2],[6,71,1],[7,67,1],[8,71,2],[10,71,1],[11,67,1],[12,71,2],[14,72,1],[15,69,1],[16,64,2],[18,72,1],[19,69,1],[20,72,2],[22,72,1],[23,69,1],[24,72,2],[26,72,1],[27,69,1],[28,72,2],[30,72,1],[31,69,1]],[[0,72,2],[2,71,1],[3,67,1],[4,72,2],[6,71,1],[7,67,1],[8,71,2],[10,71,1],[11,67,1],[12,71,2],[14,72,1],[15,69,1],[16,72,2],[18,72,1],[19,69,1],[20,72,2],[22,72,1],[23,69,1],[24,72,2],[26,72,1],[27,69,1],[28,72,2],[30,72,1],[31,69,1]],[[0,72,2],[2,71,1],[3,67,1],[4,72,2],[6,71,1],[7,67,1],[8,71,2],[10,71,1],[11,67,1],[12,71,2],[14,72,1],[15,69,1],[16,72,2],[18,72,1],[19,69,1],[20,72,2],[22,72,1],[23,69,1],[24,72,2],[26,72,1],[27,69,1],[28,72,2],[30,72,1],[31,69,1]],[[0,72,2],[2,71,1],[3,65,1],[4,72,2],[6,71,1],[7,65,1],[8,71,2],[10,71,1],[11,65,1],[12,71,2],[14,71,1],[15,67,1],[16,71,2],[18,71,1],[19,67,1],[20,71,2],[22,71,1],[23,67,1],[24,71,2],[26,72,1],[27,69,1],[28,72,2],[30,72,1],[31,69,1]],[[0,72,2],[2,71,1],[3,65,1],[4,72,2],[6,71,1],[7,65,1],[8,71,2],[10,71,1],[11,65,1],[12,71,2],[14,71,1],[15,67,1],[16,71,2],[18,71,1],[19,67,1],[20,71,2],[22,71,1],[23,67,1],[24,71,2],[26,72,1],[27,69,1],[28,72,2],[30,72,1],[31,69,1]],[[0,72,2],[2,71,1],[3,65,1],[4,72,2],[6,71,1],[7,65,1],[8,71,2],[10,71,1],[11,65,1],[12,71,2],[14,69,1],[15,64,1],[16,60,2],[18,69,1],[19,64,1],[20,60,2],[22,69,1],[23,64,1],[24,60,2],[26,69,1],[27,64,1],[28,60,2],[30,69,1],[31,64,1]],[[0,60,2],[2,71,1],[3,65,1],[4,69,2],[6,71,1],[7,65,1],[8,71,2],[10,71,1],[11,65,1],[12,71,2],[14,69,1],[15,64,1],[16,60,2],[18,69,1],[19,64,1],[20,60,2],[22,69,1],[23,64,1],[24,60,2],[26,69,1],[27,64,1],[28,60,2],[30,69,1],[31,64,1]]],
+    mel2:[[[20,64,2],[24,64,2],[28,64,2]],[[0,64,2],[4,64,2],[8,64,2],[12,64,2],[20,64,2],[24,64,2],[28,64,2]],[[0,64,2],[4,64,2],[8,64,2],[12,64,2],[16,64,2],[20,64,2],[24,64,2],[28,64,2]],[[0,64,2],[4,64,2],[8,64,2],[12,64,2],[16,64,2],[20,64,2],[24,64,2],[28,64,2]],[[0,64,2],[4,62,2],[8,62,2],[12,62,2],[16,64,2],[20,64,2],[24,64,2],[28,64,2]],[[0,64,2],[4,62,2],[8,62,2],[12,62,2],[16,64,2],[20,64,2],[24,64,2],[28,64,2]],[[0,64,2],[4,62,2],[8,62,2],[12,62,2]],[[8,62,2],[12,62,2]]],
+    bassline:[[[0,48,8],[8,48,4],[12,60,4],[16,45,8],[24,45,4],[28,57,4]],[[0,48,8],[8,48,4],[12,60,4],[16,45,8],[24,45,4],[28,57,4]],[[0,48,8],[8,48,4],[12,60,4],[16,45,8],[24,45,4],[28,57,4]],[[0,48,8],[8,48,4],[12,60,4],[16,45,8],[24,45,4],[28,57,4]],[[0,43,8],[8,43,4],[12,55,4],[16,40,8],[24,40,4],[28,52,4]],[[0,43,8],[8,43,4],[12,55,4],[16,40,8],[24,40,4],[28,52,4]],[[0,43,8],[8,43,4],[12,55,4],[16,45,8],[24,45,4],[28,57,4]],[[0,43,8],[8,43,4],[12,55,4],[16,45,8],[24,45,4],[28,57,4]]]}, // the MIDI has no bass here: roots with an octave hop, written
+};
+const E16=Array.from({length:16},(_,i)=>i*2),E8=Array.from({length:8},(_,i)=>i*4); // 16ths and 8ths on the 32-step grid
+const MOODS={
+  work11:{bpm:100,legato:true,thin:8, // thin 8: quarter notes only, a sparer melody (Matt)
+    bass:[0,16],bassUp:[],arp:[0,8,16,24],arpLen:6,arpVol:0.016,stab:null,pad:true,padVol:0.018,hat:[4,12,20,28],kick:[0,16],snare:[8,24],lead:"triangle",melLead:"triangle",melVol:0.05,mel2Lead:"sine",mel2Vol:0.03,
+    B:{kick:[0],snare:[16],hat:[8,24],arp:[],thin:2,padVol:0.024,melVol:0.04}}, // half-time; the rain keeps its 16ths
+  tense11:{bpm:120,bass:E8,bassDrive:E8,arp:[],stab:null,hat:E8,kick:[0,10,16,20,26],snare:[8,24],lead:"square",melLead:"sawtooth",melVol:0.03,mel2Lead:"triangle",mel2Vol:0.024,
+    B:{pad:true,padVol:0.02},
+    hot:{bassDrive:E16,arp:E16,arpShift:12,arpVol:0.014,hotVol:0.03,snare:[8,24,28]}},
+  // Red alert kick in 3-3-2 groups (Matt, 2026-11-25): no faster, never more kicks than before
+  alert11:{bpm:150,loopBridge:true, // red alert: once the song reaches the bridge, it stays there until the alert is over
+    bass:E16,bassDrive:E16,arp:[],bell:E16,bellShift:12,bellVoice:"pluck",bellVol:0.014,stab:null,hat:[4,12,20,28],kick:[0,6,12,16,22,28],snare:[8,24],lead:"square",melLead:"square",melVol:0.03,mel2Lead:"triangle",mel2Vol:0.024,
+    B:{melVol:0.026}},
+};
+return{title:"Rain",SONG,normal:MOODS.work11,tense:MOODS.tense11,alert:MOODS.alert11};})();
+SONGS.journey=(()=>{ // Journey
+/* ---- the song. A game bar = a song bar; a step = a song 16th. mel = per bar [step, MIDI note, length in steps] ---- */
+const Csm=[61,64,68],Fsm=[66,69,73],Gs=[68,72,75],B_=[59,63,66],Cs=[61,65,68];
+// A: the synth riff, bars 205–220 (two MIDI bars per bar here). mel = the line, mel2 = the octave the MIDI doubles it with
+const RIFF=[[0,73,1],[2,71,2],[4,73,2],[6,71,1],[7,72,1],[8,73,1],[14,68,1],[15,71,1]],RIFF_HI=[[2,83,2],[4,85,2]];
+// bridge: the clarinet theme, bars 109–124 (107 is its first statement, before the phrase). F F♯ G♯ then F; bar 8 climbs to C♯ again; the echo answers an octave down in the empty half
+const fig=(a,last)=>[[0,a,2],[2,78,2],[4,80,2],[6,last,2]];
+const THEME=[fig(77,77),fig(77,77),fig(77,77),[[0,77,2],[2,78,2],[4,80,3],[7,89,5]],fig(76,76),[[0,76,2],[2,78,2],[4,80,4]],[[0,77,2],[2,78,2],[4,80,2],[6,77,1],[7,89,5]],fig(77,85)];
+const echo=b=>b.map(([s,n,l])=>[s+8,n-12,Math.min(l,8-s)]).filter(([s])=>s<16);
+const pedal=[[0,37,2],[2,42,1],[3,44,1],[4,37,4],[8,37,2],[10,42,1],[11,44,1],[12,37,4]]; // C♯ with the F♯, G♯ pickups
+const SONG={
+  steps:16,form:["A","A","B"],
+  A:{name:"A section",note:"bars 205–220: the synth riff, the repeated A, up to G♯ and B",chords:[Csm,Csm,Csm,Csm,Fsm,Fsm,Gs,B_],names:["C♯m","C♯m","C♯m","C♯m","F♯m","F♯m","G♯","B"],
+    mel:[RIFF,RIFF,RIFF,[[0,73,1],[2,71,2],[4,73,2],[6,71,1],[7,72,1],[8,73,1],[12,73,1]],
+         [[0,69,1],[1,69,1],[2,69,1],[3,69,1],[4,69,1],[5,69,1],[6,69,1],[7,81,1],[8,69,1],[9,69,1],[10,69,1],[11,69,1],[12,69,1],[13,69,1],[14,69,1],[15,81,1]],
+         [[0,66,1],[2,66,1],[3,66,1],[4,66,1],[6,66,1],[7,68,2],[10,68,1],[11,80,1],[12,68,1],[13,68,1],[14,68,1],[15,80,1]],
+         RIFF,[[0,73,1],[2,71,2],[4,73,2],[6,71,1],[7,72,1],[8,73,1],[10,68,1],[11,71,1],[12,73,1],[13,66,1],[14,68,1],[15,71,1]]],
+    mel2:[RIFF_HI,RIFF_HI,RIFF_HI,RIFF_HI,[],[],RIFF_HI,[[2,83,2],[4,85,2],[10,80,1],[11,83,1],[12,85,1],[13,78,1],[14,80,1],[15,83,1]]]},
+  B:{name:"Bridge",note:"bars 109–124: the clarinet theme over a C♯ pedal, with an echo",chords:[Cs,Cs,Cs,Cs,Csm,Csm,Cs,Cs],names:["C♯","C♯","C♯","C♯","C♯m","C♯m","C♯","C♯"],
+    mel:THEME,mel2:THEME.map(echo),bassline:Array(8).fill(pedal),stab:Array(8).fill([0,6])},
+};
+const ALL=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],EIGHTHS=[0,2,4,6,8,10,12,14];
+const MOODS={
+  work10:{bpm:100,legato:true,thin:true,bass:[0,8],bassUp:[],arp:[0,4,8,12],arpLen:3,arpVol:0.016,stab:null,pad:true,padVol:0.018,hat:[2,6,10,14],kick:[0,8],snare:[4,12],lead:"triangle",melLead:"triangle",melVol:0.05,mel2Lead:"sine",mel2Vol:0.03,stabLead:"triangle",stabVol:0.016,stabLen:2,
+    B:{kick:[0],snare:[8],hat:[4,12],arp:[0,8],arpLen:6,padVol:0.024}}, // half-time
+  tense10:{bpm:120,bass:EIGHTHS,bassUp:[2,6,10,14],arp:[],stab:null,hat:EIGHTHS,kick:[0,2,4,6,7,8,10,12,14,15],snare:[4,12],lead:"square",melLead:"sawtooth",melVol:0.03,mel2Lead:"triangle",mel2Vol:0.024,stabLead:"square",stabVol:0.014,stabLen:1.5,
+    B:{bassDrive:EIGHTHS,pad:true,padVol:0.02},
+    hot:{bass:ALL,bassDrive:ALL,arp:ALL,arpShift:12,arpVol:0.014,hotVol:0.03,snare:[4,12,14]}},
+  // Red alert kick in 3-3-2 groups (Matt, 2026-11-25): no faster, never more kicks than before
+  alert10:{bpm:150,loopBridge:true, // red alert: once the song reaches the bridge, it stays there until the alert is over
+    bass:ALL,bassDrive:ALL,hop:true,arp:[],bell:ALL,bellShift:12,bellVoice:"celesta",bellVol:0.014,stab:null,hat:[2,6,10,14],kick:[0,3,6,8,11,14],snare:[4,12],lead:"square",melLead:"square",melVol:0.03,mel2Lead:"triangle",mel2Vol:0.024,stabLead:"sawtooth",stabVol:0.014,stabLen:1.5},
+};
+return{title:"Journey",SONG,normal:MOODS.work10,tense:MOODS.tense10,alert:MOODS.alert10};})();
+SONGS.chordially=(()=>{ // Chordially Invited
+/* ---- the song. One game bar (16 steps) = two song bars; a step = a song 8th. mel/bassline = per bar [step, MIDI note, length in steps].
+   A chord can change part way through a bar: [chord, step, chord2]. stab/drums per bar override the mood's. ---- */
+const Ab=[56,60,63],Bb=[58,62,65],Cm=[60,63,67],Eb=[63,67,70],AbBb=[Ab,11,Bb];
+const STABS=[2,4,6,8,11,14];
+const HIT=[[2,32,2],[4,32,2],[6,32,2],[8,32,3],[11,34,3],[14,34,2]];  // bass under the stabs: A♭ x4, then the late B♭
+const holdG=[[2,31,14]],holdC=[[1,34,1],[2,36,14]];
+const n8=(notes,from=0)=>notes.map((n,i)=>n&&[from+i,n,1]).filter(Boolean); // a run of 8ths; 0 = rest
+const FILL={kick:[0,4,8,10,12,14],snare:[4,7,9,11,13,15]};            // the drum fill under the stop-time
+const SONG={
+  steps:16,form:["A","A","B"],
+  A:{name:"A section",note:"bars 160–183: stabs, the stop-time at 162, then the synth melody",
+    chords:[AbBb,Cm,AbBb,Cm,AbBb,Cm,AbBb,Cm,AbBb,Eb,AbBb,Cm],names:["A♭ B♭","Cm (stop)","A♭ B♭","Cm","A♭ B♭","Cm","A♭ B♭","Cm","A♭ B♭","E♭","A♭ B♭","Cm"],
+    bassline:[HIT,[],HIT,holdC,HIT,holdG,HIT,holdC,HIT,holdG,HIT,holdC],
+    stab:[STABS,[],STABS,[2],STABS,[2],STABS,[2],STABS,[2],STABS,[2]],
+    drums:[null,FILL],
+    mel:[n8([72,72,72,72,72,0,72,67,72,0,0,74,0,0,74,67]),                 // 160-161
+         n8([72,72,72,72,70,0,67,67,72,72,72,72,70,0,67,67]),              // 162-163 stop-time
+         [[2,72,1],[4,72,1],[6,72,1],[8,72,1],[11,74,2],[14,74,2]],        // 164-165
+         [[8,72,2]],                                                       // 166-167
+         [[2,72,2],[11,74,3],[14,74,2]],                                   // 168-169 piano joins
+         [[2,72,4],...n8([67,0,68,68,65,65,65,65],8)],                     // 170-171
+         n8([67,67,72,67,72,65,72,65,72,0,67,74,65,65,74,65]),             // 172-173 the melody climbs
+         n8([67,68,79,68,0,0,67,67,67,68,68,68,67,67,67,67]),              // 174-175
+         n8([70,70,72,70,72,67,72,67,72,70,70,74,67,67,74,67]),            // 176-177
+         n8([0,0,75,68,67,0,67,67,67,68,68,68,67,67,67,67]),               // 178-179
+         n8([67,67,72,67,72,65,72,65,72,67,67,74,65,65,74,65]),            // 180-181
+         n8([67,68,75,68,0,0,67,67,67,68,68,68,67,67,67,67])]},            // 182-183
+  B:{name:"Bridge",note:"bars 232–247: chord stabs and the E♭/D pulse",chords:[Ab,Bb,Cm,Cm,Ab,Bb,Eb,Cm],names:["A♭","B♭","Cm","Cm","A♭","B♭","E♭","Cm"],
+    mel:[[[2,75,2],[4,72,2],[6,72,3],[9,72,1],[10,72,4]],
+         [[3,79,2],[6,79,3],[9,79,3],[12,79,2],[14,82,2]],
+         [[0,75,2],[2,72,1],[3,75,3],[6,75,3],[9,75,3],[12,75,2],[14,79,2]],
+         [[0,79,3],[3,72,1],[4,67,2],[6,72,3],[9,72,3],[12,72,4]],
+         [[0,72,3],[3,72,3],[6,72,3],[9,72,5],[14,82,2]],
+         [[0,79,3],[6,79,3],[9,79,3],[12,79,2],[14,82,2]],
+         [[0,75,2],[3,75,3],[6,75,3],[9,75,5],[14,79,2]],
+         [[0,72,2],[2,67,2],[4,67,2],[6,72,3],[9,72,1],[10,67,2],[12,63,2],[14,67,2]]]},
+};
+/* ---- moods. stab = full-chord hits; pulse = the E♭/D inner note; bassDrive = re-strike a held bassline note on these steps.
+   B = bridge changes, hot = on fire ---- */
+const ALL=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],EIGHTHS=[0,2,4,6,8,10,12,14];
+const PULSE=[63,63,63,63,62,62,62,62,63,63,63,63,62,62,62,62];
+const MOODS={
+  work6:{bpm:104,legato:true,thin:true,bass:[],bassDrive:[],arp:[],stab:STABS,stabLead:"triangle",stabVol:0.014,pulse:null,hat:[2,6,10,14],kick:[0,8],snare:[4,12],lead:"triangle",melLead:"triangle",melVol:0.05,melShift:12,
+    B:{bass:[0,2,4,6,8,11,14],kick:[0],snare:[8],hat:[4,12],melLead:"square",melVol:0.028,melShift:0}}, // half-time
+  tense6:{bpm:120,bass:[],bassDrive:EIGHTHS,arp:[],stab:STABS,stabLead:"sawtooth",stabVol:0.014,stabLen:1.5,pulse:PULSE,pulseVol:0.014,hat:EIGHTHS,kick:[0,4,8,12],snare:[4,12],lead:"square",melLead:"sawtooth",melVol:0.028,melShift:12,
+    B:{bass:EIGHTHS,bassUp:[2,6,10,14],kick:[0,3,6,8,11,14],melShift:0},
+    hot:{bassDrive:ALL,bass:ALL,hop:true,arp:ALL,arpShift:12,arpVol:0.014,hotVol:0.03,snare:[4,12,14]}},
+  // Red alert kick in 3-3-2 groups (Matt, 2026-11-25): no faster, never more kicks than before
+  alert6:{bell:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],bellShift:12,bellVoice:"chime",bellVol:0.014,bpm:144,loopBridge:true, // red alert: once the song reaches the bridge, it stays there until the alert is over
+    bass:[],bassDrive:ALL,hop:true,arp:[],stab:STABS,stabLead:"square",stabVol:0.014,stabLen:1.5,pulse:PULSE,pulseVol:0.014,hat:[2,6,10,14],kick:[0,6,12],snare:[4,12],lead:"sawtooth",melLead:"square",melVol:0.03,melShift:12,
+    B:{bass:ALL,arp:[],melShift:0}},
+};
+return{title:"Chordially Invited",SONG,normal:MOODS.work6,tense:MOODS.tense6,alert:MOODS.alert6};})();
+SONGS.potential=(()=>{ // I Guess It Has Potential
+/* ---- the song. A game bar = a song bar; a step = a song 16th. mel = per bar [step, MIDI note, length in steps] ---- */
+const Bm=[59,62,66],Fsm=[66,69,73],A=[57,61,64],E=[64,68,71];
+const STABS=[];
+const fig=last=>[[2,78,2],[4,81,2],[6,78,2],[8,81,2],[10,78,2],[12,85,2],[14,last,2]];
+const FIG_A=fig(81),FIG_B=fig(83),FIG_C=[[2,78,2],[4,81,2],[6,78,2],[8,85,2],[10,83,2],[12,81,2],[14,83,2]];
+const SONG={
+  steps:16,form:["A","A","B"],
+  A:{name:"A section",note:"bars 36–43: the hook, plain then busier",chords:[Bm,Fsm,A,E,Bm,Fsm,A,E],names:["Bm","F♯m","A","E","Bm","F♯m","A","E"],
+    mel:[[[0,81,2],[2,83,2],[4,81,1],[5,68,1],[6,80,1],[7,68,1],[10,66,2],[14,80,2]],
+         [[0,81,2],[2,80,1],[3,68,1],[4,68,1],[5,68,1],[6,68,1],[7,68,1],[8,68,2],[14,78,2]],
+         [[0,80,2],[2,78,2],[4,73,2],[6,73,1],[7,69,1],[11,69,1],[14,76,2]],
+         [[0,76,1],[1,71,1],[2,78,1],[3,71,1],[4,71,1],[5,71,1],[6,71,1],[7,71,1],[8,71,1],[9,66,1],[10,71,1],[12,66,1],[13,66,1],[14,66,1]],
+         [[0,81,2],[2,83,2],[4,81,1],[5,68,1],[6,81,2],[8,83,2],[10,78,2],[13,68,1],[14,80,2]],
+         [[0,81,2],[2,80,1],[3,68,1],[4,80,1],[5,68,1],[6,81,2],[8,83,2],[10,78,1],[11,66,1],[12,68,2],[14,78,2]],
+         [[0,80,2],[2,78,2],[4,73,1],[6,73,1],[7,81,1],[8,83,2],[10,78,2],[12,73,2],[14,76,2]],
+         [[0,76,2],[2,78,1],[3,69,1],[4,81,1],[5,83,3],[8,78,2],[10,66,1],[11,78,2],[14,78,2]]]},
+  B:{name:"Bridge",note:"bars 12–19: the lead's bouncing figure, in octaves, with chord stabs",chords:[Bm,Fsm,A,E,Bm,Fsm,A,E],names:["Bm","F♯m","A","E","Bm","F♯m","A","E"],
+    // F♯ A F♯ A F♯ C♯ then A or B; every fourth bar reaches F♯ A F♯ C♯ B A B. mel = the upper octave, mel2 = the lower
+    mel:[FIG_A,FIG_B,FIG_A,FIG_C,FIG_A,FIG_B,FIG_A,FIG_C],
+    mel2:[FIG_A,FIG_B,FIG_A,FIG_C,FIG_A,FIG_B,FIG_A,FIG_C].map(b=>b.map(([s,n,l])=>[s,n-12,l])),
+    stab:Array(8).fill([0,4])},
+};
+const ALL=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],EIGHTHS=[0,2,4,6,8,10,12,14];
+const MOODS={
+  work9:{bpm:104,legato:true,thin:true,bass:[0,8],bassUp:[],arp:[0,4,8,12],arpLen:3,arpVol:0.016,stab:null,pad:true,padVol:0.018,hat:[2,6,10,14],kick:[0,8],snare:[4,12],lead:"triangle",melLead:"triangle",melVol:0.05,mel2Lead:"sine",mel2Vol:0.032,stabLead:"triangle",stabVol:0.016,stabLen:2,
+    B:{kick:[0],snare:[8],hat:[4,12],bass:[0],arp:[0,8],arpLen:6,padVol:0.024}}, // half-time
+  tense9:{bpm:120,bass:EIGHTHS,bassUp:[2,6,10,14],arp:[],stab:null,hat:EIGHTHS,kick:[0,7,12,14],snare:[4,12],lead:"square",melLead:"sawtooth",melVol:0.028,mel2Lead:"triangle",mel2Vol:0.024,stabLead:"square",stabVol:0.014,stabLen:1.5,
+    B:{pad:true,padVol:0.02},
+    hot:{bass:ALL,hop:true,arp:ALL,arpShift:12,arpVol:0.014,hotVol:0.03,snare:[4,12,14]}},
+  // Red alert kick in 3-3-2 groups (Matt, 2026-11-25): no faster, never more kicks than before
+  alert9:{bell:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],bellShift:12,bellVoice:"beep",bellVol:0.014,bpm:160,loopBridge:true, // red alert: once the song reaches the bridge, it stays there until the alert is over
+    bass:ALL,hop:true,arp:[],stab:null,hat:[2,6,10,14],kick:[0,6,12],snare:[4,12],lead:"square",melLead:"square",melVol:0.03,mel2Lead:"triangle",mel2Vol:0.022,stabLead:"sawtooth",stabVol:0.014,stabLen:1.5},
+};
+return{title:"I Guess It Has Potential",SONG,normal:MOODS.work9,tense:MOODS.tense9,alert:MOODS.alert9};})();
+SONGS.bitLove=(()=>{ // 8 Bit Love
+/* ---- the song. A game bar = a song bar; a step = a song 16th. mel/bassline = per bar [step, MIDI note, length in steps].
+   A chord can change part way through a bar: [chord, step, chord2]. ---- */
+const Eb=[63,67,70],Ab=[56,60,63],EbG=[55,63,70],STABS=[];
+const run=(notes,len=2)=>notes.map((n,i)=>n&&[i*len,n,len]).filter(Boolean);   // even notes; 0 = rest
+const BL_EB=run([39,51,39,51,43,50,43,50]),BL_AB=run([44,48,44,48,44,48,44,48]),BL_GAB=run([31,48,31,48,44,48,44,48]),BL_EBG=run([39,51,39,51,31,50,31,50]);
+const RIFF=[[0,87,2],[2,79,1],[4,84,2],[6,82,2],[8,87,1],[10,79,1],[12,84,2],[14,82,2]];  // high E♭ G C B♭
+const FR=n=>run(n,1);                                                                   // the frenzy: 16ths
+const SONG={
+  steps:16,form:["A","A","B"],
+  A:{name:"A section",note:"bars 16–23: the 8-bit lead",chords:[Eb,Ab,Eb,Ab,Eb,Ab,Eb,Ab],names:["E♭maj7","A♭maj7","E♭maj7","A♭maj7","E♭maj7","A♭maj7","E♭maj7","A♭maj7"],
+    bassline:[BL_EB,BL_AB,BL_EB,BL_AB,BL_EB,BL_AB,BL_EB,BL_AB],
+    mel:[[[2,75,2],[4,79,2],[6,75,2],[8,79,2],[10,82,2],[12,79,2],[14,82,2]],[[0,82,12],[12,84,2],[14,82,2]],
+         [[0,82,12],[12,70,2],[14,80,2]],[[0,79,16]],
+         [[2,75,2],[4,79,2],[6,75,2],[8,79,2],[10,82,2],[12,79,2],[14,84,2]],[[0,84,2],[2,79,2],[4,82,2],[6,79,2],[8,80,2],[10,79,2],[12,82,2],[14,79,2]],
+         [[0,84,6],[6,82,6],[12,79,2],[14,80,2]],[[0,80,2],[2,79,14]]]},
+  B:{name:"Bridge",note:"bars 24–31: the E♭–G–C–B♭ riff",chords:[Eb,Ab,Eb,Ab,Eb,Ab,Eb,Ab],names:["E♭maj7","A♭maj7","E♭maj7","A♭maj7","E♭maj7","A♭maj7","E♭maj7","A♭maj7"],
+    bassline:[BL_EB,BL_AB,BL_EB,BL_AB,BL_EB,BL_AB,BL_EB,BL_AB],
+    mel:[[[0,87,1],[2,75,2],[4,84,2],[6,82,2],[8,87,2],[10,82,2],[12,84,1],[14,82,2]],RIFF,RIFF,RIFF,
+         [[0,87,1],[2,79,2],[4,84,2],[6,82,2],[8,87,2],[10,82,2],[12,84,1],[14,84,2]],RIFF,RIFF,[[0,87,1],[2,79,2],[4,84,2],[6,82,2],[8,87,1],[10,79,2],[12,84,2],[14,82,2]]]},
+  C:{name:"Frenzy",note:"bars 72–79: the riff in 16ths (Tense's bridge)",chords:[Eb,[EbG,8,Ab],[Eb,8,EbG],[EbG,8,Ab],[Eb,8,EbG],[EbG,8,Ab],[Eb,8,EbG],[EbG,8,Ab]],
+    names:["E♭","G → A♭","E♭ → G","G → A♭","E♭ → G","G → A♭","E♭ → G","G → A♭"],
+    bassline:[BL_EB,BL_GAB,BL_EBG,BL_GAB,BL_EBG,BL_GAB,BL_EBG,BL_GAB],
+    mel:[FR([87,75,79,82,84,75,82,82,87,75,82,82,84,75,82,82]),FR([87,75,79,82,84,75,82,82,87,75,79,82,84,75,82,82]),
+         FR([87,75,79,82,84,75,82,82,87,75,79,82,84,75,82,82]),FR([87,75,79,82,84,75,82,82,87,75,79,82,84,75,82,82]),
+         FR([87,75,79,82,84,75,82,82,87,75,82,82,84,75,84,82]),FR([87,75,79,82,84,75,82,82,87,75,79,82,82,75,82,82]),
+         [...FR([84,75,70,82,72,75,82,82,87,75,82,82]),[12,79,2],[14,80,2]],FR([87,75,79,82,84,75,82,82,87,75,79,82,84,75,82,82])]}, // the last bar keeps the 16ths going like the seven before it (was a held G, Matt: "doesn't fit in")
+};
+const ALL=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],EIGHTHS=[0,2,4,6,8,10,12,14];
+const MOODS={
+  donut8:{bpm:120,legato:true,bass:[],bassDrive:[],arp:[],stab:null,pad:true,padVol:0.016,hat:[2,6,10,14],kick:[0,8],snare:[4,12],lead:"square",melLead:"square",melVol:0.03},
+  tenseDonut8:{bpm:144,form:["A","A","C"],bass:[],bassDrive:[],arp:EIGHTHS,arpVol:0.014,stab:null,hat:EIGHTHS,kick:[0,4,8,12],snare:[4,12],lead:"square",melLead:"square",melVol:0.032,
+    hot:{arp:ALL,arpShift:12,arpVol:0.012,hotVol:0.026,snare:[4,12,14],hat:ALL}},
+  // red alert at the shop: the song's real 180 BPM; once it reaches the frenzy it stays there until the alert is over
+  // Red alert kick in 3-3-2 groups (Matt, 2026-11-25): no faster, never more kicks than before
+  alertDonut8:{bell:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],bellShift:12,bellVoice:"beep",bellVol:0.014,bpm:180,form:["A","A","C"],loopBridge:"C",bass:[],bassDrive:[1,3,5,7,9,11,13,15],hop:true,arp:[],lead:"sawtooth",stab:null,hat:[2,6,10,14],kick:[0,6,12],snare:[4,12],melLead:"square",melVol:0.032},
+};
+return{title:"8 Bit Love",SONG,normal:MOODS.donut8,tense:MOODS.tenseDonut8,alert:MOODS.alertDonut8};})();
+// each client plays one set: normal, tense and red-alert music that belong together; the set rotates client to client
+const SONG_SETS=["experiment","sickDay","sos","rain","journey","chordially","potential"].map(k=>["work:"+k,"tense:"+k,"alert:"+k]);
+// the donut shop plays 8 Bit Love: donut, tenseDonut and its own red alert, which holds the 16th-note frenzy
+for(const[k,s]of Object.entries(SONGS)){const names=k==="bitLove"?["donut","tenseDonut","alertDonut"]:["work:"+k,"tense:"+k,"alert:"+k];
+  ["normal","tense","alert"].forEach((m,i)=>{MOODS[names[i]]=Object.assign(s[m],{song:s.SONG,title:s.title});});}
+/* the alarm arpeggio's voices (Red alert), picked per song by ear */
+const ALARM={
+  bell:(f,t,v)=>{mNote(f,t,0.55,"sine",v);mNote(f*2.76,t,0.28,"sine",v*0.45);mNote(f*5.4,t,0.12,"sine",v*0.18);},       // struck metal: inharmonic partials
+  chime:(f,t,v)=>{mNote(f,t,0.9,"sine",v*1.1);mNote(f*2,t,0.45,"sine",v*0.35);mNote(f*3,t,0.18,"sine",v*0.12);},         // glassy: in-tune partials, long ring
+  beep:(f,t,v)=>mNote(f,t,0.07,"square",v*0.8),                                                                        // alarm clock: short square blips
+  pluck:(f,t,v)=>{mNote(f,t,0.18,"sawtooth",v*0.99);mNote(f*2.005,t,0.1,"sawtooth",v*0.33);},                             // synth pluck, slightly detuned
+  celesta:(f,t,v)=>{mNote(f,t,0.35,"sine",v*1.2);mNote(f*2,t,0.14,"triangle",v*0.22);mNote(f*4,t,0.05,"sine",v*0.3);},   // a soft hammer on a bar, short and sweet
+};
+/* legato (Normal): repeated notes merge into one held note and every note lasts until the next one (up to legMax steps);
+   thin keeps only the notes every `thin` steps (true = 2) */
+function smooth(notes,thin,N,cap){
+  const src=thin?notes.filter(([st])=>st%(thin===true?2:thin)===0):notes;
+  const out=[];for(const[st,n,len]of [...(src.length?src:notes)].sort((a,b)=>a[0]-b[0])){const p=out[out.length-1];
+    if(p&&p[1]===n&&p[0]+p[2]>=st-1)p[2]=st+len-p[0];else out.push([st,n,len]);}
+  return out.map((x,i)=>[x[0],x[1],Math.min(cap,Math.max(x[2],(out[i+1]?out[i+1][0]:N)-x[0]))]);
+}
+const SMOOTHED=new Map();
+function sm(a,thin,song){let c=SMOOTHED.get(a);if(!c)SMOOTHED.set(a,c={});const k=String(thin);return c[k]||(c[k]=smooth(a,thin,song.steps||16,song.legMax||8));}
+// where the song is: which section of the form, which bar of it. Advances a bar at a time, so Red alert can hold the bridge.
+const songForm=M=>M.form||M.song.form;
+function songPos(M){const f=songForm(M),i=MUS.pos.idx%f.length,key=f[i];return{key,idx:i,bar:Math.min(MUS.pos.bar,M.song[key].chords.length-1)};}
+function advanceBar(M){
+  const p=MUS.pos,f=songForm(M),key=f[p.idx%f.length];
+  if(++p.bar<M.song[key].chords.length)return;
+  p.bar=0;
+  const lb=M.loopBridge;if(lb&&key===(lb===true?"B":lb))return; // red alert: round the bridge again
+  p.idx=(p.idx+1)%f.length;
+}
+const songSteps=M=>M.song.steps||16;
+const songStepLen=M=>60/moodBpm()/(M.song.beat||songSteps(M)/4); // a step is a quarter / steps per beat
+function songChord(M,s){const p=songPos(M),ce=M.song[p.key].chords[p.bar];return Array.isArray(ce[0])?(s>=ce[1]?ce[2]:ce[0]):ce;}
+function songStep(base,s,t){
+  const song=base.song,N=songSteps(base),SUB=N>16?N/16:1,p=songPos(base),sec=song[p.key],hot=moodHot();
+  const M={...base,...(p.key==="B"&&base.B||{}),...(hot&&base.hot||{})};
+  const bar=p.bar,ce=sec.chords[bar],split=Array.isArray(ce[0]),ch=split?(s>=ce[1]?ce[2]:ce[0]):ce,sx=songStepLen(base);
+  const D=(sec.drums&&sec.drums[bar])||M,stabs=sec.stab?(M.stab===false?null:sec.stab[bar]):M.stab,last=bar===sec.chords.length-1;
+  const hb=mode==="play"&&slowDepth()>=0.02; // the slow-mo heartbeat owns the low end: no bass or kick under it
+  const bassNote=(f,d)=>{mNote(f,t,d,"triangle",0.13);if(sec.bassGrit)mNote(f*2,t,d,"sawtooth",sec.bassGrit);}; // bassGrit: a saw an octave up, so the bass reads in the mids
+  if(M.pad&&(s===0||(split&&s===ce[1])))ch.forEach(n=>mNote(mtof(n),t,sx*N,"sine",M.padVol||0.025));
+  if(sec.bassline){const bl=(M.legato?sm(sec.bassline[bar],undefined,song):sec.bassline[bar]).find(([st,,len])=>s>=st&&s<st+len),dr=M.bassDrive||[];
+    if(bl&&!hb){const[st,n,len]=bl;if(st===s)bassNote(mtof(n),sx*Math.min(len,dr.length?2:len)*0.9);else if(dr.includes(s))bassNote(mtof(n+(M.hop&&s%2?12:0)),sx*0.9);}}
+  else if(M.bass.includes(s)&&!hb)mNote(mtof(ch[0]-24+((M.hop&&s%2)||(M.bassUp&&M.bassUp.includes(s))?12:0)),t,sx*(M.bass.length>N/2?0.9:1.8),"triangle",0.13);
+  if(stabs&&(M.legato?(s===stabs[0]||(split&&s===ce[1]&&stabs.includes(s))):stabs.includes(s)))ch.forEach(n=>mNote(mtof(n),t,sx*(M.legato?(split&&s<ce[1]?ce[1]-s:N-s):(sec.stabLen||M.stabLen||1.5)),sec.stabLead||M.stabLead||"square",sec.stabVol||M.stabVol||0.018));
+  if(M.bell&&M.bell.includes(s)){const i=M.bell.indexOf(s)%4;(ALARM[M.bellVoice]||ALARM.bell)(mtof((i===3?ch[0]+12:ch[i])+(M.bellShift||12)),t,M.bellVol||0.014);} // alarm: root-3rd-5th-octave, every step
+  if(M.pulse&&M.pulse[s])mNote(mtof(M.pulse[s]),t,sx*0.8,"triangle",M.pulseVol||0.014);
+  if(M.arp.includes(s)){const idx=M.arp.indexOf(s);mNote(mtof(ch[idx%3]+(idx%6>=3?12:0)+(M.arpShift||0)),t,sx*(M.arpLen||1.1),M.lead,M.arpVol||0.03);}
+  for(const[st,n,len]of (M.legato?sm(sec.mel[bar],M.thin,song):sec.mel[bar]))if(st===s){const nn=n+(M.melShift||0);mNote(mtof(nn),t,sx*len*0.92,M.melLead||"triangle",M.melVol||0.045);if(hot)mNote(mtof(nn+12),t,sx*len*0.92,M.hotVol?"square":"triangle",M.hotVol||0.016);}
+  if(sec.mel2)for(const[st,n,len]of (M.legato?sm(sec.mel2[bar],M.thin,song):sec.mel2[bar]))if(st===s)mNote(mtof(n),t,sx*len*0.92,M.mel2Lead||"triangle",M.mel2Vol||0.03);
+  if(sec.sig&&sec.sig[bar])for(const[st,n,len]of sec.sig[bar])if(Math.floor(st)===s){mNote(mtof(n),t+(st-s)*sx,sx*len,"square",M.sigVol||0.02);if(M.sigOct)mNote(mtof(n+12),t+(st-s)*sx,sx*len,"square",(M.sigVol||0.02)*0.5);} // a signal line with its own (off-grid) timing
+  if((D.kick.includes(s)||(hot&&s===N-2*SUB&&!D.kick.includes(N-3*SUB)))&&!hb)mDrum("kick",t);
+  if(D.snare.includes(s)||((hot||last)&&bar%4===3&&s>=N-3*SUB&&s%SUB===0))mDrum("snare",t);
+  if(M.hat.includes(s)||(hot&&s%SUB===0))mDrum("hat",t);
+}
+/* volume follows the mood in Matt's songs: Normal a pinch under, Tense as is, Red alert boosted (eases over ~1.5 s).
+   The menu's calm and the victory tune keep their level. */
+const MOOD_GAIN={normal:0.85,tense:1,alert:1.2};
+const moodGain=m=>MOODS[m]&&MOODS[m].song?MOOD_GAIN[["normal","tense","alert"][moodLevel(m)]]:1;
 /* How worried the music should be. 0 = all fine. 1 = trouble is close: VP on your tail, escalation in flight, queue or inbox
    almost full, a leak about to breach. 2 = it's happening: something on fire or offline, or the error budget nearly gone. */
 function musicHeat(){
@@ -1059,19 +1379,39 @@ function musicHeat(){
 const moodLevel=m=>m.startsWith("alert")?2:m.startsWith("tense")?1:0;
 const moodHot=()=>MUS.heat>=2&&MUS.mood.startsWith("tense");
 const moodBpm=()=>MOODS[MUS.mood].bpm+(moodHot()?8:0);
+const DONUT_SET=["donut","tenseDonut","alertDonut"];
+/* Trying the music in real play: ?music=journey (or 1-7 in rotation order, or donut) plays that set for every client, and
+   ?mood=normal|tense|hot|alert holds that mood (hot = Tense on fire). Music only: it never touches S or the game's rolls. */
+const MUSIC_PICK=(()=>{try{const q=new URLSearchParams(location.search),m=q.get("music"),n=+m;
+  const set=m==="donut"||m==="bitLove"?DONUT_SET:SONGS[m]&&m!=="bitLove"?["work:"+m,"tense:"+m,"alert:"+m]:n>=1&&n<=SONG_SETS.length?SONG_SETS[n-1]:null;
+  return{set,mood:/^(normal|tense|hot|alert)$/.test(q.get("mood"))?q.get("mood"):null};}catch(e){return{};}})();
+// the client's song set: the rotation, or 8 Bit Love at the donut shop
+function songSet(){
+  if(MUSIC_PICK.set)return MUSIC_PICK.set;
+  if(modId()==="donut")return DONUT_SET; // the donut shop has its own tune, worries in its own way, and has its own red alert
+  return SONG_SETS[((S.songOffset||0)+Math.max(0,S.sprint-1))%SONG_SETS.length];
+}
 function wantMood(){
   if(mode==="celebrate")return"victory";
   if(mode!=="play"||!S)return"calm";
-  const set=SONG_SETS[((S.songOffset||0)+Math.max(0,S.sprint-1))%SONG_SETS.length];
+  const set=songSet(),pick=MUSIC_PICK.mood;
+  if(pick)return set[pick==="alert"?2:pick==="normal"?0:1];
   if(S.alert)return set[2];
-  const hot=musicHeat();
-  if(modId()==="donut")return hot?"tenseDonut":"donut"; // the donut shop has its own tune, but it still worries
-  return hot?set[1]:set[0];
+  return musicHeat()?set[1]:set[0];
+}
+// switch mood. Within a song the position carries on (same bar); a different song starts from its top, and the menu and
+// victory loops start from their first bar.
+function setMood(w){
+  const a=MOODS[MUS.mood].song,b=MOODS[w].song;
+  if(b&&b!==a){MUS.pos={idx:0,bar:0};MUS.ss=0;}
+  else if(!b&&a)MUS.step=0;
+  MUS.mood=w;
 }
 function musicTick(){
   if(stale())return;
   const c=AU.ctx;if(!c||!MUS.bus)return;
-  if(!MUS.halt)MUS.bus.gain.setTargetAtTime(MUS.on?MUSIC_VOL:0,c.currentTime,0.1);
+  const g=moodGain(MUS.mood);if(MUS.gm!==g){MUS.gm=g;MUS.gmT=c.currentTime;}
+  if(!MUS.halt)MUS.bus.gain.setTargetAtTime(MUS.on?MUSIC_VOL*g:0,c.currentTime,c.currentTime-(MUS.gmT||0)<2?0.5:0.1); // a mood's volume eases in
   // headphones muffle the music, like noise-cancelling
   MUS.filt.frequency.setTargetAtTime(mode==="play"&&S&&S.focus>0?500:18000-15500*(mode==="play"?slowDepth():0),c.currentTime,0.15);
   if(!MUS.on||MUS.halt){MUS.next=c.currentTime+0.05;return;}
@@ -1080,26 +1420,32 @@ function musicTick(){
     if(MUS.stut){ // the credits' skip: stuck on the current chord in 16ths until its end time, then dead air
       const st=MUS.stut,sx=60/moodBpm()/4;
       if(MUS.next>=st.end-0.02){MUS.stut=null;MUS.halt=true;MUS.bus.gain.setTargetAtTime(0,Math.max(c.currentTime,st.end),0.01);return;}
-      stutterHit(st.step,MUS.next,sx);MUS.next+=sx;continue;
+      stutterHit(st.ch,MUS.next,sx);MUS.next+=sx;continue;
     }
-    if(MUS.step%8===0){
-      const w=wantMood(),up=moodLevel(w)-moodLevel(MUS.mood);MUS.heat=musicHeat();
-      if(up>0)MUS.raised=MUS.step;
+    let M=MOODS[MUS.mood],N=M.song?songSteps(M):16,s=M.song?MUS.ss:MUS.step%16;
+    if(s%(N/2)===0){ // every half bar
+      MUS.halves=(MUS.halves||0)+1;
+      const w=wantMood(),up=moodLevel(w)-moodLevel(MUS.mood);MUS.heat=MUSIC_PICK.mood==="hot"?2:musicHeat();
+      if(up>0)MUS.raised=MUS.halves;
       // ramp up on the half bar; drop back only on a bar line and after 2 bars, so it doesn't flicker
-      if(up>0||(MUS.step%16===0&&(up===0||mode!=="play"||MUS.step-(MUS.raised||0)>=32)))MUS.mood=w;
+      if(w!==MUS.mood&&(up>0||(s===0&&(up===0||mode!=="play"||MUS.halves-(MUS.raised||0)>=4)))){setMood(w);M=MOODS[MUS.mood];s=M.song?MUS.ss:MUS.step%16;}
     }
-    scheduleStep(MUS.step,MUS.next);MUS.next+=60/moodBpm()/4;MUS.step++;
+    if(M.song){songStep(M,s,MUS.next);MUS.next+=songStepLen(M);if(++MUS.ss>=songSteps(M)){MUS.ss=0;advanceBar(M);}}
+    else{scheduleStep(MUS.step,MUS.next);MUS.next+=60/moodBpm()/4;}
+    MUS.step++;
   }
 }
+// the chord the music is on now
+function curChord(){const M=MOODS[MUS.mood];return M.song?songChord(M,MUS.ss):M.chords[Math.floor(MUS.step/16)%4];}
 /* one stutter hit: the chord the song is on, stuck on repeat, in the song's own lead voice, with a light bass under it.
    No drums, so it reads as a skip, not a build to a drop. */
-function stutterHit(step,t,len){
-  const M=MOODS[MUS.mood],ch=M.chords[Math.floor(step/16)%4];
+function stutterHit(ch,t,len){
+  const M=MOODS[MUS.mood];
   ch.forEach(n=>mNote(mtof(n),t,len*0.85,M.lead,0.045));
   mNote(mtof(ch[0]-24),t,len*0.8,"triangle",0.07);
 }
 // the obsolete/outsourced credits: the music sticks on its chord for ms milliseconds, then cuts dead; musicResume() after
-function musicStutter(ms){if(MUS.started&&MUS.on&&!MUS.halt&&!MUS.stut)MUS.stut={step:MUS.step,end:AU.ctx.currentTime+ms/1000};}
+function musicStutter(ms){if(MUS.started&&MUS.on&&!MUS.halt&&!MUS.stut)MUS.stut={ch:curChord(),end:AU.ctx.currentTime+ms/1000};}
 function musicResume(){MUS.stut=null;MUS.halt=false;}
 function startMusic(){
   if(MUS.started||!AU.ctx)return;MUS.started=true;const c=AU.ctx;
@@ -2293,7 +2639,7 @@ const PHONE_PORTRAIT=matchMedia("(pointer:coarse) and (orientation:portrait) and
 let S;
 function newRun(tut=false){
   BK.left=restoresForRun();BK.used=0;BK.fired=false;
-  S={songOffset:Math.floor(Math.random()*3),sprint:0,budget:0,cost:{},retro:{},secLoss:{},secWarned:false,tierTot:{},movedT:{},career:[],breaks:[],jig:{h:0,t:0},gen:{},lz:0,wave:[],run:{mig:0,audits:0,breaches:0,lost:0,unplanned:0,fails:0,rollbacks:0,missed:0,esc:0,held:0,heldT:0,vendor:0},err:ERR_BUDGET,errMax:ERR_BUDGET,security:100,energy:50,points:0,upgrades:{},racks:Array(12).fill(null),cloud:Array(16).fill(null),
+  S={songOffset:Math.floor(Math.random()*SONG_SETS.length),sprint:0,budget:0,cost:{},retro:{},secLoss:{},secWarned:false,tierTot:{},movedT:{},career:[],breaks:[],jig:{h:0,t:0},gen:{},lz:0,wave:[],run:{mig:0,audits:0,breaches:0,lost:0,unplanned:0,fails:0,rollbacks:0,missed:0,esc:0,held:0,heldT:0,vendor:0},err:ERR_BUDGET,errMax:ERR_BUDGET,security:100,energy:50,points:0,upgrades:{},racks:Array(12).fill(null),cloud:Array(16).fill(null),
      bots:[],totalApps:0,lostTotal:0,alert:false,t:0,offers:[],missed:{},mgrBreaks:0,mgrShame:0,
      p:{x:480,y:280,stun:0,inv:0,heldBy:null,userImm:0},users:[],cbots:[],fx:[],carry:null,inv:[],tk:[],st:[],fl:[],fix:null,fixP:0,fixKey:null,fixNeed:1,warnT:-9,prompt:"",diff:tut?"easy":DIFF,hardcore:tut?false:HARDCORE,noAI:NOAI,tut:tut?{i:0}:null};
   startSprint(1);
