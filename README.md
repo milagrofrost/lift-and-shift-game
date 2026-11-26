@@ -75,7 +75,7 @@ python -m http.server 8766 --bind 127.0.0.1
 
 Open <http://127.0.0.1:8766/lift-and-shift.html>. On some systems, use `python3` instead of `python`.
 
-Google Fonts supplies optional fonts; system font fallbacks are included. Sound and music are synthesized in the browser. The music is the author's own band's songs, one per client, rotating: each gets tenser as trouble builds and has its own red-alert version, and the donut shop has its own tune. The game uses browser local storage for preferences and records, not a resumable career save. Refreshing starts over.
+Google Fonts supplies optional fonts; system font fallbacks are included. Sound and music are synthesized in the browser. The music is the author's own band's songs, one per client, rotating: each gets tenser as trouble builds and has its own red-alert version, and the donut shop has its own tune. Type `gitamp` in the terminal for a retro music player that plays any of them in any mood. The game uses browser local storage for preferences and records, not a resumable career save. Refreshing starts over.
 
 ## Controls
 

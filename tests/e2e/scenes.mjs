@@ -61,6 +61,8 @@ export const SCENES = [
     mode: 'play', touch: {fix: ['PICK UP', true], grab: ['PICK UP', true]}},
   {name: '19-day2-review', build: `seedS(5); G.setLogLv(1); G.D2.simulate({prog: {shift: 0}});`, mode: 'end'},
   {name: '14-hands-on', build: `G.setLogLv(1); G.titleScreen(); document.querySelector('[data-act=tut]').click(); document.querySelector('[data-act=handson]').click();`},
+  // last, since it stays open over whatever comes next
+  {name: '20-gitamp', build: `fresh(); G.togglePause(); G.devRun('gitamp'); G.GA.act('next');`, mode: 'paused'},
 ];
 
 /** Build a scene in the page, render one frame, and return what the checks need. */
