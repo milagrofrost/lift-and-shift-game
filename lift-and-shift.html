@@ -22,6 +22,7 @@
 <script src="./pwa.js" defer></script>
 <script src="./version-picker.js" defer></script>
 <script src="./assets/day2.js"></script>
+<script src="./assets/gitamp.js"></script>
 <style>
 /* ==== Styles ==== */
 /* Layout: one ops-console column. HUD strip on top, the game floor below, controls under it.
@@ -1431,6 +1432,7 @@ function songSet(){
   return SONG_SETS[((S.songOffset||0)+Math.max(0,S.sprint-1))%SONG_SETS.length];
 }
 function wantMood(){
+  const ga=GA&&GA.mood();if(ga)return ga; // Gitamp has the music while it's playing
   if(mode==="celebrate")return"victory";
   if(mode!=="play"||!S)return"calm";
   const set=songSet(),pick=MUSIC_PICK.mood;
@@ -1453,7 +1455,7 @@ function musicTick(){
   if(!MUS.halt)MUS.bus.gain.setTargetAtTime(MUS.on?MUSIC_VOL*g:0,c.currentTime,c.currentTime-(MUS.gmT||0)<2?0.5:0.1); // a mood's volume eases in
   // headphones muffle the music, like noise-cancelling
   MUS.filt.frequency.setTargetAtTime(mode==="play"&&S&&S.focus>0?500:18000-15500*(mode==="play"?slowDepth():0),c.currentTime,0.15);
-  if(!MUS.on||MUS.halt){MUS.next=c.currentTime+0.05;return;}
+  if(!MUS.on||MUS.halt||(GA&&GA.silent())){MUS.next=c.currentTime+0.05;return;} // Gitamp paused: silence
   if(MUS.next<c.currentTime)MUS.next=c.currentTime+0.05;
   while(MUS.next<c.currentTime+0.15){
     if(MUS.stut){ // the credits' skip: stuck on the current chord in 16ths until its end time, then dead air
@@ -1464,13 +1466,13 @@ function musicTick(){
     let M=MOODS[MUS.mood],N=M.song?songSteps(M):16,s=M.song?MUS.ss:MUS.step%16;
     if(s%(N/2)===0){ // every half bar
       MUS.halves=(MUS.halves||0)+1;
-      const w=wantMood(),up=moodLevel(w)-moodLevel(MUS.mood);MUS.heat=MUSIC_PICK.mood==="hot"?2:musicHeat();
+      const w=wantMood(),up=moodLevel(w)-moodLevel(MUS.mood);MUS.heat=GA&&GA.heat()!==null?GA.heat():MUSIC_PICK.mood==="hot"?2:musicHeat();
       if(up>0)MUS.raised=MUS.halves;
       // ramp up on the half bar; drop back only on a bar line and after 2 bars, so it doesn't flicker
       if(w!==MUS.mood&&(up>0||(s===0&&(up===0||mode!=="play"||MUS.halves-(MUS.raised||0)>=4)))){setMood(w);M=MOODS[MUS.mood];s=M.song?MUS.ss:MUS.step%16;}
     }
-    if(M.song){songStep(M,s,MUS.next);MUS.next+=songStepLen(M);if(++MUS.ss>=songSteps(M)){MUS.ss=0;advanceBar(M);}}
-    else{scheduleStep(MUS.step,MUS.next);MUS.next+=60/moodBpm()/4;}
+    if(M.song){songStep(M,s,MUS.next);MUS.next+=songStepLen(M);if(++MUS.ss>=songSteps(M)){MUS.ss=0;advanceBar(M);if(GA)GA.bar();}}
+    else{scheduleStep(MUS.step,MUS.next);MUS.next+=60/moodBpm()/4;if(GA&&MUS.step%16===15)GA.bar();}
     MUS.step++;
   }
 }
@@ -4182,11 +4184,11 @@ function welcomeMail(){
       <p>Your first task: migrate <b>${client().name}</b>'s servers to the cloud. Do well on this one and we'll get you into harder and harder migrations with each client after it.</p>
       <p>Your priorities (all of them are priority 1):</p>
       <ol>
-        <li><b>Migrate</b> everything from on-premises to the cloud.</li>
-        <li><b>Keep servers patched.</b> Let them go unpatched and they fail their audits.</li>
-        <li><b>Keep an eye on tickets.</b> Fall behind and they escalate, and escalations end in fires and outages.</li>
-        <li><b>Keep up with email.</b> If you don't, I'll come looking for you.</li>
-        <li><b>Watch the cloud too.</b> Servers up there start leaking, and if they leak too much, that's a breach.</li>
+        <li value="1"><b>Migrate</b> everything from on-premises to the cloud.</li>
+        <li value="1"><b>Keep servers patched.</b> Let them go unpatched and they fail their audits.</li>
+        <li value="1"><b>Keep an eye on tickets.</b> Fall behind and they escalate, and escalations end in fires and outages.</li>
+        <li value="1"><b>Keep up with email.</b> If you don't, I'll come looking for you.</li>
+        <li value="1"><b>Watch the cloud too.</b> Servers up there start leaking, and if they leak too much, that's a breach.</li>
       </ol>
       <p>So yeah, just do all that. Super easy. I'm totally not asking a lot of you. It's just the basic stuff, right?</p>
       <p>Thanks so much. Good luck, and don't get fired.</p>`,"hired","Get to work");
@@ -5495,6 +5497,7 @@ const CLI={
   dig:cli("Look up a DNS name",{"<name>":cli("Any name")}),
   exit:cli("Close the terminal"),
   foxsay:cli("A fox says it",{"<text>":cli("Ignored. It's a fox.")}),
+  gitamp:cli("Open the music player"),
   git:cli("Assign responsibility",{blame:cli("Find out whose fault this is"),checkout:cli("Switch branches",{"<branch>":cli("A branch")})}),
   help:cli("How to get help"),
   history:cli("Show earlier commands"),
@@ -5562,7 +5565,8 @@ const isFriday=()=>new Date().getDay()===5; // the player's own clock; only ever
 function cliRun(cmd,raw=cmd){
   const[h,...a]=cmd.split(" "),rest=a.join(" ");let out=null;
   const rawRest=raw.trim().replace(/^\S+\s*/,"");
-  if(h==="cowsay")out=`${sayBubble(rawRest||"Moo. (Try: cowsay hello)")}\n${COW}`;
+  if(h==="gitamp"&&GA){GA.open();out="Opening Gitamp… It really whips the vendor's SaaS.";}
+  else if(h==="cowsay")out=`${sayBubble(rawRest||"Moo. (Try: cowsay hello)")}\n${COW}`;
   else if(h==="foxsay"){out=`${sayBubble(FOX_NOISES[foxN%FOX_NOISES.length])}\n${FOX}`;foxN++;}
   else if(h==="dig"){const q=(rest||"prod.internal").split(" ")[0];out=`; <<>> DiG 9.18 <<>> ${q}\n;; QUESTION SECTION:\n;${q}.\t\tIN\tA\n\n;; ANSWER SECTION:\n;; It's not DNS.\n;; There's no way it's DNS.\n;; It was DNS.\n\n;; Query time: 3 weeks\n;; SERVER: 127.0.0.1#53 (the sticky note on Gary's monitor)`;}
   else if(h==="history")out=[...HISTORY,...TTY_HIST].map((c,i)=>`${String(i+1).padStart(5)}  ${c}`).join("\n");
@@ -5728,6 +5732,9 @@ function frame(now){
    Every Day 1 hook is behind S.d2, which only Day 2 sets. If the file didn't load, D2 is null and the menu hides it. */
 const D2=typeof window.LasDay2==="function"?window.LasDay2({get S(){return S},get mode(){return mode},set mode(v){mode=v},keys,W,H,RACKS,DESK,TIER,C,ctx,DISP,BODY,MONO,RM,BK,
   tx,rr,em,bar,smallBubble,fl,toast,sfx,goTo,dist,clamp,$,K,show,play,newRun,update,vpMail,setMuffle,applyPatch,patchDue,noteRestored,ticketLimit,mkBot,logLv,decoT,doorCross,spraying,drawSpray}):null;
+/* Gitamp (assets/gitamp.js, loaded before this script): the soundtrack's music player, opened with `gitamp` in the terminal.
+   It only ever changes the music, never S. If the file didn't load, GA is null and the command doesn't exist. */
+const GA=typeof window.LasGitamp==="function"?window.LasGitamp({AU,MUS,MOODS,SONGS,SONG_SETS,DONUT_SET,audio,setMood,setMusic,sndRand,RM}):null;
 newRun();titleScreen();requestAnimationFrame(frame);
 })();
 </script>
