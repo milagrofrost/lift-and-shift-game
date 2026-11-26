@@ -31,7 +31,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 // a missing function becomes undefined (that test fails) instead of stopping the game from loading
 const NAMES = ("setTheme,readColors,C,aiCo,CO,letter,rumorBlock,RUMORS,crowd,userLines,alertLines,humanLines,BREAK_CLIENTS,welcomeMail,mailRecap,unicornMail,aiMail,lastMail,spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,capNext,DAY,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "K,keyHint,TOUCH,fixWord,grabWord,setSilentPlay,silentBtn,HAS_SESSION,AU,toastsCover,FIX_WORDS,rollbackTarget,tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
-  "SELFTEST,loadIn,LOADIN,moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,SONGS,DONUT_SET,setMood,advanceBar,songPos,songStep,moodGain,MOOD_GAIN,curChord,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL,pipeJob,jammed,tickPipeline,sendToPipeline,fixTarget,unjam,jamUnder,laneY,pipeX,PIPE_FIX,PIPE_BREAK_LO,PIPE_BREAK_HI,patchBot,tickJamAlarm,JAM_BUZZ_FIRST,JAM_BUZZ_EVERY," +
+  "SELFTEST,loadIn,LOADIN,moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,SONGS,DONUT_SET,NIGHT_SET,setMood,advanceBar,songPos,songStep,moodGain,MOOD_GAIN,curChord,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL,pipeJob,jammed,tickPipeline,sendToPipeline,fixTarget,unjam,jamUnder,laneY,pipeX,PIPE_FIX,PIPE_BREAK_LO,PIPE_BREAK_HI,patchBot,tickJamAlarm,JAM_BUZZ_FIRST,JAM_BUZZ_EVERY," +
   "D2,GA,shakeOff,shakeRate,SHAKE_STICK,SHAKE_PX,stickJerk,SHAKE_MAX,SHAKE_WIN,SHAKE_SLOW,SHAKE_FAST,SHAKE_BONUS,SHAKE_LINES,SHAKE_BYE,vpLeave,hunting,spawnHunter,infected,CLONE_MAX,FORK_COST,spawnAgent,ciOffered,ciLeft,ciLockable,CI_NEW,salary,salaryText,tickSpecials,client,lvl").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},get LOGLV(){return LOGLV},setLogLv:v=>{LOGLV=v},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
@@ -1711,6 +1711,21 @@ test("each client plays the next song set, and every song is defined", () => {
   const [w, t, a] = G.SONG_SETS[0];
   check(G.moodGain(w) === G.MOOD_GAIN.normal && G.moodGain(t) === G.MOOD_GAIN.tense && G.moodGain(a) === G.MOOD_GAIN.alert && G.moodGain("alertDonut") === G.MOOD_GAIN.alert, "mood volume doesn't follow the mood");
 });
+test("Day 2's night shift plays Dream On; the handover and Day 1 never do", () => {
+  const night = G.NIGHT_SET;
+  check(night.every(m => G.MOODS[m] && G.MOODS[m].song === G.SONGS.dreamOn.SONG), "the night moods aren't all Dream On");
+  check(!G.SONG_SETS.flat().some(m => night.includes(m)), "Dream On is in the Day 1 rotation");
+  const A = G.SONGS.dreamOn.SONG.A; check(A.melN && A.melN[1] !== A.mel[1] && A.melN[0] === A.mel[0], "Normal doesn't avoid the bar-2 clash over Dm");
+  const was = G.mode;
+  try {
+    G.D2.start(); G.D2.act("d2go"); G.setMode("play"); const S = G.S; S.alert = false;
+    check(!night.includes(G.wantMood()), `the handover played ${G.wantMood()}`);
+    G.D2.act("d2shift"); G.setMode("play");
+    check(G.D2.away() && night.includes(G.wantMood()), `the night shift played ${G.wantMood()}`);
+    S.alert = true; check(G.wantMood() === night[2], `a red alert at night played ${G.wantMood()}`); S.alert = false;
+  } finally { G.newRun(); G.setMode(was); }
+  check(!night.includes(G.wantMood()), "a Day 1 run after Day 2 still plays Dream On");
+});
 test("Gitamp: the terminal opens it, it plays any song in any mood, and Stop hands the music back", () => {
   const GA = G.GA; check(GA, "assets/gitamp.js didn't load, so GA is null");
   const keys = GA.TRACKS.flatMap(t => t.set);
@@ -1786,7 +1801,7 @@ test("every song set plays through every mood without errors or the game's rando
     const ctx = new W.OfflineAudioContext(1, 44100, 44100); AU.ctx = ctx; MUS.filt = ctx.createGain();
     if (!AU.noise) AU.noise = ctx.createBuffer(1, 4410, 44100);
     let notes = 0; const osc = ctx.createOscillator.bind(ctx); ctx.createOscillator = () => { notes++; return osc(); };
-    for (const name of [...G.SONG_SETS.flat(), ...G.DONUT_SET]) for (const heat of [0, 2]) {
+    for (const name of [...G.SONG_SETS.flat(), ...G.DONUT_SET, ...G.NIGHT_SET]) for (const heat of [0, 2]) {
       MUS.mood = name; MUS.heat = heat; MUS.pos = {idx: 0, bar: 0}; const M = G.MOODS[name], N = M.song.steps || 16;
       const bars = (M.form || M.song.form).reduce((n, k) => n + M.song[k].chords.length, 0);
       for (let b = 0; b < bars; b++) { for (let s = 0; s < N; s++) G.songStep(M, s, 0.1); G.advanceBar(M); }
