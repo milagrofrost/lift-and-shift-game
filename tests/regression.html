@@ -2270,10 +2270,15 @@ test("sound and music never use the game's random rolls", () => {
 /* ---------- Day 2 prototype (assets/day2.js) ---------- */
 const d2Kit = {sk:{patch:{xp:75,doc:1},ticket:{xp:60,doc:1},fire:{xp:60,doc:1},restore:{xp:55,doc:1}},tools:{bot:true,portal:true},botOk:0.84,botSeen:true,conf:45};
 const d2Tier2 = {sk:{patch:{xp:60},ticket:{xp:45},fire:{xp:45},restore:{xp:0}},tools:{bot:true,portal:false},botOk:0.66};
-test("Day 2: a normal career never turns it on, and the menu offers it", () => {
+test("Day 2: a normal career never turns it on, and the menu offers it only after git checkout day2", () => {
   check(G.D2, "assets/day2.js didn't load, so D2 is null");
   G.newRun(); check(!G.S.d2, "a Day 1 run has Day 2 state");
-  G.titleScreen(); check(W.document.querySelector('#overlay [data-act="d2"]'), "the main menu has no Day 2 button");
+  const btn = () => W.document.querySelector('#overlay [data-act="d2"]');
+  G.titleScreen(); check(!btn(), "the main menu shows Day 2 before git checkout day2");
+  G.devRun("git checkout day2"); check(!G.S.d2, "git checkout day2 changed the run");
+  G.titleScreen(); check(btn(), "git checkout day2 didn't put Day 2 on the main menu");
+  G.devRun("git checkout main"); G.titleScreen(); check(!btn(), "git checkout main didn't take Day 2 off the menu");
+  G.devRun("git checkout day2"); G.titleScreen(); check(btn(), "the main menu has no Day 2 button");
   G.hud(); check(!W.document.body.classList.contains("d2on"), "Day 2's HUD is showing in a Day 1 run");
 });
 test("Day 2: the same handover always plays out the same night", () => {

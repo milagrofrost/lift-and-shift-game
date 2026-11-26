@@ -3749,6 +3749,7 @@ function setDifficulty(d,hardcore){
 const restoresForRun=()=>HARDCORE?0:DIFFS[DIFF].restores; // Hardcore is Hard with no restores; nothing else changes
 const diffLabel=()=>S.hardcore?"Hardcore":diff().label;
 const LOGO="assets/lift-and-shift-logo.png";
+let D2ON=false; // the menu's Day 2 button shows only after `git checkout day2` in the terminal, for this visit (outside S)
 function titleScreen(){
   mode="title";let best=null,bestN=0;try{const s=localStorage.getItem("liftshift-best");best=s===null?null:+s;bestN=+(localStorage.getItem("liftshift-best-n")||0);}catch(e){}
   const opts=Object.entries(DIFFS).map(([k,d])=>`<div class="diffcol"><button class="diff ${k===DIFF?"on":""}" data-diff="${k}" aria-pressed="${k===DIFF}"><b>${d.label}</b><span>${d.desc}</span><small>First client: ${d.counts[0][0]} servers + ${d.counts[0][1]} hidden · ${d.restores} restore${d.restores===1?"":"s"}</small></button>${k==="hard"?`<label class="hardcore"><input type="checkbox" id="hardcore" ${HARDCORE?"checked":""}><span><b>Hardcore:</b> no restores</span></label>`:""}</div>`).join("");
@@ -3759,7 +3760,7 @@ function titleScreen(){
   <div class="diffs">${opts}</div>
   <label class="hardcore noai"><input type="checkbox" id="noai" ${NOAI?"checked":""}><span><b>Old school:</b> no AI upskills. The AI Agent and AI Chatbots never reach the shop. Keep it up long enough with only checklist work left and the job may get outsourced.</span></label>
   <div class="avatar"><label for="avatar"><b>Your avatar:</b></label><input id="avatar" value="${AVATAR}" aria-label="Your avatar: type or paste any emoji" autocomplete="off" spellcheck="false">${AVATAR_PICKS.map(a=>`<button type="button" class="avpick${a===AVATAR?" on":""}" data-avatar="${a}" aria-label="Use ${a} as your avatar" aria-pressed="${a===AVATAR}">${a}</button>`).join("")}<small>or any emoji (Win + . / Ctrl + Cmd + Space)</small></div>
-  <div class="row startrow"><button class="btn" data-act="start">Start new career</button>${D2?`<button class="btn ghost" data-act="d2" title="Prototype: get the last temp ready to run the night shift without you">🌙 Day 2 (prototype)</button>`:""}</div>
+  <div class="row startrow"><button class="btn" data-act="start">Start new career</button>${D2&&D2ON?`<button class="btn ghost" data-act="d2" title="Prototype: get the last temp ready to run the night shift without you">🌙 Day 2 (prototype)</button>`:""}</div>
   <div class="row menulinks">
     <button class="btn ghost sm" data-act="tut">Tutorials</button>
     <button class="btn ghost sm" data-act="howto">How to play</button>
@@ -5117,7 +5118,7 @@ const CLI={
   dig:cli("Look up a DNS name",{"<name>":cli("Any name")}),
   exit:cli("Close the terminal"),
   foxsay:cli("A fox says it",{"<text>":cli("Ignored. It's a fox.")}),
-  git:cli("Assign responsibility",{blame:cli("Find out whose fault this is")}),
+  git:cli("Assign responsibility",{blame:cli("Find out whose fault this is"),checkout:cli("Switch branches",{"<branch>":cli("A branch")})}),
   help:cli("How to get help"),
   history:cli("Show earlier commands"),
   journalctl:cli("Show this client's event log"),
@@ -5210,7 +5211,12 @@ function cliRun(cmd,raw=cmd){
     else if(rest==="resume_final_v7_real.docx")out=`${careerTitle()}\n${RESUME[Math.min(S.career.length,RESUME.length-1)]}`;
     else out=`cat: ${rest||"what"}: No such file. Have you tried opening a ticket?`;
   }
-  else if(h==="git")out=rest==="blame"?(S.career.length>=3?"a3f9c1d (You, just now) # TODO: fix before go-live":"a3f9c1d (Previous Consultant, 3 years ago) # TODO: fix before go-live"):"git: Only blame is supported here.";
+  else if(h==="git"&&a[0]==="checkout"){const b=a.slice(1).join(" ");
+    if(b==="day2"&&D2){D2ON=true;out="Switched to branch 'day2'.\nYour branch is ahead of 'origin/day1' by 1 temp.\n🌙 Day 2 (prototype) is on the main menu until you reload.";}
+    else if((b==="main"||b==="day1")&&D2ON){D2ON=false;out=`Switched to branch '${b}'.\nDay 2 is off the menu again.`;}
+    else if(b==="main"||b==="day1")out=`Already on '${b}'.`;
+    else out=`error: pathspec '${b||"<branch>"}' did not match any file(s) known to git.`;}
+  else if(h==="git")out=rest==="blame"?(S.career.length>=3?"a3f9c1d (You, just now) # TODO: fix before go-live":"a3f9c1d (Previous Consultant, 3 years ago) # TODO: fix before go-live"):"git: Only blame and checkout are supported here.";
   else if(h==="terraform")out=rest==="plan"?"Plan: 0 to add, 0 to change, 1 career to destroy.":"terraform: Only plan is approved. Apply needs a CAB request.";
   else if(h==="kubectl")out=rest==="get pods"?"No pods. You sell donuts.":"kubectl: The cluster is a spreadsheet.";
   else if(h==="ping")out=rest==="linda"?"Request timed out. Linda is at lunch.":rest?"Request timed out.":"usage: ping <host>";
@@ -5240,6 +5246,7 @@ function devClose(){
   $("devterm").hidden=true;BK.armed=null;BK.open=false;
   if(DEV.prev==="play"){mode="play";if(DEV.unlocked)clipEv("cheat");} // back from the cheat menu: he saw that
   else if(DEV.prev==="review")review();
+  else if(DEV.prev==="title")titleScreen(); // git checkout day2 may have changed the menu
   DEV.prev=null;
 }
 $("devbtn").addEventListener("click",()=>{if($("devterm").hidden)devShow();else devClose();});
