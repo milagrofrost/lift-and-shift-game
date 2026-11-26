@@ -74,7 +74,7 @@ const css = `
 const style = document.createElement("style"); style.textContent = css; document.head.appendChild(style);
 const el = document.createElement("section");
 el.id = "gitamp"; el.hidden = true; el.setAttribute("aria-label","Gitamp music player");
-el.innerHTML = `<div class="ga-bar"><b>GITAMP</b><i></i><button class="ga-x" data-ga="close" aria-label="Close Gitamp" title="Close (the game gets its music back)">×</button></div>
+el.innerHTML = `<div class="ga-bar"><b>GITAMP</b><i></i><button class="ga-x" data-ga="vis" aria-label="Open PacketDrop, the visualizer" title="PacketDrop visualizer">VIS</button><button class="ga-x" data-ga="close" aria-label="Close Gitamp" title="Close (the game gets its music back)">×</button></div>
 <div class="ga-body">
   <div class="ga-lcd"><span class="ga-time" aria-hidden="true">0:00</span><canvas width="160" height="28" aria-hidden="true"></canvas>
     <div class="ga-title" aria-live="polite"></div><div class="ga-meta"><span class="ga-mood"></span><span class="ga-state"></span></div></div>
@@ -124,7 +124,7 @@ function go(i) {
   st.i = (i + TRACKS.length) % TRACKS.length; st.bars = 0; st.played = 0; st.t0 = now(); scroll = 0;
   if (st.state === "stop") st.state = "play";
   if (MUS.started) setMood(keyOf()); // a new song starts from its top
-  render();
+  render(); if (!pd.hidden) pdText();
 }
 function nextIndex(dir) {
   if (!st.shuffle || TRACKS.length < 2) return st.i + dir;
@@ -143,6 +143,7 @@ function act(a) {
   else if (a === "next" || a === "prev") {audio(); go(nextIndex(a === "next" ? 1 : -1));}
   else if (a === "shuffle") {st.shuffle = !st.shuffle; render();}
   else if (a === "repeat") {st.repeat = !st.repeat; render();}
+  else if (a === "vis") pdOpen();
   else if (a === "close") close();
 }
 el.addEventListener("click", e => {
@@ -167,15 +168,149 @@ q(".ga-bar").addEventListener("pointermove", e => {
 });
 q(".ga-bar").addEventListener("pointerup", () => {drag = null;});
 
+
+/* ==== PacketDrop 2.0: the visualizer, a parody of the trippy full-screen kind. Now with 40% more loss. ====
+   Last frame fed back zoomed and turned (the swirl), a waveform ring, spectrum spokes, and packets spiralling into the
+   cloud on the beat; any that reach it while the kick drum hits are DROPPED and fall out (the cloud's busy). It shows whatever the music bus plays (Gitamp's or the
+   game's). Draw only; its randomness comes from sndRand. Reduced motion: one still frame. */
+const PD_LABELS = ["SYN","ACK","TCP","UDP","GET /","200 OK","INC0042","JIRA-1337","RE: RE: FW:","DNS?","PATCH","500","PING","503"];
+const PD_GLYPHS = ["📦","🎫","✉️","🖥️","💾","📨"];
+const pdCanFull = () => !!document.documentElement.requestFullscreen;
+const pd = document.createElement("section");
+pd.id = "packetdrop"; pd.hidden = true; pd.setAttribute("role","dialog"); pd.setAttribute("aria-label","PacketDrop visualizer");
+pd.innerHTML = `<div class="pd-bar"><b>PACKETDROP 2.0</b><span>now with 40% more loss</span><i></i>${pdCanFull() ? `<button data-pd="full" aria-label="Full screen" title="Full screen">⛶</button>` : ""}<button data-pd="close" aria-label="Close PacketDrop" title="Close (Esc)">×</button></div>
+<canvas aria-hidden="true"></canvas><div class="pd-foot"><span class="pd-now"></span><span class="pd-drop"></span></div>`;
+style.textContent += `
+#packetdrop{position:fixed;z-index:41;left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,calc(100vw - 32px));height:min(520px,calc(100vh - 32px));display:flex;flex-direction:column;
+  background:#000;border:1px solid #11141a;border-radius:6px;box-shadow:0 14px 40px rgba(0,0,0,.7);font:12px/1.2 var(--f-mono,ui-monospace,monospace);color:#c9d1d9;overflow:hidden}
+#packetdrop[hidden]{display:none}
+#packetdrop:fullscreen{width:100vw;height:100vh;transform:none;left:0;top:0;border-radius:0}
+#packetdrop .pd-bar{display:flex;align-items:center;gap:8px;padding:4px 6px;background:repeating-linear-gradient(0deg,#4a505a 0 1px,#30353d 1px 3px);border-bottom:1px solid #11141a}
+#packetdrop .pd-bar b{background:#262a30;padding:0 6px;letter-spacing:.2em;font-size:11px;color:#f0b429;white-space:nowrap}
+#packetdrop .pd-bar span{color:#c9d1d9;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#packetdrop .pd-bar i{flex:1}
+#packetdrop button{font:inherit;color:#c9d1d9;background:linear-gradient(#4a505a,#2f343b);border:1px solid #11141a;border-radius:3px;cursor:pointer;min-width:24px;min-height:22px;padding:0 6px}
+#packetdrop button:focus-visible{outline:2px solid #f0b429;outline-offset:1px}
+#packetdrop canvas{flex:1;min-height:0;width:100%;display:block}
+#packetdrop .pd-foot{display:flex;justify-content:space-between;gap:8px;padding:3px 8px;background:#050805;color:#3fef3f;font-size:11px;border-top:1px solid #11141a}
+#packetdrop .pd-foot span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}`;
+document.body.appendChild(pd);
+const pcv = pd.querySelector("canvas"), pc = pcv.getContext("2d");
+const pdS = {raf: 0, an: null, f: null, t: null, last: 0, hue: 200, pk: [], drops: 0, ct: 0, trickle: 0, still: false};
+const PD_MAX = 60, PD_KICK = 0.14;
+function pdOpen() {
+  audio(); pd.hidden = false; pdS.last = performance.now(); pdS.still = false; pdText();
+  if (!pdS.raf) pdS.raf = requestAnimationFrame(pdLoop);
+  const b = pd.querySelector('[data-pd="close"]'); if (b) b.focus({preventScroll: true});
+}
+function pdClose() {
+  if (pd.hidden) return; pd.hidden = true;
+  if (document.fullscreenElement === pd && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+}
+function pdText() {
+  const t = TRACKS[st.i];
+  pd.querySelector(".pd-now").textContent = st.state !== "stop" ? `▶ ${t.artist} - ${t.title}` : "▶ the game's own music";
+  pd.querySelector(".pd-drop").textContent = `packets dropped: ${pdS.drops}${RM ? " · still frame (reduced motion)" : ""}`;
+}
+function pdLoop(now) {
+  pdS.raf = pd.hidden ? 0 : requestAnimationFrame(pdLoop);
+  if (!pd.hidden) pdFrame(now);
+}
+function pdFrame(now) {
+  const dt = Math.min(0.05, Math.max(0, (now - pdS.last) / 1000)); pdS.last = now;
+  if (RM && pdS.still) return;
+  // the canvas follows its box (a resize clears it, which is fine: the swirl rebuilds in a second)
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5), cw = Math.max(2, Math.round(pcv.clientWidth * dpr)), ch = Math.max(2, Math.round(pcv.clientHeight * dpr));
+  if (pcv.width !== cw || pcv.height !== ch) {pcv.width = cw; pcv.height = ch;}
+  if (!pdS.an && MUS.bus && AU.ctx) {pdS.an = AU.ctx.createAnalyser(); pdS.an.fftSize = 512; pdS.an.smoothingTimeConstant = 0.75; MUS.bus.connect(pdS.an); pdS.f = new Uint8Array(256); pdS.t = new Uint8Array(512);}
+  const F = pdS.f || new Uint8Array(256), T = pdS.t || new Uint8Array(512).fill(128);
+  if (pdS.an) {pdS.an.getByteFrequencyData(F); pdS.an.getByteTimeDomainData(T);}
+  const avg = (a,b) => {let n = 0; for (let i = a; i < b; i++) n += F[i]; return n / (b - a) / 255;};
+  const bass = avg(1,6), mid = avg(8,40), high = avg(40,120);
+  const w = pcv.width, h = pcv.height, cx = w/2, cy = h/2, R = Math.min(w,h)/2, c = pc;
+  // the kick drum, from the music's own schedule (MUS.kicks, audio time): a burst of packets as it lands, and while it
+  // rings (PD_KICK) the cloud is too busy to take any
+  const ct = AU.ctx ? AU.ctx.currentTime : 0, kicks = MUS.kicks || [];
+  const beat = kicks.some(k => k > pdS.ct && k <= ct), busy = kicks.some(k => ct >= k && ct - k < PD_KICK); pdS.ct = ct;
+  if (RM) {c.fillStyle = "#000"; c.fillRect(0,0,w,h);}
+  else { // the swirl: the last frame, zoomed in and turned a touch, slowly fading
+    c.save(); c.globalAlpha = 0.93; c.translate(cx,cy); c.rotate(0.004 + mid * 0.025 + (beat ? 0.03 : 0)); const z = 1.012 + bass * 0.035;
+    c.scale(z,z); c.drawImage(pcv,-cx,-cy); c.restore();
+    c.fillStyle = "rgba(0,0,0,0.075)"; c.fillRect(0,0,w,h);
+  }
+  pdS.hue = (pdS.hue + dt * (18 + mid * 90)) % 360;
+  const hue = pdS.hue;
+  // spectrum spokes
+  c.lineWidth = Math.max(1, R * 0.012);
+  for (let i = 0; i < 48; i++) {
+    const v = F[2 + i * 2] / 255, a = i / 48 * Math.PI * 2 + hue / 90, r0 = R * 0.42, r1 = r0 + v * R * 0.5;
+    c.strokeStyle = `hsla(${(hue + i * 7) % 360},100%,${45 + v * 25}%,${0.35 + v * 0.6})`;
+    c.beginPath(); c.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); c.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); c.stroke();
+  }
+  // the waveform as a ring
+  c.lineWidth = Math.max(1.5, R * 0.01); c.strokeStyle = `hsl(${(hue + 180) % 360},100%,65%)`; c.beginPath();
+  for (let i = 0; i <= 128; i++) {
+    const v = (T[(i * 4) % 512] - 128) / 128, a = i / 128 * Math.PI * 2, r = R * (0.3 + bass * 0.1) + v * R * 0.2;
+    const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r; if (i) c.lineTo(x,y); else c.moveTo(x,y);
+  }
+  c.closePath(); c.stroke();
+  // the cloud the packets are heading for
+  const core = R * (0.16 + bass * 0.08);
+  const g = c.createRadialGradient(cx,cy,0,cx,cy,core * 1.6); g.addColorStop(0,busy ? "rgba(255,70,70,.95)" : `hsla(${hue},100%,80%,.9)`); g.addColorStop(1,"rgba(0,0,0,0)");
+  c.fillStyle = g; c.beginPath(); c.arc(cx,cy,core * 1.6,0,Math.PI * 2); c.fill();
+  c.textAlign = "center"; c.textBaseline = "middle"; c.font = `${Math.round(core * 1.1)}px sans-serif`; c.fillText("☁️",cx,cy);
+  c.font = `${Math.max(9, Math.round(R * 0.045))}px ui-monospace,monospace`; c.fillStyle = busy ? "#ff5a5f" : "#fff"; c.fillText(busy ? "503 BUSY" : "us-east-1",cx,cy + core * 0.95);
+  // packets: a trickle, and a burst on every beat
+  if (!RM) {
+    pdS.trickle -= dt;
+    const add = (beat ? 2 + Math.floor(bass * 4) : 0) + (pdS.trickle <= 0 && bass + mid > 0.05 ? 1 : 0);
+    if (pdS.trickle <= 0) pdS.trickle = 0.45;
+    for (let k = 0; k < add && pdS.pk.length < PD_MAX; k++)
+      pdS.pk.push({a: sndRand() * Math.PI * 2, r: R * (1.05 + sndRand() * 0.25), s: 0.6 + sndRand() * 0.8,
+        g: PD_GLYPHS[Math.floor(sndRand() * PD_GLYPHS.length)], l: PD_LABELS[Math.floor(sndRand() * PD_LABELS.length)], drop: false});
+  }
+  const fs = Math.max(12, Math.round(R * 0.075)), ls = Math.max(8, Math.round(R * 0.032));
+  pdS.pk = pdS.pk.filter(p => {
+    if (!p.drop) {
+      p.r -= dt * R * 0.33 * p.s * (1 + bass * 1.5); p.a += dt * (0.9 + mid * 2.5) * p.s;
+      if (p.r < core * 1.1) {
+        if (!busy) return false; // delivered
+        p.drop = true; pdS.drops++; pdText(); // ...or bounced off on the kick
+        p.x = cx + Math.cos(p.a) * p.r; p.y = cy + Math.sin(p.a) * p.r; p.vx = -Math.sin(p.a) * R * 0.6; p.vy = -R * 0.3;
+      }
+    } else {p.vy += dt * R * 1.6; p.x += p.vx * dt; p.y += p.vy * dt; if (p.y > h + fs * 2) return false;}
+    const x = p.drop ? p.x : cx + Math.cos(p.a) * p.r, y = p.drop ? p.y : cy + Math.sin(p.a) * p.r;
+    c.font = `${fs}px sans-serif`; c.globalAlpha = p.drop ? 1 : Math.min(1, 0.35 + (1 - p.r / R) * 1.2); c.fillText(p.g,x,y);
+    c.font = `${ls}px ui-monospace,monospace`; c.fillStyle = p.drop ? "#ff5a5f" : `hsl(${(hue + 120) % 360},90%,70%)`;
+    c.fillText(p.drop ? "DROPPED" : p.l,x,y + fs * 0.85); c.globalAlpha = 1;
+    return true;
+  });
+  if (RM) for (let i = 0; i < 8; i++) { // the still frame: a fixed ring of packets, one of them not making it
+    const a = i / 8 * Math.PI * 2 - Math.PI / 2, r = R * 0.72, x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r, drop = i === 3;
+    c.font = `${fs}px sans-serif`; c.fillText(PD_GLYPHS[i % PD_GLYPHS.length], x, drop ? y + fs : y);
+    c.font = `${ls}px ui-monospace,monospace`; c.fillStyle = drop ? "#ff5a5f" : "#7ee787"; c.fillText(drop ? "DROPPED" : PD_LABELS[i], x, (drop ? y + fs : y) + fs * 0.85);
+  }
+  if (high > 0.3 && !RM) {c.fillStyle = `hsla(${hue},100%,90%,${(high - 0.3) * 0.25})`; c.fillRect(0,0,w,h);} // cymbal shimmer
+  if (RM) pdS.still = true;
+}
+pd.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.pd === "close") pdClose();
+  else if (b.dataset.pd === "full") {if (document.fullscreenElement === pd) document.exitFullscreen().catch(() => {}); else pd.requestFullscreen().catch(() => {});}
+});
+pd.addEventListener("keydown", e => e.stopPropagation());
+addEventListener("keydown", e => {if (e.key === "Escape" && !pd.hidden) {e.preventDefault(); e.stopImmediatePropagation(); pdClose();}}, true); // Esc closes it, not the game's pause
+
 function open() {
   st.open = true; el.hidden = false; render();
   if (!ticker) ticker = setInterval(() => {scroll++; render();}, 300);
   if (!raf) raf = requestAnimationFrame(meter);
 }
-function close() {st.open = false; el.hidden = true; st.state = "stop"; st.played = 0; clearInterval(ticker); ticker = null;}
+function close() {pdClose(); st.open = false; el.hidden = true; st.state = "stop"; st.played = 0; clearInterval(ticker); ticker = null;}
 
 return {
   TRACKS, open, close, act, st,
+  vis: {open: pdOpen, close: pdClose, frame: pdFrame, state: () => ({open: !pd.hidden, drops: pdS.drops, packets: pdS.pk.length})},
   toggle: () => (st.open ? close() : open()),
   // what the music should play while Gitamp has it (null: the game decides)
   mood: () => st.state === "stop" ? null : keyOf(),

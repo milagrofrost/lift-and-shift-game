@@ -63,6 +63,7 @@ export const SCENES = [
   {name: '14-hands-on', build: `G.setLogLv(1); G.titleScreen(); document.querySelector('[data-act=tut]').click(); document.querySelector('[data-act=handson]').click();`},
   // last, since it stays open over whatever comes next
   {name: '20-gitamp', build: `fresh(); G.togglePause(); G.devRun('gitamp'); G.GA.act('next');`, mode: 'paused'},
+  {name: '21-packetdrop', build: `G.GA.act('vis'); for (let k = 1; k <= 40; k++) G.GA.vis.frame(performance.now() + k * 16);`, mode: 'paused'},
 ];
 
 /** Build a scene in the page, render one frame, and return what the checks need. */
