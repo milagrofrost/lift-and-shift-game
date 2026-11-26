@@ -5,7 +5,7 @@ Ideas and loose ends. Nothing here is a commitment.
 ## To do
 
 ### Check by hand
-- [ ] Play with the three songs and judge how the four music stages ramp.
+- [ ] Play with Matt's seven song sets and 8 Bit Love in real play and judge how the four music stages ramp (try one with `?music=journey&mood=alert`).
 - [ ] Try phone controls on more real phones: button size, see-through level, stick feel.
 - [ ] Watch max-level chatbots and the pipeline-only Mover Bot in a live round.
 - [ ] Judge the CI/CD pipeline jams (15–20% of sends, 2.5 s hand repair) over a full career: worth buying, or just toil?
@@ -15,7 +15,6 @@ Ideas and loose ends. Nothing here is a commitment.
 ### Small fixes and housekeeping
 - [ ] Republish the claude.ai artifact, or retire it now that las.milagrofrost.com is home (it's on version 45).
 - [ ] Decide whether the small "Lift & Shift" header text should become the logo.
-- [ ] Decide whether the donut shop music should ramp with trouble like the other songs.
 - [ ] Decide whether the Mover Bot should leave a lane free when you only have one.
 
 ### Balance and testing
