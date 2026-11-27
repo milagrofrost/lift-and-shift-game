@@ -133,21 +133,24 @@ test('the floating windows resize from their corner grip and stay on screen', as
     await S(page, open);
     const grip = page.locator(`${win} > .wgrip`), b0 = await page.locator(win).boundingBox();
     await expect(grip, `${win} has no resize grip`).toBeVisible();
-    const g = await grip.boundingBox(), drag = async (dx, dy) => { const c = await grip.boundingBox();
-      await page.mouse.move(c.x + c.width / 2, c.y + c.height / 2); await page.mouse.down(); await page.mouse.move(c.x + c.width / 2 + dx, c.y + c.height / 2 + dy, {steps: 6}); await page.mouse.up(); };
+    // targets stay inside the viewport: Firefox stops sending mouse moves once the pointer leaves it
+    const dragTo = async (tx, ty) => { const c = await grip.boundingBox();
+      await page.mouse.move(c.x + c.width / 2, c.y + c.height / 2); await page.mouse.down(); await page.mouse.move(tx, ty, {steps: 6}); await page.mouse.up(); };
+    const drag = async (dx, dy) => { const c = await grip.boundingBox(); await dragTo(c.x + c.width / 2 + dx, c.y + c.height / 2 + dy); };
     await drag(-60, -40);
     const b1 = await page.locator(win).boundingBox();
     expect(Math.round(b1.width - b0.width), `${win} didn't follow the grip sideways`).toBe(-60);
     expect(Math.round(b1.height - b0.height), `${win} didn't follow the grip down`).toBe(-40);
-    await drag(5000, 5000);
+    await dragTo(vp.width - 1, vp.height - 1);
     const b2 = await page.locator(win).boundingBox();
     expect(b2.x + b2.width, `${win} grew off the right edge`).toBeLessThanOrEqual(vp.width + 0.5);
     expect(b2.y + b2.height, `${win} grew off the bottom`).toBeLessThanOrEqual(vp.height + 0.5);
-    await drag(-5000, -5000);
+    await dragTo(1, 1);
     const b3 = await page.locator(win).boundingBox();
     expect(b3.width, `${win} shrank below its minimum`).toBeGreaterThanOrEqual(250);
     expect(b3.height, `${win} shrank below its minimum`).toBeGreaterThanOrEqual(130);
-    void g;
+    expect(b3.width, `${win} didn't shrink to its minimum`).toBeLessThan(b0.width);
+    await page.locator(`${win} [aria-label^="Close"]`).click(); // so the next window can't end up underneath this one
   }
   await expect(page.locator('#gitamp > .wgrip'), 'Gitamp keeps its fixed size').toHaveCount(0);
   expect(errors, errors.join('\n')).toEqual([]);
