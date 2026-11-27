@@ -32,7 +32,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 const NAMES = ("setTheme,readColors,C,aiCo,CO,letter,rumorBlock,RUMORS,crowd,userLines,alertLines,humanLines,BREAK_CLIENTS,welcomeMail,mailRecap,unicornMail,aiMail,lastMail,spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,capNext,DAY,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "K,keyHint,TOUCH,fixWord,grabWord,setSilentPlay,silentBtn,HAS_SESSION,AU,toastsCover,FIX_WORDS,rollbackTarget,tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
   "SELFTEST,loadIn,LOADIN,moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,SONGS,DONUT_SET,NIGHT_SET,setMood,advanceBar,songPos,songStep,moodGain,MOOD_GAIN,curChord,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,EMAIL,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL,pipeJob,jammed,tickPipeline,sendToPipeline,fixTarget,unjam,jamUnder,laneY,pipeX,PIPE_FIX,PIPE_BREAK_LO,PIPE_BREAK_HI,patchBot,tickJamAlarm,JAM_BUZZ_FIRST,JAM_BUZZ_EVERY," +
-  "D2,GA,SP,WS,shakeOff,shakeRate,SHAKE_STICK,SHAKE_PX,stickJerk,SHAKE_MAX,SHAKE_WIN,SHAKE_SLOW,SHAKE_FAST,SHAKE_BONUS,SHAKE_LINES,SHAKE_BYE,vpLeave,hunting,spawnHunter,infected,CLONE_MAX,FORK_COST,spawnAgent,ciOffered,ciLeft,ciLockable,CI_NEW,salary,salaryText,tickSpecials,client,lvl").split(",");
+  "D2,GA,SP,WS,TIPJAR,TJ,tjShow,tjTick,tjHide,shakeOff,shakeRate,SHAKE_STICK,SHAKE_PX,stickJerk,SHAKE_MAX,SHAKE_WIN,SHAKE_SLOW,SHAKE_FAST,SHAKE_BONUS,SHAKE_LINES,SHAKE_BYE,vpLeave,hunting,spawnHunter,infected,CLONE_MAX,FORK_COST,spawnAgent,ciOffered,ciLeft,ciLockable,CI_NEW,salary,salaryText,tickSpecials,client,lvl").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},get LOGLV(){return LOGLV},setLogLv:v=>{LOGLV=v},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -1725,6 +1725,22 @@ test("Day 2's night shift plays Dream On; the handover and Day 1 never do", () =
     S.alert = true; check(G.wantMood() === night[2], `a red alert at night played ${G.wantMood()}`); S.alert = false;
   } finally { G.newRun(); G.setMode(was); }
   check(!night.includes(G.wantMood()), "a Day 1 run after Day 2 still plays Dream On");
+});
+test("the tip jar's tooltip tells its story a line at a time, with ticking dots, and screen readers get all of it", () => {
+  G.aboutAuthor(); const a = W.document.querySelector("[data-tipjar]"), tip = W.document.getElementById("tip"), lines = () => tip.querySelectorAll(".tj");
+  check(a && a.href.includes("sponsors/milagrofrost?frequency=one-time"), "the tip jar link is missing or doesn't open on one-time");
+  const desc = W.document.getElementById(a.getAttribute("aria-describedby"));
+  check(desc && G.TIPJAR.every(l => desc.textContent.includes(l.slice(0, 20))), "screen readers don't get the whole story");
+  try {
+    G.tjShow(a, 300, 300); clearInterval(G.TJ.timer); // drive it by hand
+    check(!tip.hidden && lines().length === 1 && tip.querySelector(".tjd").textContent === ".", "hovering should show the first line with ticking dots at once");
+    for (let k = 0; k < 2; k++) G.tjTick(); check(tip.querySelector(".tjd").textContent === "...", "the dots should tick 1-2-3");
+    for (let k = 0; k < 7; k++) G.tjTick(); check(lines().length === 2 && lines()[0].textContent.endsWith("…"), "after three runs of dots the next line should arrive");
+    for (let k = 0; k < 9 * 7; k++) G.tjTick();
+    check(lines().length === G.TIPJAR.length && !tip.querySelector(".tjd") && lines()[G.TIPJAR.length - 1].textContent.endsWith("possible."), "the last line should end the story with no dots");
+    G.tjHide(); check(tip.hidden && !G.TJ.el, "leaving the link should hide it");
+    G.tjShow(a, 300, 300, true); check(lines().length === G.TIPJAR.length, "keyboard focus should show the whole story at once"); G.tjHide();
+  } finally { G.tjHide(); }
 });
 test("Gitamp: the terminal opens it, it plays any song, AUTO follows the game's mood, and Stop hands the music back", () => {
   const GA = G.GA; check(GA, "assets/gitamp.js didn't load, so GA is null");
