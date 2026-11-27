@@ -32,7 +32,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 const NAMES = ("setTheme,readColors,C,aiCo,CO,letter,rumorBlock,RUMORS,crowd,userLines,alertLines,humanLines,BREAK_CLIENTS,welcomeMail,mailRecap,unicornMail,aiMail,lastMail,spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,capNext,DAY,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "K,keyHint,TOUCH,fixWord,grabWord,setSilentPlay,silentBtn,HAS_SESSION,AU,toastsCover,FIX_WORDS,rollbackTarget,tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
   "SELFTEST,loadIn,LOADIN,moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,SONGS,DONUT_SET,NIGHT_SET,setMood,advanceBar,songPos,songStep,moodGain,MOOD_GAIN,curChord,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,EMAIL,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL,pipeJob,jammed,tickPipeline,sendToPipeline,fixTarget,unjam,jamUnder,laneY,pipeX,PIPE_FIX,PIPE_BREAK_LO,PIPE_BREAK_HI,patchBot,tickJamAlarm,JAM_BUZZ_FIRST,JAM_BUZZ_EVERY," +
-  "D2,GA,SP,WS,TIPJAR,TJ,tjShow,tjTick,tjHide,shakeOff,shakeRate,SHAKE_STICK,SHAKE_PX,stickJerk,SHAKE_MAX,SHAKE_WIN,SHAKE_SLOW,SHAKE_FAST,SHAKE_BONUS,SHAKE_LINES,SHAKE_BYE,vpLeave,hunting,spawnHunter,infected,CLONE_MAX,FORK_COST,spawnAgent,ciOffered,ciLeft,ciLockable,CI_NEW,salary,salaryText,tickSpecials,client,lvl").split(",");
+  "D2,GA,SP,WS,TIPJAR,TJ,tjShow,tjTick,tjHide,shakeOff,shakeRate,SHAKE_STICK,SHAKE_PX,stickJerk,SHAKE_MAX,SHAKE_WIN,SHAKE_SLOW,SHAKE_FAST,SHAKE_BONUS,SHAKE_LINES,SHAKE_BYE,vpLeave,hunting,spawnHunter,infected,CLONE_MAX,FORK_COST,spawnAgent,ciOffered,ciLeft,ciLockable,CI_NEW,salary,salaryText,tickSpecials,client,lvl,revealApp,unplugMiner,isMiner,MINER_TIME,MINER_ODDS,downCount,grabTarget,tickMinerCha").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},get LOGLV(){return LOGLV},setLogLv:v=>{LOGLV=v},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -49,14 +49,14 @@ function seed(n) {
 }
 const fixedRandom = v => { W.Math.random = () => v; };
 
-// a fresh first client: no users in the way, every rack known, all timers healthy
-function fresh({bluegreen = false, sprint = 1, reveal = true, s = 1} = {}) {
+// a fresh first client: no users in the way, every rack known, all timers healthy, and no crypto miners unless asked
+function fresh({bluegreen = false, sprint = 1, reveal = true, s = 1, miners = false} = {}) {
   seed(s);
   G.newRun(); G.startSprint(sprint); G.setMode("play");
   const S = G.S;
   S.users = []; S.cbots = []; S.atk = []; S.tk = []; S.em = []; S.st = []; S.sp = []; S.temp = null;
   S.upgrades.bluegreen = bluegreen;
-  S.racks.forEach(a => { if (!a) return; if (reveal) a.hidden = false; a.fire = 0; a.down = false; a.covered = false; a.timer = a.maxT; });
+  S.racks.forEach(a => { if (!a) return; if (!miners) a.miner = false; if (reveal) a.hidden = false; a.fire = 0; a.down = false; a.covered = false; a.timer = a.maxT; });
   seed(s + 1000);
   return S;
 }
@@ -839,6 +839,85 @@ test("a hidden server stays hidden until investigated or burned out, and burnout
   check(h.hidden, "revealed without investigation or outage");
   h.fire = 99.9; G.tickOnPrem(0.1);
   check(!h.hidden && h.down, "burnout did not reveal it");
+});
+
+/* ---------- crypto miners ---------- */
+test("about 1 unknown server in 5 is a crypto miner, and known servers never are", () => {
+  let hid = 0, min = 0;
+  for (let s = 1; s <= 120; s++) {
+    seed(s); G.newRun(); G.startSprint(4 + s % 6); const S = G.S;
+    for (const a of S.racks.filter(Boolean)) { if (a.hidden) { hid++; if (a.miner) min++; } else check(!a.miner, `known ${a.name} is a miner`); }
+  }
+  const r = min / hid; check(hid > 150 && r > 0.13 && r < 0.27, `${min} miners in ${hid} unknown servers`);
+});
+test("the tutorial never has a crypto miner, even when every roll would make one", () => {
+  W.Math.random = () => 0; G.newRun(true); const S = G.S;
+  check(S.tut && S.racks.some(a => a && a.hidden), "no tutorial unknown rack to check");
+  check(!S.racks.some(a => a && a.miner), "the tutorial rolled a miner");
+});
+// a first client whose only rack left is one unknown server that is secretly a miner
+function minerRoom() {
+  const S = fresh({reveal: false}); const h = S.racks.find(a => a && a.hidden); check(h, "no hidden server");
+  S.racks.forEach((a, i) => { if (a && a !== h) S.racks[i] = null; }); S.wave = []; h.miner = true;
+  return {S, h};
+}
+test("a crypto miner stays secret until found, then leaves the count with no patch cycle or license", () => {
+  const {S, h} = minerRoom(), tot = S.totalApps, tierTot = S.tierTot[h.tier];
+  check(!G.isMiner(h) && G.musicHeat() === 0, "a hidden miner already shows (or worries the music)");
+  G.revealApp(h, true);
+  check(!h.hidden && G.isMiner(h), "not revealed as a miner");
+  check(S.totalApps === tot - 1 && S.tierTot[h.tier] === tierTot - 1, `count ${tot}→${S.totalApps}, ${h.tier} ${tierTot}→${S.tierTot[h.tier]}`);
+  check(h.lic === 0 && !G.patchDue(h), "a miner has a license or a patch due");
+  const t0 = h.timer, budget = S.budget; G.tickOnPrem(200);
+  check(h.timer === t0 && S.budget === budget && !S.ss.audits, "the miner ran a compliance clock or failed an audit");
+  check(G.musicHeat() === 1, `music heat ${G.musicHeat()} with a running miner`);
+});
+test("a running miner goes cha-ching every 1.25 s, once for any number of miners, and stops when it's gone or offline", () => {
+  const {S, h} = minerRoom(); G.revealApp(h, true);
+  const on = G.AU.on, orig = G.SFX.minerCha; let n = 0; G.AU.on = true; G.SFX.minerCha = () => n++;
+  try {
+    for (let k = 0; k < 100; k++) { G.AU.last.minerCha = 0; G.tickMinerCha(0.05); } // 5 s
+    check(n === 4, `${n} cha-chings in 5 s`);
+    h.down = true; n = 0; for (let k = 0; k < 60; k++) { G.AU.last.minerCha = 0; G.tickMinerCha(0.05); }
+    check(n === 0, "an offline miner kept cha-chinging");
+    h.down = false; S.racks[h.slot] = null; for (let k = 0; k < 60; k++) { G.AU.last.minerCha = 0; G.tickMinerCha(0.05); }
+    check(n === 0, "a gone miner kept cha-chinging");
+  } finally { G.AU.on = on; G.SFX.minerCha = orig; }
+});
+test("a crypto miner never migrates, and the client can't finish until you shut it down", () => {
+  const {S, h} = minerRoom(); G.revealApp(h, true); standAt(S, G.RACKS[h.slot]);
+  check(!G.engagementReady(), "the client could finish with a miner running");
+  G.doGrab(); check(!S.carry && S.racks[h.slot] === h, "grabbed the miner");
+  S.upgrades.pipeline = 1; G.sendToPipeline(); check(!S.pipe.length, "sent the miner down the pipeline");
+  const b = G.mkBot("mover"); S.bots = [b]; for (let k = 0; k < 200; k++) G.moverBot(b, 0.05, 85);
+  check(!b.carry && !b.tgt && S.racks[h.slot] === h && !S.pipe.length, "the Mover Bot took the miner");
+  S.fix = G.fixTarget(); check(G.fixWord() === "UNPLUG" && !G.grabWord()[1], `touch words ${G.fixWord()} / ${G.grabWord()}`);
+  G.keys.fix = true; const acts = S.ss.acts;
+  for (let t = 0; t < G.MINER_TIME - 0.5; t += 0.1) G.doFix(0.1);
+  check(S.racks[h.slot] === h && h.prog > 0, "shut down too early or no progress");
+  for (let k = 0; k < 8; k++) G.doFix(0.1);
+  G.keys.fix = false;
+  check(!S.racks[h.slot] && h.unplugged, "the miner was not shut down");
+  check(S.ss.acts === acts + 1 && S.ss.routine === 0, "shutting it down is not one skilled human action");
+  check(G.engagementReady() && G.musicHeat() === 0, "the client still can't finish, or the music is still tense");
+});
+test("an escalation that burns out a hidden miner reveals it; shutting it down clears the outage and the escalation", () => {
+  const {S, h} = minerRoom(); h.tier = "gold"; h.fire = 99.9; G.tickOnPrem(0.1);
+  check(G.isMiner(h) && h.down && G.downCount() === 1, "burnout did not reveal the miner offline");
+  S.alert = true; standAt(S, G.RACKS[h.slot]); const f = G.fixTarget();
+  check(f && f.kind === "unplug", `red alert offers ${f && f.kind}, not shutting the miner down`);
+  const e = {a: h, x: 0, y: 0}; G.unplugMiner(h, "you");
+  check(G.downCount() === 0 && !S.racks[h.slot], "the outage outlived the miner");
+  G.tickEscalation(e, 0.1); check(e.dead, "the escalation kept waiting for a miner that's gone");
+});
+test("a level 2+ AI agent shuts down a known miner, a level 1 can't, and temps and Patch Bot leave it alone", () => {
+  const {S, h} = minerRoom(); G.revealApp(h, true); S.agent = {};
+  S.upgrades = {agent: 1}; check(!G.agentPick() || G.agentPick().kind !== "unplug", "level 1 went for the miner");
+  S.upgrades = {agent: 2}; const j = G.agentPick(); check(j && j.kind === "unplug" && j.a === h, "level 2 left the miner running");
+  agentAt(S, j); runAgent(G.MINER_TIME + 0.5);
+  check(!S.racks[h.slot] && h.unplugged && S.ss.ai.ok === 1, "the agent didn't shut it down (billed once)");
+  const r2 = minerRoom(); G.revealApp(r2.h, true); r2.h.fire = 30; r2.S.upgrades = {agent: 4}; r2.S.agent = {};
+  const j4 = G.agentPick(); check(j4 && j4.kind === "unplug", `level 4 answered a burning miner with ${j4 && j4.kind}`);
 });
 
 /* ---------- AI agent foundations ---------- */
