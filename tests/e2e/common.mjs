@@ -32,6 +32,12 @@ export async function runScenes(page, testInfo, touch) {
     if (scene.mode && r.mode !== scene.mode) say(`mode is ${r.mode}, expected ${scene.mode}`);
     if (r.scrollW > r.innerW + 1) say(`page scrolls sideways (${r.scrollW} > ${r.innerW})`);
     if (r.overlayOpen && r.overlayScroll !== 0) say(`overlay opened scrolled down by ${r.overlayScroll}px`);
+    // a pop-up card keeps breathing room above and below (--ovgap, at least 14px) and never runs off the sides
+    if (r.card) { const c = r.card;
+      if (c.top < 13.5 || c.bottom < 13.5) say(`overlay card leaves ${Math.round(c.top)}px above and ${Math.round(c.bottom)}px below (want at least 14)`);
+      if (c.left < -0.5 || c.right < -0.5) say(`overlay card runs off the side (${Math.round(c.left)} / ${Math.round(c.right)})`); }
+    // floating windows (terminal, Gitamp, PacketDrop) sit inside the window
+    for (const w of r.wins || []) if (w.left < -0.5 || w.right < -0.5 || w.top < -0.5 || w.bottom < -0.5) say(`${w.id} is off screen (left ${Math.round(w.left)}, right ${Math.round(w.right)}, top ${Math.round(w.top)}, bottom ${Math.round(w.bottom)})`);
     if (scene.alert && !r.alert) say('no red alert');
     if (scene.toastsTop && !r.toastsTop) say("toasts didn't move to the top");
     // a touch screen names the on-screen buttons, never E or Space; a keyboard keeps the keys

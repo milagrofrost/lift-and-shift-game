@@ -1726,28 +1726,48 @@ test("Day 2's night shift plays Dream On; the handover and Day 1 never do", () =
   } finally { G.newRun(); G.setMode(was); }
   check(!night.includes(G.wantMood()), "a Day 1 run after Day 2 still plays Dream On");
 });
-test("Gitamp: the terminal opens it, it plays any song in any mood, and Stop hands the music back", () => {
+test("Gitamp: the terminal opens it, it plays any song, AUTO follows the game's mood, and Stop hands the music back", () => {
   const GA = G.GA; check(GA, "assets/gitamp.js didn't load, so GA is null");
   const keys = GA.TRACKS.flatMap(t => t.set);
-  check(G.SONG_SETS.flat().every(m => keys.includes(m)) && G.DONUT_SET.every(m => keys.includes(m)) && keys.includes("calm") && keys.includes("victory"), "the playlist is missing a song");
+  check(G.SONG_SETS.flat().every(m => keys.includes(m)) && G.DONUT_SET.every(m => keys.includes(m)) , "the playlist is missing a song");
+  check(!keys.includes("calm") && !keys.includes("victory"), "the menu or victory loop is on the playlist");
   const S = fresh(); S.alert = false; S.users = []; S.tk = []; const t0 = S.time, before = JSON.stringify({t: S.time, err: S.err, tk: S.tk.length});
   const random = W.Math.random; let calls = 0; W.Math.random = () => { calls++; return random(); };
   const el = W.document.getElementById("gitamp"), gameSong = () => G.SONG_SETS[((S.songOffset || 0) + Math.max(0, S.sprint - 1)) % G.SONG_SETS.length][0];
   try {
     check(el && el.hidden, "Gitamp is open before anyone asked");
+    check(GA.TRACKS[GA.st.i].set[0] === gameSong(), "starting a client didn't select its song in Gitamp");
+    GA.st.i = 0; // from the top of the playlist for the checks below
     G.devRun("gitamp"); check(!el.hidden, "gitamp in the terminal didn't open it");
     check(G.GA.mood() === null && G.wantMood() === gameSong(), "an open, stopped Gitamp took the music");
     GA.act("next"); check(GA.st.state === "play" && G.wantMood() === GA.TRACKS[1].set[0], `next didn't play track 2: ${G.wantMood()}`);
     G.setMode("paused"); check(G.wantMood() === GA.TRACKS[1].set[0], "pausing the game took the music back from Gitamp");
+    check(GA.st.mood === "auto" && GA.heat() === null, "Gitamp doesn't start on AUTO");
+    G.setMode("play"); S.alert = true; check(G.wantMood() === GA.TRACKS[1].set[2], `AUTO didn't follow the red alert: ${G.wantMood()}`);
+    S.alert = false; check(G.wantMood() === GA.TRACKS[1].set[G.musicHeat() ? 1 : 0], `AUTO didn't follow the game's calm: ${G.wantMood()}`);
+    G.setMode("paused");
     for (const [m, i, heat] of [["tense", 1, 0], ["hot", 1, 2], ["alert", 2, 0], ["normal", 0, 0]]) {
       el.querySelector(`[data-mood="${m}"]`).click();
       check(G.wantMood() === GA.TRACKS[1].set[i] && GA.heat() === heat, `the ${m} button played ${G.wantMood()} at heat ${GA.heat()}`);
     }
+    el.querySelector('[data-mood="auto"]').click(); check(GA.st.mood === "auto" && GA.heat() === null, "the Auto button didn't hand the mood back");
+    el.querySelector('[data-mood="alert"]').click();
+    el.dispatchEvent(new W.PointerEvent("pointerdown", {bubbles: true})); check(GA.st.mood === "alert", "a click inside Gitamp dropped its pinned mood");
+    W.document.getElementById("c").dispatchEvent(new W.PointerEvent("pointerdown", {bubbles: true}));
+    check(GA.st.mood === "auto", "a click back in the game didn't return Gitamp to AUTO");
+    el.querySelector('[data-mood="tense"]').click(); W.dispatchEvent(new W.KeyboardEvent("keydown", {key: "d", bubbles: true}));
+    check(GA.st.mood === "auto", "a key back in the game didn't return Gitamp to AUTO");
     GA.act("pause"); check(GA.silent(), "pause didn't silence it");
     GA.act("play"); check(!GA.silent() && GA.st.state === "play", "play didn't resume");
-    for (let b = 0; b < GA.TRACKS[1].bars; b++) GA.bar(); check(GA.st.i === 2, `the track didn't move on after its length (on ${GA.st.i + 1})`);
-    GA.act("repeat"); for (let b = 0; b < GA.TRACKS[2].bars * 2; b++) GA.bar(); check(GA.st.i === 2, "repeat moved on");
-    GA.act("repeat"); GA.act("shuffle"); GA.act("next"); check(GA.st.i !== 2, "shuffle stayed on the same track");
+    check(GA.st.repeat, "repeat isn't on by default");
+    for (let b = 0; b < GA.TRACKS[1].bars * 2; b++) GA.bar(); check(GA.st.i === 1, "repeat (on by default) moved on");
+    GA.act("repeat"); for (let b = 0; b < GA.TRACKS[1].bars; b++) GA.bar(); check(GA.st.i === 2, `with repeat off the track didn't move on after its length (on ${GA.st.i + 1})`);
+    GA.act("shuffle"); GA.act("next"); check(GA.st.i !== 2, "shuffle stayed on the same track"); GA.act("shuffle"); GA.act("repeat");
+    // a client wrapping up plays Victory over Gitamp's song and says so; the menu doesn't take over
+    const song = GA.st.i; G.setMode("celebrate");
+    check(G.wantMood() === "victory" && el.querySelector(".ga-title").textContent.includes("Victory"), `the end of a client didn't play Victory: ${G.wantMood()}`);
+    for (let b = 0; b < 200; b++) GA.bar(); check(GA.st.i === song, "Victory moved Gitamp's playlist on");
+    G.setMode("title"); check(G.wantMood() === GA.TRACKS[song].set[0] && !el.querySelector(".ga-title").textContent.includes("Victory"), `the menu took the music from Gitamp: ${G.wantMood()}`);
     GA.act("stop"); check(GA.mood() === null && GA.heat() === null && !GA.silent(), "stop didn't hand the music back");
     G.setMode("play"); check(G.wantMood() === gameSong(), `after Stop the game played ${G.wantMood()}`);
     el.querySelector('[data-track="0"]').click(); check(GA.st.state === "play" && GA.st.i === 0, "clicking a track didn't play it");
@@ -1756,7 +1776,16 @@ test("Gitamp: the terminal opens it, it plays any song in any mood, and Stop han
     check(G.S === S && S.time === t0 && JSON.stringify({t: S.time, err: S.err, tk: S.tk.length}) === before, "Gitamp changed the run");
   } finally { W.Math.random = random; GA.close(); G.setMode("play"); }
 });
-test("PacketDrop: Gitamp's VIS button opens it, it draws without the game's rolls, and Esc closes it", () => {
+test("Gitamp: each new client selects the song the game would play for it, playing or not", () => {
+  const GA = G.GA, S = fresh();
+  try {
+    const songOf = n => G.SONG_SETS[((S.songOffset || 0) + n - 1) % G.SONG_SETS.length][0];
+    GA.act("stop"); G.startSprint(2); check(GA.st.state === "stop" && GA.TRACKS[GA.st.i].set[0] === songOf(2), "a stopped Gitamp didn't select the next client's song");
+    GA.act("play"); G.setMode("play"); G.startSprint(3);
+    check(GA.st.state === "play" && GA.TRACKS[GA.st.i].set[0] === songOf(3) && G.wantMood().endsWith(songOf(3).slice(5)), `a playing Gitamp didn't move on to the next client's song: ${G.wantMood()}`);
+  } finally { GA.close(); G.setMode("play"); }
+});
+test("PacketDrop: Gitamp's VIS button opens it, it draws without the game's rolls, and Esc closes it while it has focus", () => {
   const GA = G.GA, S = fresh(), t0 = S.time, pd = W.document.getElementById("packetdrop");
   const random = W.Math.random; let calls = 0; W.Math.random = () => { calls++; return random(); };
   try {
@@ -1771,7 +1800,10 @@ test("PacketDrop: Gitamp's VIS button opens it, it draws without the game's roll
     check(kinds.every(k => k.g && !k.l && k.w > 0), "a packet kind is missing its icon or weight, or has text under it");
     for (const g of ["🧠", "📎", "🤖", "🎫"]) check(kinds.some(k => k.g === g), `PacketDrop has no ${g}`);
     for (const e of Object.values(G.EMAIL)) check(kinds.some(k => k.g === e.icon), `PacketDrop has no ${e.label} email`);
-    W.dispatchEvent(new W.KeyboardEvent("keydown", {key: "Escape", bubbles: true}));
+    W.document.activeElement.blur(); W.document.body.dispatchEvent(new W.KeyboardEvent("keydown", {key: "Escape", bubbles: true}));
+    check(!pd.hidden, "Esc closed PacketDrop while it didn't have focus"); G.setMode("play");
+    pd.dispatchEvent(new W.PointerEvent("pointerdown", {bubbles: true})); check(W.document.activeElement === pd, "clicking PacketDrop didn't give it focus");
+    pd.dispatchEvent(new W.KeyboardEvent("keydown", {key: "Escape", bubbles: true}));
     check(pd.hidden, "Esc didn't close PacketDrop");
     check(G.mode !== "paused", "Esc on PacketDrop also paused the game");
     GA.act("vis"); GA.close(); check(pd.hidden, "closing Gitamp left PacketDrop open");
@@ -1844,7 +1876,7 @@ test("restore brings state back, reverts later rows, and spends one charge", () 
   const S = fresh(); const a = firstRack(S); S.carry = a; S.racks[a.slot] = null; S.err = S.errMax * 0.8;
   const row = backupAt(S, G.BACKUP_EVERY + 1, "marker");
   S.err = 1; S.security = 3; S.carry = null; S.budget -= 500; const after = backupAt(S, 2 * G.BACKUP_EVERY + 2, "later");
-  G.DEV.prev = "play"; runRestore(row); const R = G.S;
+  G.setMode("play"); runRestore(row); const R = G.S;
   check(G.mode === "restored", "should wait for the player after the bar");
   check(R !== S && near(R.err, R.errMax * 0.8), "uptime not restored");
   check(R.carry && R.carry.name === a.name, "carried server not restored");
@@ -1856,28 +1888,28 @@ test("restore brings state back, reverts later rows, and spends one charge", () 
 test("shared server references survive a restore", () => {
   const S = fresh(); const a = firstRack(S); S.pipe = [{a, t: 1}];
   const row = backupAt(S, G.BACKUP_EVERY + 1, "marker");
-  G.DEV.prev = "play"; runRestore(row);
+  G.setMode("play"); runRestore(row);
   check(G.S.pipe[0].a === G.S.racks[a.slot], "pipeline and rack became separate copies");
 });
 test("charges run out and aren't refunded by restoring", () => {
   fresh(); const row = G.bkPoints()[0];
-  for (let i = 0; i < G.restoresForRun(); i++) { G.DEV.prev = "play"; runRestore(row); }
+  for (let i = 0; i < G.restoresForRun(); i++) { G.setMode("play"); runRestore(row); }
   check(G.BK.left === 0, "charges should be gone");
-  const before = G.S; G.DEV.prev = "play"; G.beginRestore(row);
-  check(G.mode === "restored" && G.S === before, "restored with no charges left");
+  const before = G.S; G.setMode("play"); G.beginRestore(row);
+  check(G.mode === "play" && G.S === before, "restored with no charges left");
   G.newRun(); check(G.BK.left === G.restoresForRun(), "new career should refill charges");
 });
 test("restore needs a job: fired yes, retired or title screen no", () => {
   const S = fresh(); const row = G.bkPoints()[0];
-  G.showEnd("uptime"); G.DEV.prev = "end"; G.beginRestore(row); check(G.mode === "restoring", "fired screen should allow a restore");
+  G.showEnd("uptime"); G.setMode("end"); G.beginRestore(row); check(G.mode === "restoring", "fired screen should allow a restore");
   G.tickRestore(G.RESTORE_TIME + 1); check(G.BK.fired === false, "fired flag should clear");
-  G.S.dev = true; G.showEnd(null); G.DEV.prev = "end"; const left = G.BK.left; G.beginRestore(row);
+  G.S.dev = true; G.showEnd(null); G.setMode("end"); const left = G.BK.left; G.beginRestore(row);
   check(G.mode === "end" && G.BK.left === left, "retired careers can't restore");
-  G.DEV.prev = "title"; G.beginRestore(row); check(G.BK.left === left, "title screen can't restore");
+  G.setMode("title"); G.beginRestore(row); check(G.BK.left === left, "title screen can't restore");
 });
 test("dev tools used after a backup still mark the run", () => {
   const S = fresh(); const row = G.bkPoints()[0]; S.dev = true;
-  G.DEV.prev = "play"; runRestore(row); check(G.S.dev === true, "restore laundered a dev-tools run");
+  G.setMode("play"); runRestore(row); check(G.S.dev === true, "restore laundered a dev-tools run");
 });
 test("restore points don't cross clients", () => {
   fresh(); const old = G.bkPoints()[0]; G.startSprint(2);
@@ -2303,6 +2335,17 @@ test("logging level only changes text: users catch you at the same moments and p
   for (const lv of [0, 1, 3]) { const got = await runAt(lv); check(got === ref, `${G.LOG_LEVELS[lv]} changed the simulation: ${got.slice(0, 160)} vs INFO ${ref.slice(0, 160)}`); }
 });
 
+test("the terminal is a window over a running game: no pause, and Esc pauses only when no window has the keys", () => {
+  const S = fresh(); G.setMode("play"); const term = W.document.getElementById("devterm"), input = W.document.getElementById("devinput");
+  try {
+    G.devShow(); check(!term.hidden && G.mode === "play", `opening the terminal changed the mode to ${G.mode}`);
+    const esc = t => t.dispatchEvent(new W.KeyboardEvent("keydown", {key: "Escape", code: "Escape", bubbles: true}));
+    input.blur(); esc(W.document.body); check(G.mode === "paused" && !term.hidden, `Esc with no window focused didn't pause (${G.mode})`);
+    esc(W.document.body); check(G.mode === "play", "Esc didn't unpause");
+    input.focus(); esc(input); check(term.hidden && G.mode === "play", "Esc in the terminal didn't just close it");
+    G.devShow(); term.querySelector("[data-close]").click(); check(term.hidden, "the terminal's × didn't close it");
+  } finally { G.devClose(); G.setMode("play"); }
+});
 test("DEBUG logs the terminal session, and the cheat menu as CHEATER CHEATER PUMPKIN EATER", () => {
   const S = fresh(), was = G.DEV.unlocked; G.setMode("play");
   const since = () => G.DBG_LOG.filter(e => e.s === S).map(e => `${G.LOG_LEVELS[e.lvl]} ${e.text}`);
@@ -2311,7 +2354,7 @@ test("DEBUG logs the terminal session, and the cheat menu as CHEATER CHEATER PUM
     G.devLog("$ ping linda"); G.devRun("ping linda"); G.devRun("man restore");
     G.devClose();
     const log = since();
-    check(log.includes("DEBUG tty0: session opened (game paused)") && log.includes("DEBUG tty0: session closed"), `session not logged: ${log}`);
+    check(log.includes("DEBUG tty0: session opened (game still running)") && log.includes("DEBUG tty0: session closed"), `session not logged: ${log}`);
     check(log.includes("DEBUG tty0: $ ping linda") && log.includes("DEBUG tty0: Request timed out. Linda is at lunch."), `command or reply not logged: ${log}`);
     check(log.some(t => /^DEBUG tty0: RESTORE\(1\) \(\+\d lines\)$/.test(t)), `multi-line reply not summarised: ${log}`);
     check(!log.includes(`ERROR ${G.CHEATER}`), "a plain terminal visit was called cheating");
