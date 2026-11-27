@@ -426,6 +426,7 @@ kbd{font-family:var(--f-mono);font-size:11.5px;background:var(--panel-2);border:
   #rotate b{font-size:22px}
   #rotate span{font-family:var(--f-body);color:var(--muted);font-size:14px}
   #rotate i{font-style:normal;font-size:48px}
+  #rotate small{font-family:var(--f-body);color:var(--muted);font-size:13px;max-width:34ch;line-height:1.45;margin-top:10px}
 }
 /* Standalone windows keep controls clear of the notch and home indicator. */
 @media (display-mode:standalone){
@@ -570,7 +571,7 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
   <button class="tbtn" id="t-freeze" type="button" aria-label="Use emergency freeze" hidden>❄</button>
   <button class="tbtn" id="t-pause" type="button" aria-label="Pause">❚❚</button>
 </div>
-<div id="rotate" role="alert"><i>📱↻</i><b>Turn your phone sideways</b><span>Lift &amp; Shift plays in landscape.</span></div>
+<div id="rotate" role="alert"><i>📱↻</i><b>Turn your phone sideways</b><span>Lift &amp; Shift plays in landscape.</span><small id="rotate-snd"></small></div>
 <div class="overlay" id="overlay"></div>
 <div id="glare" aria-hidden="true"></div>
 <div class="tip" id="tip" role="tooltip" hidden></div>
@@ -1012,6 +1013,10 @@ function silentTip(){
   try{if(localStorage.getItem("liftshift-silenttip"))return;localStorage.setItem("liftshift-silenttip","1");}catch(e){return;}
   toast("🔕 No sound? Your phone may be on silent. Pause → Silent mode to play sound anyway.");
 }
+// the turn-sideways screen also says where the sound went: an iPhone on silent mutes the game (it follows the switch, like
+// casual games do), while Android's silent mode leaves game audio alone, so there it's the media volume
+{const el=document.getElementById("rotate-snd"),ios=HAS_SESSION||/iP(hone|ad|od)/.test(navigator.userAgent);
+  if(el)el.textContent=ios?`🔊 Want sound? Take your iPhone off silent (Ring/Silent switch or Action button) and turn the volume up.${HAS_SESSION?" Or Pause → Silent mode to play sound anyway.":""}`:"🔊 Want sound? Turn your media volume up.";}
 function setSound(on){
   AU.on=on;try{localStorage.setItem("liftshift-sound",on?"on":"off");}catch(e){}
   if(AU.ctx)audioSession();
@@ -4445,7 +4450,7 @@ function learnMore(){
 }
 /* About the author: a humble-brag post in the style of a professional networking feed (no real site's branding),
    with links to the author's profile, site and the source. */
-const AUTHOR_LINKS=[["💼","Connect on LinkedIn","https://www.linkedin.com/in/milagrofrost/"],["🌐","milagrofrost.com","https://milagrofrost.com"],["💻","Source on GitHub","https://github.com/milagrofrost/lift-and-shift-game"]];
+const AUTHOR_LINKS=[["💼","Connect on LinkedIn","https://www.linkedin.com/in/milagrofrost/"],["🌐","milagrofrost.com","https://milagrofrost.com"],["💻","Source on GitHub","https://github.com/milagrofrost/lift-and-shift-game"],["❤️","Tip jar","https://github.com/sponsors/milagrofrost","Like the game? Donate to my hermitage in the woods."]]; // a no-strings GitHub Sponsors tip jar
 // the comments under the post: the usual suspects, saying their actual lines from the game
 function authorComments(){
   const R=n=>RANKS.find(x=>x.name===n).lines;
@@ -4477,7 +4482,7 @@ function aboutAuthor(){
       ${authorComments().map(([i,n,t,c,ago])=>`<div class="cmt"><div class="pfp sm" aria-hidden="true">${i}</div><div><b>${n}</b><small>${t}</small><p>${c}</p><small>Like · Reply · ${ago}</small></div></div>`).join("")}
       <p class="more">33 more comments are just "Agree." and one is a recruiter.</p>
     </details>
-    <div class="postlinks">${AUTHOR_LINKS.map(([i,t,u])=>`<a href="${u}" target="_blank" rel="noopener noreferrer">${i} ${t}</a>`).join("")}</div>
+    <div class="postlinks">${AUTHOR_LINKS.map(([i,t,u,tip])=>`<a href="${u}" target="_blank" rel="noopener noreferrer"${tip?` title="${tip}"`:""}>${i} ${t}</a>`).join("")}</div>
   </article>
   <p style="font-size:12.5px;color:var(--muted)">Built with help from Claude. Any resemblance to your own data center is purely coincidental.</p>
   <button class="btn" data-act="menu">Back to menu</button>`);
