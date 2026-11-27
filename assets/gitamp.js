@@ -164,7 +164,7 @@ el.addEventListener("click", e => {
 el.addEventListener("keydown", e => {e.stopPropagation(); if (e.key === "Escape" && document.activeElement) document.activeElement.blur();}); // Space on a focused button is the button's, not the game's; Esc lets go of Gitamp
 // back in the game (a click or a key anywhere but Gitamp, PacketDrop or the terminal): a pinned mood goes back to AUTO
 function backToGame(e) {
-  if (st.mood === "auto" || (e.target.closest && e.target.closest("#gitamp,#packetdrop,#devterm"))) return;
+  if (st.mood === "auto" || (e.target.closest && e.target.closest("#gitamp,#packetdrop,#devterm,#statuspage,#wiresnark"))) return;
   st.mood = "auto"; if (MUS.started && st.state !== "stop") setMood(keyOf()); render();
 }
 addEventListener("pointerdown", backToGame, true); addEventListener("keydown", backToGame, true);
@@ -212,7 +212,7 @@ style.textContent += `
   background:#000;border:1px solid #11141a;border-radius:6px;box-shadow:0 14px 40px rgba(0,0,0,.7);font:12px/1.2 var(--f-mono,ui-monospace,monospace);color:#c9d1d9;overflow:hidden}
 #packetdrop[hidden]{display:none}
 #packetdrop:focus{outline:none}
-#packetdrop:fullscreen{width:100vw;height:100vh;transform:none!important;left:0!important;top:0!important;border-radius:0}
+#packetdrop:fullscreen{width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;transform:none!important;left:0!important;top:0!important;border-radius:0}
 #packetdrop .pd-bar{display:flex;align-items:center;gap:8px;padding:4px 6px;cursor:move;touch-action:none;background:repeating-linear-gradient(0deg,#4a505a 0 1px,#30353d 1px 3px);border-bottom:1px solid #11141a}
 #packetdrop .pd-bar b{background:#262a30;padding:0 6px;letter-spacing:.2em;font-size:11px;color:#f0b429;white-space:nowrap}
 #packetdrop .pd-bar span{color:#c9d1d9;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -223,6 +223,7 @@ style.textContent += `
 #packetdrop .pd-foot{display:flex;justify-content:space-between;gap:8px;padding:3px 8px;background:#050805;color:#3fef3f;font-size:11px;border-top:1px solid #11141a}
 #packetdrop .pd-foot span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}`;
 document.body.appendChild(pd);
+if (G.resizable) G.resizable(pd, {minW: 280, minH: 200}); // the canvas follows its box
 const pcv = pd.querySelector("canvas"), pc = pcv.getContext("2d");
 const pdS = {raf: 0, an: null, f: null, t: null, last: 0, hue: 200, pk: [], drops: 0, ct: 0, trickle: 0, still: false};
 const PD_MAX = 60, PD_KICK = 0.14;

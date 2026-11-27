@@ -32,7 +32,7 @@ const HOOK = 'newRun();titleScreen();requestAnimationFrame(frame);';
 const NAMES = ("setTheme,readColors,C,aiCo,CO,letter,rumorBlock,RUMORS,crowd,userLines,alertLines,humanLines,BREAK_CLIENTS,welcomeMail,mailRecap,unicornMail,aiMail,lastMail,spawns,inboxLimit,importantMail,cloudSpend,tickFinops,approveNear,tickAgent,agentPick,jiggler,cloudRate,burnRate,outageBurn,migrateBurn,migrateMult,rollOffers,patchBotStocked,missShops,shownOffers,PITY_MAX,BREAK_CLIENTS,needsBreak,capNext,DAY,isBreak,stage,CLIENTS,retroOptions,getClient,haz,UPGRADES,newRun,startSprint,engagementCfg,update,applyPatch,patchDue,tickOnPrem,engagementReady,migrate,cutoverOK,doGrab," +
   "K,keyHint,TOUCH,fixWord,grabWord,setSilentPlay,silentBtn,HAS_SESSION,AU,toastsCover,FIX_WORDS,rollbackTarget,tickEscalation,cancelDeadCopies,useFreeze,startFreeze,freezeActive,liveCopy,slotUnder,rackUnder,RACKS,SLOTS,DESK," +
   "SELFTEST,loadIn,LOADIN,moverBot,mkBot,tickChatbots,spawnChatbots,tickTemp,devRun,devSet,DEV,keys,uptimeRegen,uptimeCap,tickManager,musicHeat,tickHazards,stick,stickVector,wantMood,SONG_SETS,MOODS,SONGS,DONUT_SET,NIGHT_SET,setMood,advanceBar,songPos,songStep,moodGain,MOOD_GAIN,curChord,agentOdds,agentFixOdds,agentPick,tickAgent,AGENT_LV,AGENT_FOUNDATIONS,BK,restoresForRun,setDifficulty,RESTORE_TIME,BACKUP_EVERY,backupTick,bkPoints,logEv,beginRestore,tickRestore,devShow,devClose,showEnd,resign,shareFacts,sharePostText,shareLink,shareAct,SHARE,SHARE_NETS,SHARE_URL,shareCode,TITLES,verdict,carnageRows,notMyProblem,tickUsers,tickShouts,RANKS,HUMAN_LINES,financeExtension,finishEngagement,doFix,spawnManager,canBuy,discoverTime,ticketLimit,rollCredits,creditsDone,CREDITS,ALERT_SLOW,slowDepth,doorOpen,doorCross,spawnTemp,SFX,AU,EMAIL,outsourced,skilledShare,OUTSOURCE_FROM,START_GRACE,toolkitHtml,show,ROUTINE,cleanAvatar,setAvatar,titleScreen,LEARN,learnMore,aboutAuthor,AUTHOR_LINKS,hideTip,creditsOld,clipTwin,clipEv,clipReset,tickClip,CLIP_LINES,CLIP_SHOP,clipMood,CLIP_SVG,TUT,tutorial,TUTOR,tutTick,tutAck,tutGrabOK,tutDone,buy,review,INBOX,handsOn,hud,fl,buildPrompt,logLv,LOG_LEVELS,logLevelBtn,togglePause,draw,drawDebug,audio,mDrum,MUS,DBG_LOG,CHEATER,devLog,devClose,PANEL,pipeJob,jammed,tickPipeline,sendToPipeline,fixTarget,unjam,jamUnder,laneY,pipeX,PIPE_FIX,PIPE_BREAK_LO,PIPE_BREAK_HI,patchBot,tickJamAlarm,JAM_BUZZ_FIRST,JAM_BUZZ_EVERY," +
-  "D2,GA,shakeOff,shakeRate,SHAKE_STICK,SHAKE_PX,stickJerk,SHAKE_MAX,SHAKE_WIN,SHAKE_SLOW,SHAKE_FAST,SHAKE_BONUS,SHAKE_LINES,SHAKE_BYE,vpLeave,hunting,spawnHunter,infected,CLONE_MAX,FORK_COST,spawnAgent,ciOffered,ciLeft,ciLockable,CI_NEW,salary,salaryText,tickSpecials,client,lvl").split(",");
+  "D2,GA,SP,WS,shakeOff,shakeRate,SHAKE_STICK,SHAKE_PX,stickJerk,SHAKE_MAX,SHAKE_WIN,SHAKE_SLOW,SHAKE_FAST,SHAKE_BONUS,SHAKE_LINES,SHAKE_BYE,vpLeave,hunting,spawnHunter,infected,CLONE_MAX,FORK_COST,spawnAgent,ciOffered,ciLeft,ciLockable,CI_NEW,salary,salaryText,tickSpecials,client,lvl").split(",");
 const EXPOSE = 'window.__G={get S(){return S},get mode(){return mode},get LOGLV(){return LOGLV},setLogLv:v=>{LOGLV=v},setMode:m=>{mode=m},' +
   NAMES.map(n => `${n}:(typeof ${n}!=="undefined"?${n}:undefined)`).join(",") + '};newRun();titleScreen();';
 
@@ -1784,6 +1784,79 @@ test("Gitamp: each new client selects the song the game would play for it, playi
     GA.act("play"); G.setMode("play"); G.startSprint(3);
     check(GA.st.state === "play" && GA.TRACKS[GA.st.i].set[0] === songOf(3) && G.wantMood().endsWith(songOf(3).slice(5)), `a playing Gitamp didn't move on to the next client's song: ${G.wantMood()}`);
   } finally { GA.close(); G.setMode("play"); }
+});
+test("WireSnark: captures the floor in game time, goes red on outages, exfiltrates on leaks, never names hidden servers, keeps only its last 150 packets, and only reads", async () => {
+  const WS = G.WS; check(WS, "assets/wiresnark.js didn't load, so WS is null");
+  const S = fresh(); S.users = []; const el = W.document.getElementById("wiresnark");
+  const random = W.Math.random; let calls = 0; W.Math.random = () => { calls++; return random(); };
+  const run = (secs, f) => { const n0 = WS.cap.n; WS.tick(); for (let k = 0; k < secs * 10; k++) { if (f) f(); S.time += 0.1; WS.tick(); } return WS.rows().filter(r => r.no > n0); };
+  try {
+    G.devRun("wiresnark"); check(WS.isOpen() && !el.hidden, "wiresnark didn't open WireSnark");
+    const err0 = S.err, t0 = S.time, sec0 = S.security;
+    const quiet = run(3); check(quiet.length > 0 && !quiet.some(r => /rst|bad|icmperr/.test(r.cls)), `a quiet floor should chatter without red (${quiet.length} packets)`);
+    const known = S.racks.filter(a => a && !a.hidden), hidden = S.racks.filter(a => a && a.hidden);
+    known[0].down = true; const out = run(3); known[0].down = false;
+    check(out.filter(r => /rst|bad|icmperr/.test(r.cls)).length > out.length / 3, "an outage should be a wall of red");
+    check(out.length > quiet.length, `an outage should speed the capture up (${out.length} vs ${quiet.length})`);
+    const i = S.cloud.findIndex(c => !c); S.cloud[i] = {name: "Exfil Test", tier: "bronze", leak: 80, leakOn: true, breach: false, down: false, staged: false, prog: 0, rb: 0};
+    const leak = run(3); check(leak.some(r => /^175\.45\.176\./.test(r.dst)), "a leak should exfiltrate to 175.45.176.0/22");
+    S.cloud[i].leakOn = false; S.cloud[i].breach = true; const br = run(3); S.cloud[i] = null;
+    check(br.some(r => r.proto === "SSHv2" && r.cls === "rst"), "a breach should show red SSH");
+    if (hidden[0]) { const h = hidden[0]; h.disc = 0; const pr = run(2, () => { h.disc += 0.1; });
+      check(pr.some(r => r.proto === "ARP" && r.info.includes(`10.0.1.${10 + S.racks.indexOf(h)}`)), "investigating an unknown rack should ARP for it"); }
+    const all = JSON.stringify(WS.rows()); check(!hidden.some(h => all.includes(h.name)), "WireSnark named a hidden server");
+    known[0].down = true; run(30); known[0].down = false; // way past the cap: rotated-out packets are gone from memory and the table
+    W.document.getElementById("wiresnark"); const tb = el.querySelector("tbody");
+    check(WS.cap.n > 300 && WS.rows().length <= 150, `WireSnark kept ${WS.rows().length} of ${WS.cap.n} packets in memory`);
+    for (let k = 0; k < 4; k++) await new Promise(res => W.setTimeout(res, 120)); // let the table catch up
+    check(tb.rows.length <= 150, `WireSnark's table kept ${tb.rows.length} rows`);
+    G.setMode("paused"); const paused = run(2); G.setMode("play"); check(paused.length === 0, `a paused game captured ${paused.length} packets`);
+    el.querySelector('[data-ws="stop"]').click(); check(run(2).length === 0, "Stop didn't stop the capture"); el.querySelector('[data-ws="start"]').click();
+    const few = WS.rate(WS.scene()); S.users = [{x: 0, y: 0}, {x: 0, y: 0}, {x: 0, y: 0}]; check(WS.rate(WS.scene()) > few, "more machines on screen should mean more packets"); S.users = [];
+    check(calls === 0, `WireSnark used Math.random ${calls} times`);
+    check(G.S === S && S.err === err0 && S.security === sec0 && S.time > t0, "WireSnark changed the run");
+    el.dispatchEvent(new W.KeyboardEvent("keydown", {key: "Escape", bubbles: true})); check(el.hidden && G.mode === "play", "Esc on WireSnark didn't just close it");
+    G.devRun("tcpdump"); check(!el.hidden, "tcpdump didn't open WireSnark");
+  } finally { W.Math.random = random; WS.close(); G.setMode("play"); }
+});
+test("status page: curl status opens it; it stays green until an incident has run its lag, never names hidden servers, and only reads", () => {
+  const SP = G.SP; check(SP, "assets/statuspage.js didn't load, so SP is null");
+  const S = fresh(); S.users = []; const el = W.document.getElementById("statuspage"), banner = () => el.querySelector(".sp-banner").textContent;
+  const random = W.Math.random; let calls = 0; W.Math.random = () => { calls++; return random(); };
+  try {
+    G.devRun("curl status"); check(SP.isOpen() && !el.hidden, "curl status didn't open the status page");
+    check(banner().includes("All Systems Operational"), `a quiet floor isn't operational: ${banner()}`);
+    check(el.querySelector(".sp-env").textContent === "BETA" && el.querySelector(".sp-url").textContent.includes("status-beta."), "before the Status Page upgrade the page isn't labelled beta");
+    const a = S.racks.find(x => x && !x.hidden), h = S.racks.find(x => x && x.hidden);
+    const err0 = S.err, up0 = JSON.stringify(S.upgrades); SP.open(); SP.render(); check(S.err === err0 && JSON.stringify(S.upgrades) === up0, "opening the status page changed the run");
+    a.down = true; SP.track(); S.time += SP.LAG - 1; SP.track(); SP.render();
+    check(banner().includes("All Systems Operational"), "it owned up before its lag");
+    const rowOf = n => [...el.querySelectorAll("li")].find(li => li.firstElementChild.textContent === n), state = n => (rowOf(n) || {textContent: "missing"}).lastElementChild.textContent;
+    check(state(a.name).includes("Offline"), `an offline server's row should say so at once, under the green headline: ${state(a.name)}`);
+    S.time += 2; SP.track(); SP.render(); check(banner().includes("Degraded performance") && !/outage/i.test(banner()), `after its lag it should say degraded, never outage: ${banner()}`);
+    if (h) { h.fire = 50; SP.render(); check(!el.textContent.includes(h.name), "the status page named a hidden server"); h.fire = 0; }
+    a.down = false; SP.track(); SP.render(); check(banner().includes("All Systems Operational") && el.textContent.includes("Resolved after"), "a resolved incident didn't go back to green with a history entry");
+    a.fire = 30; SP.render(); check(state(a.name).includes("On fire"), `a burning server's row: ${state(a.name)}`); a.fire = 0; SP.track();
+    // migrating: carried shows under Migrating with a maintenance headline; a failed cutover and a breach show on the cloud row
+    const slot = S.racks.indexOf(a); S.racks[slot] = null; S.carry = a; SP.render();
+    check(el.textContent.includes("Migrating") && state(a.name).includes("Migrating") && banner().includes("Migration in progress"), `a carried server isn't shown migrating: ${state(a.name)} / ${banner()}`);
+    S.carry = null; const ci = S.cloud.findIndex(x => !x);
+    S.cloud[ci] = {name: a.name, tier: a.tier, leak: 0, leakOn: false, breach: false, prog: 0, down: true, staged: false, rb: 0, orig: a, downT: S.time}; SP.render();
+    check(state(a.name).includes("cutover failed"), `a failed cutover's row: ${state(a.name)}`);
+    S.cloud[ci].down = false; S.cloud[ci].breach = true; SP.render(); check(state(a.name).includes("Breached"), `a breached app's row: ${state(a.name)}`);
+    S.cloud[ci] = null; S.racks[slot] = a; SP.track();
+    S.upgrades.statuspage = true; SP.render(); check(el.querySelector(".sp-env").textContent === "PROD" && !el.querySelector(".sp-url").textContent.includes("beta"), "the Status Page upgrade didn't promote the page to prod");
+    a.fire = 10; SP.track(); S.time += SP.LAG_UPGRADE + 1; SP.track(); SP.render();
+    check(banner().includes("Degraded performance"), "the Status Page upgrade didn't shorten the lag");
+    S.alert = true; SP.render(); check(banner().includes("Scheduled maintenance"), `a red alert with the upgrade isn't maintenance: ${banner()}`);
+    S.upgrades.spin = 1; SP.render(); check(el.textContent.includes("100.00%*"), "Redefine Uptime didn't round the uptime up");
+    S.upgrades.spin = 0; S.err = S.errMax; SP.render(); check(!el.textContent.includes("100.00%"), "an honest page claimed 100% uptime");
+    check(calls === 0, `the status page used Math.random ${calls} times`);
+    a.fire = 0; S.alert = false; delete S.upgrades.statuspage;
+    el.dispatchEvent(new W.KeyboardEvent("keydown", {key: "Escape", bubbles: true})); check(el.hidden && G.mode === "play", "Esc on the status page didn't just close it");
+    G.devRun("curl example.com"); check(el.hidden, "curl of another host opened the status page");
+    check(G.S === S, "the status page replaced the run");
+  } finally { W.Math.random = random; SP.close(); G.setMode("play"); }
 });
 test("PacketDrop: Gitamp's VIS button opens it, it draws without the game's rolls, and Esc closes it while it has focus", () => {
   const GA = G.GA, S = fresh(), t0 = S.time, pd = W.document.getElementById("packetdrop");

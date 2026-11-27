@@ -64,6 +64,8 @@ export const SCENES = [
   // last, since it stays open over whatever comes next
   {name: '20-gitamp', build: `fresh(); G.togglePause(); G.devRun('gitamp'); G.GA.act('next');`, mode: 'paused'},
   {name: '21-packetdrop', build: `G.GA.act('vis'); for (let k = 1; k <= 40; k++) G.GA.vis.frame(performance.now() + k * 16);`, mode: 'paused'},
+  {name: '23-status', build: `G.GA.close(); const S = fresh(); const a = S.racks[known(S)]; a.down = true; G.devRun('curl status'); G.SP.track(); S.time += 50; G.SP.track(); G.SP.render();`, mode: 'play'},
+  {name: '24-wiresnark', build: `G.SP.close(); const S = fresh(); S.racks[known(S)].down = true; G.devRun('wiresnark'); G.WS.tick(); for (let k = 0; k < 30; k++) { S.time += 0.1; G.WS.tick(); }`, mode: 'play'},
   {name: '22-terminal', build: `G.GA.close(); const S = fresh(); G.devShow(); G.devLog('$ whoami'); G.devRun('whoami');`, mode: 'play'},
 ];
 
@@ -82,7 +84,7 @@ export async function buildScene(page, scene) {
       overlayOpen: !ov.hidden, overlayScroll: ov.hidden ? 0 : ov.scrollTop + (ov.firstElementChild ? ov.firstElementChild.scrollTop : 0),
       scrollW: document.documentElement.scrollWidth, innerW: innerWidth, innerH: innerHeight,
       card: ov.hidden || !ov.firstElementChild ? null : (r => ({top: r.top, bottom: innerHeight - r.bottom, left: r.left, right: innerWidth - r.right}))(ov.firstElementChild.getBoundingClientRect()),
-      wins: ['devterm', 'gitamp', 'packetdrop'].map(id => document.getElementById(id)).filter(e => e && !e.hidden && !(document.fullscreenElement === e))
+      wins: ['devterm', 'gitamp', 'packetdrop', 'statuspage', 'wiresnark'].map(id => document.getElementById(id)).filter(e => e && !e.hidden && !(document.fullscreenElement === e))
         .map(e => { const r = e.getBoundingClientRect(); return {id: e.id, left: r.left, right: innerWidth - r.right, top: r.top, bottom: innerHeight - r.bottom}; })};
   })()`);
 }

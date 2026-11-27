@@ -4,10 +4,12 @@
    Safari refuses ("Response served by service worker has redirections"), so the game wouldn't open.
    v5: adds the Day 2 prototype (assets/day2.js), so it still opens offline.
    v6: adds Gitamp (assets/gitamp.js), the terminal's music player.
-   v7: Gitamp gains PacketDrop, its visualizer. */
-const CACHE = 'lift-shift-shell-v9';
+   v7: Gitamp gains PacketDrop, its visualizer.
+   v10: adds the status page (assets/statuspage.js), opened with `curl status`.
+   v11: adds WireSnark (assets/wiresnark.js), opened with `wiresnark` or `tcpdump`. */
+const CACHE = 'lift-shift-shell-v11';
 const GAME = '/lift-and-shift.html';
-const ASSETS = [GAME, '/pwa.js', '/manifest.webmanifest', '/assets/day2.js', '/assets/gitamp.js',
+const ASSETS = [GAME, '/pwa.js', '/manifest.webmanifest', '/assets/day2.js', '/assets/gitamp.js', '/assets/statuspage.js', '/assets/wiresnark.js',
   '/assets/lift-and-shift-logo.png', '/assets/icon-192.png',
   '/assets/icon-512.png', '/assets/icon-maskable-512.png', '/assets/apple-touch-icon.png'];
 const GAME_PATHS = new Set(['/', '/index', '/index.html', '/lift-and-shift', GAME]);

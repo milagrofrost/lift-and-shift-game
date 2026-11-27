@@ -78,3 +78,77 @@ test('the terminal and PacketDrop drag by their title bars and stay on screen', 
   }
   expect(errors, errors.join('\n')).toEqual([]);
 });
+
+// DEBUG panels drag out of the game into the page's empty space and stay there, updating; dropped still touching the game,
+// they snap back to their corner (DBGWIN). A wide window, so there's room beside the game.
+test('DEBUG panels drag out beside the game and snap back when they still touch it', async ({page}) => {
+  const errors = watchErrors(page);
+  await page.setViewportSize({width: 1920, height: 1080});
+  await openHooked(page, {live: true});
+  // licenses far off, so the log stays in its corner (it slides up when a bottom server's renewal is due)
+  await S(page, G => { G.newRun(); G.startSprint(1); G.play(); G.setLogLv(3); G.S.users = []; G.S.racks.forEach(a => { if (a) a.lic = 9999; }); });
+  await page.waitForTimeout(500);
+  const rectOf = key => S(page, `(G) => { const st = G.PANEL['${key}'], g = document.getElementById('c').getBoundingClientRect(), k = g.width / 960;
+    return {x: g.left + st.rect.x * k, y: g.top + st.rect.y * k, w: st.rect.w * k, right: g.right}; }`);
+  const out = key => S(page, `(G) => ({out: !!G.PANEL['${key}'].out, shown: !!G.PANEL['${key}'].el && !G.PANEL['${key}'].el.hidden})`);
+  const dragFrom = async (x, y, tx, ty) => { await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(tx, ty, {steps: 8}); await page.mouse.up(); await page.waitForTimeout(250); };
+  const m = await rectOf('metrics');
+  await dragFrom(m.x + 20, m.y + 8, m.right + 30, m.y + 200);
+  expect(await out('metrics'), 'the metrics panel dropped beside the game should stay out').toEqual({out: true, shown: true});
+  const before = await S(page, G => G.PANEL.metrics.el.textContent);
+  await S(page, G => { G.S.tk.push({age: 0}); }); await page.waitForTimeout(300);
+  expect(await S(page, G => G.PANEL.metrics.el.textContent), 'the panel out in the page stopped updating').not.toBe(before);
+  const l = await rectOf('logs');
+  await dragFrom(l.x + 20, l.y + 6, l.x - 40, l.y + 6);
+  expect(await out('logs'), 'a panel dropped still touching the game should snap back').toEqual({out: false, shown: false});
+  // the log out on the left, right up against the game while it's short: as long lines arrive it grows away from the game
+  // and stays out (it used to grow into the game and snap back)
+  const l2 = await rectOf('logs'), g = await page.locator('#c').boundingBox();
+  await dragFrom(l2.x + 10, l2.y + 6, g.x - 6 - l2.w + 10, l2.y + 6); // its right edge 6px clear of the game
+  expect((await out('logs')).out, 'the log dropped just left of the game should be out').toBe(true);
+  for (let k = 0; k < 12; k++) await S(page, `(G) => G.toast('A very long toast about a server fire that someone should really go and put out before it spreads ${k}')`);
+  await page.waitForTimeout(1500);
+  const lw = await page.locator('.dbgwin:not([hidden])').evaluateAll(els => els.map(e => e.getBoundingClientRect()).map(r => ({right: r.right, left: r.left})));
+  expect((await out('logs')).out, 'the log snapped back into the game as it grew').toBe(true);
+  expect(lw.every(r => r.right <= g.x + 0.5 || r.left >= g.x + g.width - 0.5), 'a panel out in the page grew into the game').toBe(true);
+  await S(page, G => { G.PANEL.logs.out = false; G.PANEL.logs.el.hidden = true; });
+  const w = await page.locator('.dbgwin:not([hidden])').boundingBox();
+  await dragFrom(w.x + 20, w.y + 8, m.x - 100, m.y + 100);
+  expect(await out('metrics'), 'dragging it back onto the game should put it back').toEqual({out: false, shown: false});
+  await S(page, G => G.setLogLv(1));
+  await dragFrom(m.x + 20, m.y + 8, m.right + 30, m.y + 200);
+  expect(await out('metrics'), 'below DEBUG there is nothing to pick up').toEqual({out: false, shown: false});
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+// Floating windows resize from the grip in their bottom-right corner (makeResizable): they follow the mouse, stay on
+// screen, and don't shrink below a minimum. Gitamp keeps its fixed size, like the player it's a parody of.
+test('the floating windows resize from their corner grip and stay on screen', async ({page}) => {
+  const errors = watchErrors(page);
+  await openHooked(page);
+  await S(page, G => { G.newRun(); G.startSprint(1); G.play(); });
+  const vp = page.viewportSize();
+  const opens = {'#wiresnark': G => G.devRun('wiresnark'), '#statuspage': G => G.devRun('curl status'), '#devterm': G => G.devShow(), '#packetdrop': G => G.GA.vis.open()};
+  for (const [win, open] of Object.entries(opens)) {
+    await S(page, open);
+    const grip = page.locator(`${win} > .wgrip`), b0 = await page.locator(win).boundingBox();
+    await expect(grip, `${win} has no resize grip`).toBeVisible();
+    const g = await grip.boundingBox(), drag = async (dx, dy) => { const c = await grip.boundingBox();
+      await page.mouse.move(c.x + c.width / 2, c.y + c.height / 2); await page.mouse.down(); await page.mouse.move(c.x + c.width / 2 + dx, c.y + c.height / 2 + dy, {steps: 6}); await page.mouse.up(); };
+    await drag(-60, -40);
+    const b1 = await page.locator(win).boundingBox();
+    expect(Math.round(b1.width - b0.width), `${win} didn't follow the grip sideways`).toBe(-60);
+    expect(Math.round(b1.height - b0.height), `${win} didn't follow the grip down`).toBe(-40);
+    await drag(5000, 5000);
+    const b2 = await page.locator(win).boundingBox();
+    expect(b2.x + b2.width, `${win} grew off the right edge`).toBeLessThanOrEqual(vp.width + 0.5);
+    expect(b2.y + b2.height, `${win} grew off the bottom`).toBeLessThanOrEqual(vp.height + 0.5);
+    await drag(-5000, -5000);
+    const b3 = await page.locator(win).boundingBox();
+    expect(b3.width, `${win} shrank below its minimum`).toBeGreaterThanOrEqual(250);
+    expect(b3.height, `${win} shrank below its minimum`).toBeGreaterThanOrEqual(130);
+    void g;
+  }
+  await expect(page.locator('#gitamp > .wgrip'), 'Gitamp keeps its fixed size').toHaveCount(0);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
