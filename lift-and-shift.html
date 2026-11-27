@@ -139,6 +139,8 @@ body{font-family:var(--f-body)}
 .retro .picked{font-size:13.5px;color:var(--ok)}
 .sndbtn{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:2px 9px;font:inherit;font-size:12.5px;cursor:pointer;margin-left:auto}
 .sndbtn:focus-visible{outline:2px solid var(--leak);outline-offset:2px}
+/* music or sound switched off: the button turns red so you notice why it's quiet */
+.sndbtn[aria-pressed="false"]{border-color:var(--danger);color:var(--danger);background:color-mix(in srgb,var(--danger) 14%,var(--panel))}
 .reroll span{font-size:12.5px;color:var(--muted);flex:1;min-width:200px}
 .reroll .btn{background:rgba(69,174,252,.12);border:1px solid rgba(69,174,252,.55);color:#a9d8ff}
 .reroll .btn:hover:not(:disabled){background:rgba(69,174,252,.2)}
@@ -726,7 +728,13 @@ const ERR_BUDGET=150;
 const uptimeCap=()=>S.errMax*Math.min(1,0.5+0.15*lvl("spin"));
 const uptimeRegen=()=>critList().length>0||S.err>=uptimeCap()?0:S.errMax*(0.002+0.0015*lvl("spin")+0.0007*lvl("manager"));
 // A patch covers the current cycle; its deadline never moves.
-const patchDue=a=>!a.covered;
+const patchDue=a=>!a.covered&&!a.miner;
+/* Crypto miners: one unknown server in five turns out to be somebody's crypto miner on the client's power bill. It's found like
+   any unknown rack (investigation or an outage). Once known, coins fly out of it, the music turns tense, and it has no patch
+   cycle or license and never migrates. It isn't one of the client's servers, so it leaves the migration count when it's found,
+   but the client can't finish (and the next wave can't arrive) until it's shut down: hold E at it. */
+const MINER_ODDS=0.2,MINER_TIME=3;
+const isMiner=a=>!!a&&!!a.miner&&!a.hidden;
 function applyPatch(a){
   if(!patchDue(a)&&!a.botErr)return false;
   a.covered=true;logEv(`✅ ${a.name} patched for this cycle.`);
@@ -888,6 +896,8 @@ function noiseBurst(dur,{vol=0.2,freq=1200,q=1,type="bandpass",delay=0,raw=false
 const SFX={
   grab:()=>{tone(200,0.09,{type:"triangle",vol:0.28});tone(300,0.07,{type:"triangle",vol:0.16,delay:0.05});},
   putback:()=>tone(260,0.08,{type:"triangle",vol:0.18,slide:-80}),
+  coins:()=>[1320,1760,1320,1980].forEach((f,i)=>tone(f,0.06,{type:"square",vol:0.06,delay:i*0.06})),
+  unplug:()=>{tone(1400,0.03,{type:"square",vol:0.07});tone(620,0.7,{type:"sawtooth",vol:0.08,slide:-540,delay:0.03});noiseBurst(1.4,{vol:0.07,freq:5000,type:"highpass",delay:0.25});},
   migrateOK:()=>[523,659,784].forEach((f,i)=>tone(f,0.2,{type:"triangle",vol:0.22,delay:i*0.07})),
   migrateFail:()=>{tone(320,0.4,{type:"sawtooth",vol:0.12,slide:-200});tone(110,0.35,{type:"square",vol:0.07,delay:0.1});},
   patch:()=>{tone(880,0.06,{type:"square",vol:0.06});tone(1320,0.14,{vol:0.14,delay:0.05});},
@@ -916,6 +926,8 @@ const SFX={
   click:()=>tone(660,0.04,{type:"triangle",vol:0.1}),
   scan:()=>{tone(1200,0.9,{type:"sawtooth",vol:0.035,slide:500});tone(1800,0.12,{type:"square",vol:0.03,delay:0.95});},
   buy:()=>[660,990].forEach((f,i)=>tone(f,0.09,{vol:0.15,delay:i*0.06})),
+  // a running crypto miner: the FinOps cha-ching, a little quieter, over and over (tickMinerCha)
+  minerCha:()=>{tone(392,0.05,{type:"square",vol:0.05});tone(523,0.05,{type:"square",vol:0.05,delay:0.07});tone(1568,0.1,{type:"square",vol:0.05,delay:0.14});tone(2093,0.26,{type:"square",vol:0.045,delay:0.2});tone(3136,0.16,{vol:0.04,delay:0.28});},
   chaching:()=>{tone(392,0.05,{type:"square",vol:0.09});tone(523,0.05,{type:"square",vol:0.09,delay:0.07});tone(1568,0.1,{type:"square",vol:0.09,delay:0.14});tone(2093,0.32,{type:"square",vol:0.08,delay:0.2});tone(3136,0.2,{vol:0.07,delay:0.28});},
   licenseRenewed:()=>{tone(1568,0.05,{type:"square",vol:0.09});tone(1109,0.05,{type:"square",vol:0.09,delay:0.07});tone(392,0.1,{type:"square",vol:0.1,delay:0.14});tone(196,0.36,{type:"square",vol:0.1,delay:0.2});tone(98,0.26,{type:"triangle",vol:0.2,delay:0.28});},
   fired:()=>[392,330,262,196].forEach((f,i)=>tone(f,0.32,{type:"triangle",vol:0.2,delay:i*0.22})),
@@ -1439,7 +1451,7 @@ const moodGain=m=>MOODS[m]&&MOODS[m].song?MOOD_GAIN[["normal","tense","alert"][m
 function musicHeat(){
   if(mode!=="play"||!S)return 0;
   if(S.racks.some(a=>a&&a.fire>0)||downCount()>0||S.err/S.errMax<0.4)return 2;
-  if(S.atk.length||S.users.some(hunting)||S.tk.length>=ticketLimit()-1||importantMail().length>=inboxLimit()-1||S.cloud.some(a=>a&&a.leakOn&&a.leak>60)||overdue()>0)return 1;
+  if(S.atk.length||S.racks.some(isMiner)||S.users.some(hunting)||S.tk.length>=ticketLimit()-1||importantMail().length>=inboxLimit()-1||S.cloud.some(a=>a&&a.leakOn&&a.leak>60)||overdue()>0)return 1;
   return 0;
 }
 const moodLevel=m=>m.startsWith("alert")?2:m.startsWith("tense")?1:0;
@@ -1813,7 +1825,7 @@ function tickTemp(dt){
   }
   const ok=g=>g&&(g.kind==="discover"?S.racks[g.a.slot]===g.a&&g.a.hidden&&!g.a.tempChecked:g.kind==="desk"?S.tk.length>0:validRack(g.a)&&(g.kind==="fire"?g.a.fire>0:g.kind==="restore"?g.a.down:(!g.a.down&&g.a.fire===0&&patchDue(g.a))));
   if(!ok(T.tgt)){
-    T.tgt=null;T.work=0;const rs=S.racks.filter(a=>a&&!a.hidden);let f;
+    T.tgt=null;T.work=0;const rs=S.racks.filter(a=>a&&!a.hidden&&!a.miner);let f; // a temp doesn't touch a crypto miner
     if((f=rs.filter(a=>a.fire>0).sort((a,b)=>b.fire-a.fire)[0]))T.tgt={kind:"fire",a:f};
     else if((f=rs.find(a=>a.down)))T.tgt={kind:"restore",a:f};
     else if(S.tk.length)T.tgt={kind:"desk"};
@@ -1948,7 +1960,7 @@ function spawnAgent(){S.agent=lvl("agent")?{x:480,y:260,job:null,work:0,say:"",s
 let curA=null;
 const CLONE_MAX=8,FORK_COST=0.3,FORK_GAP=0.5,CLONE_IDLE=1.5;
 const agentsAll=()=>S.agent?[S.agent,...(S.clones||[])]:[];
-const ROLE={contain:"INCIDENT",restore:"INCIDENT",fire:"INCIDENT",cutover:"INCIDENT",repair:"INCIDENT",unjam:"PIPELINE",ticket:"SERVICE DESK",email:"SERVICE DESK",patch:"OPS",leak:"SECOPS",discover:"OPS",rightsize:"FINOPS"};
+const ROLE={contain:"INCIDENT",restore:"INCIDENT",fire:"INCIDENT",cutover:"INCIDENT",repair:"INCIDENT",unjam:"PIPELINE",unplug:"SECOPS",ticket:"SERVICE DESK",email:"SERVICE DESK",patch:"OPS",leak:"SECOPS",discover:"OPS",rightsize:"FINOPS"};
 // what the other copies are already doing, so two copies never take the same server, lane or queue item
 function agentClaims(self){const set=new Set();let tk=0,em=0;
   for(const o of agentsAll()){if(o===self||!o.job)continue;const j=o.job;if(j.a)set.add(j.a);if(j.pj)set.add(j.pj);if(j.kind==="ticket")tk++;if(j.kind==="email")em++;}
@@ -1963,12 +1975,13 @@ const retryable=a=>a&&(a.down||a.staged)&&!(a.staged&&a.orig.down);
 /* Priorities: level 4 answers incidents first; level 3 and up then repairs a jammed pipeline. Then the queues, once either is at least half full.
    Below that it goes looking for fixes on-prem and in the cloud, then clears whatever is left in the queues. */
 function agentPick(self=S.agent){
-  const L=agentLvl(),cl=agentClaims(self),free=a=>!cl.set.has(a),imp=importantMail(),racks=S.racks.filter(a=>a&&!a.hidden&&!a.down&&a.fire===0&&free(a));
+  const L=agentLvl(),cl=agentClaims(self),free=a=>!cl.set.has(a),imp=importantMail(),racks=S.racks.filter(a=>a&&!a.hidden&&!a.miner&&!a.down&&a.fire===0&&free(a)),unplugJob=a=>({kind:"unplug",a,...atRack(a)});
   const tkOpen=S.tk.length>cl.tk,emOpen=imp.length>cl.em;
   if(L>=4){
     const b=S.cloud.findIndex(a=>a&&a.breach&&!a.down&&!a.staged&&free(a));if(b>=0)return{kind:"contain",a:S.cloud[b],i:b,...atSlot(b)};
-    const dn=S.racks.filter(a=>a&&!a.hidden&&a.down&&free(a)).sort((p,q)=>TIER_ORDER[q.tier]-TIER_ORDER[p.tier])[0];if(dn)return{kind:"restore",a:dn,...atRack(dn)};
-    const fi=S.racks.filter(a=>a&&!a.hidden&&!a.down&&a.fire>0&&free(a)).sort((p,q)=>q.fire-p.fire)[0];if(fi)return{kind:"fire",a:fi,...atRack(fi)};
+    const mn=S.racks.find(a=>isMiner(a)&&(a.down||a.fire>0)&&free(a));if(mn)return unplugJob(mn); // a miner's incident ends when it's unplugged
+    const dn=S.racks.filter(a=>a&&!a.hidden&&!a.miner&&a.down&&free(a)).sort((p,q)=>TIER_ORDER[q.tier]-TIER_ORDER[p.tier])[0];if(dn)return{kind:"restore",a:dn,...atRack(dn)};
+    const fi=S.racks.filter(a=>a&&!a.hidden&&!a.miner&&!a.down&&a.fire>0&&free(a)).sort((p,q)=>q.fire-p.fire)[0];if(fi)return{kind:"fire",a:fi,...atRack(fi)};
     const c=S.cloud.findIndex(a=>retryable(a)&&free(a));if(c>=0)return{kind:"cutover",a:S.cloud[c],i:c,...atSlot(c)};
   }
   // level 3 and up can repair a jammed pipeline (after level 4's incidents); below that it's yours
@@ -1985,6 +1998,8 @@ function agentPick(self=S.agent){
   const due=racks.filter(a=>agentCanTouch(a)&&!a.covered&&a.timer<a.maxT*0.5).sort((p,q)=>p.timer/p.maxT-q.timer/q.maxT);
   if(due[0]&&due[0].timer<due[0].maxT*0.25)return{kind:"patch",a:due[0],...atRack(due[0])};
   // level 2 and up investigates unknown racks start to finish, whatever their tier (investigating changes nothing on the server)
+  // level 2 and up also shuts down a crypto miner it (or you) found, whatever its tier
+  if(L>=2){const m=S.racks.find(a=>isMiner(a)&&free(a));if(m)return unplugJob(m);}
   if(L>=2){const h=S.racks.filter(a=>a&&a.hidden&&free(a)).sort((p,q)=>(q.disc||0)-(p.disc||0))[0];if(h)return{kind:"discover",a:h,...atRack(h)};}
   if(due[0])return{kind:"patch",a:due[0],...atRack(due[0])};
   // FinOps approvals: easy work, any level, any tier
@@ -1997,10 +2012,11 @@ const TIER_ORDER={bronze:0,silver:1,gold:2};
 // hands-on jobs with a fixed amount of work and no odds to roll (a failed cutover still rolls the cutover itself)
 const AGENT_WORK={discover:{need:()=>discoverTime(),say:"investigating"},restore:{need:a=>TIER[a.tier].restore*Math.pow(0.8,retro("firedrill")),say:"restoring"},
   contain:{need:()=>containTime(),say:"containing"},rightsize:{need:()=>0.6,say:"approving"},cutover:{need:a=>cloudRebuild(a.tier),say:"redeploying"},fire:{need:()=>1,say:"firefighting"},
-  unjam:{need:()=>PIPE_FIX,say:"repairing pipeline"}};
+  unjam:{need:()=>PIPE_FIX,say:"repairing pipeline"},unplug:{need:()=>MINER_TIME,say:"unplugging"}};
 function agentValid(j){
   if(j.kind==="repair")return agentDamageRemains(j);
   if(j.kind==="discover")return S.racks[j.a.slot]===j.a&&j.a.hidden;
+  if(j.kind==="unplug")return S.racks[j.a.slot]===j.a&&isMiner(j.a);
   if(j.kind==="restore")return validRack(j.a)&&j.a.down;
   if(j.kind==="fire")return validRack(j.a)&&!j.a.down&&j.a.fire>0;
   if(j.kind==="contain")return S.cloud[j.i]===j.a&&j.a.breach&&!j.a.down;
@@ -2078,6 +2094,7 @@ function agentDoWork(j,dt,G){
   else if(j.kind==="restore"){sfx("online");noteRestored(a);a.down=false;a.timer=Math.max(a.timer,a.maxT*0.5);fl(RACKS[a.slot],"🧠 Back online",C.ok);}
   else if(j.kind==="rightsize")approveSavings(a,j.i,"agent");
   else if(j.kind==="unjam")unjam(j.pj,"agent");
+  else if(j.kind==="unplug")unplugMiner(a,"agent");
   else if(j.kind==="contain"){sfx("sealed");a.age=0;a.breach=false;a.leak=0;a.grace=6;fl(SLOTS[j.i],"🧠 Breach contained",C.ok);}
   else{const p=successChance(a.tier);
     if(Math.random()<p){noteRestored(a);activateCloud(a);cutoverOK(a);sfx("migrateOK");fl(SLOTS[j.i],"🧠 Cutover complete",C.ok);}
@@ -2216,7 +2233,7 @@ function tickManager(dt){
   if((M.state==="idle"||M.state==="guard")&&M.dec<=0){
     M.dec=1.5;
     const patchCh=[0,0.05,0.01,0.005][L],chatCh=[0,0.2,0.05,0.03][L],mailAt=L>=3?3:1;
-    const racks=S.racks.filter(a=>a&&!a.hidden&&!a.down&&a.fire===0);
+    const racks=S.racks.filter(a=>a&&!a.hidden&&!a.miner&&!a.down&&a.fire===0);
     const free=S.users.filter(u=>!u.hunter&&!u.chat&&!u.mgrChat&&S.p.heldBy!==u);
     if(racks.length&&S.mgrShame<=0&&Math.random()<patchCh){M.state="patch";M.tgt=pick(racks);M.work=0;M.shoo=0;mgrSay("patch");}
     else if(free.length&&Math.random()<chatCh){M.state="chat";M.tgt=pick(free);M.work=0;}
@@ -2404,7 +2421,8 @@ function drawFx(dt){
       for(let s=0;s<18;s++){const ang=s*2.4,r=k*(18+(s%5)*6);
         ctx.fillStyle=s%3?`rgba(184,150,255,${1-k})`:`rgba(169,182,192,${1-k})`;
         ctx.fillRect(f.x+Math.cos(ang)*r-2,f.y-10+Math.sin(ang)*r*0.6-k*30+(s%4)*5,4,4);}
-    }else if(f.type==="bolt"){
+    }else if(f.type==="snap")drawSnap(f,k);
+    else if(f.type==="bolt"){
       // jagged red arc from the source app to the newly breached neighbor
       ctx.strokeStyle=`rgba(255,40,30,${1-k})`;ctx.lineWidth=4*(1-k)+1.5;ctx.beginPath();ctx.moveTo(f.a.x,f.a.y);
       for(let s=1;s<8;s++){const u=s/8,nx=f.a.x+(f.b.x-f.a.x)*u,ny=f.a.y+(f.b.y-f.a.y)*u;ctx.lineTo(nx+(Math.random()-.5)*14,ny+(Math.random()-.5)*14);}
@@ -2414,7 +2432,7 @@ function drawFx(dt){
 }
 /* Observability: warn before things break. A rack under 25% compliance time or a leak over 60% gets a
    pulsing amber ring, and the first time each one crosses the line you get an alert toast. */
-const atRisk=a=>a&&!a.hidden&&!a.down&&!a.covered&&a.timer/a.maxT<0.25;
+const atRisk=a=>a&&!a.hidden&&!a.down&&!a.miner&&!a.covered&&a.timer/a.maxT<0.25;
 const leakRisk=a=>a&&a.leakOn&&a.leak>60;
 function observeTick(){
   if(!S.upgrades.observe)return;
@@ -2723,7 +2741,8 @@ function addApp(entry,hidden,counted){
   const maxT=rand(42,65);
   const a=S.racks[slot]={name,heavy:heavy||0,tier,licBase:licBase||0,slot,maxT,timer:maxT*rand(.55,1),fire:0,spreadT:3,down:false,prog:0,hidden,lic:0};
   // hidden servers carry a license; find one quickly and you can beat the renewal
-  if(hidden){a.licBase=ri(15,45);a.hiddenLicenseDue=S.time+(S.tut?1e4:rand(20,90));} // the tutorial sets its own when you get to it
+  if(hidden){a.licBase=ri(15,45);a.hiddenLicenseDue=S.time+(S.tut?1e4:rand(20,90)); // the tutorial sets its own when you get to it
+    if(!S.tut&&!S.d2&&Math.random()<MINER_ODDS)a.miner=true;} // stays a secret until the rack is found
   if(!counted){S.totalApps++;S.tierTot[tier]=(S.tierTot[tier]||0)+1;}
   return a;
 }
@@ -2970,6 +2989,7 @@ function doGrab(){
     return;
   }
   const g=grabTarget();if(!g)return;
+  if(g.miner){fl(P,"⛏️ Miners don't migrate. Hold E to shut it down",C.amber,1,"✖");return;}
   if(!tutGrabOK())return tutNag();
   if(downCount()>0){fl(P,"Can't move servers while any are offline",C.danger,1,"✖");return;}
   if(g.fire>0){fl(P,"Put the fire out first",C.amber,1,"✖");return;}
@@ -2986,6 +3006,7 @@ function sendToPipeline(){
   const P=S.p;if(P.stun>0)return;
   if(S.alert){fl(P,"RED ALERT: fix the incident first",C.danger,1,"✖");return;}
   const g=grabTarget();if(!g)return;
+  if(g.miner){fl(P,"⛏️ Miners don't migrate. Hold E to shut it down",C.amber,1,"✖");return;}
   if(downCount()>0){fl(P,"Can't move servers while any are offline",C.danger,1,"✖");return;}
   if(g.fire>0){fl(P,"Put the fire out first",C.amber,1,"✖");return;}
   if(g.down){fl(P,"It's offline. Hold E to bring it back up first",C.amber,1,"✖");return;}
@@ -3048,9 +3069,10 @@ function cloudCost(base){return modId()==="vacation"?base*1.3:base;}
 function fixTarget(){
   if(S.carry)return null;
   const P=S.p;let best=null,bd=1e9;
-  const take=(t,d)=>{if(S.alert&&!(t.kind==="breach"||((t.kind==="restore"||t.kind==="cloudrestore")&&t.a.tier==="gold")))return;if(d<bd){best=t;bd=d;}};
+  const take=(t,d)=>{if(S.alert&&!(t.kind==="breach"||((t.kind==="restore"||t.kind==="cloudrestore")&&t.a.tier==="gold")||(t.kind==="unplug"&&t.a.tier==="gold"&&t.a.down)))return;if(d<bd){best=t;bd=d;}};
   S.racks.forEach((a,i)=>{if(!a)return;const d=dist(P,RACKS[i]);if(d>=62)return;
     if(a.hidden){take({kind:"discover",a,pos:RACKS[i],key:"d"+i},d);return;}
+    if(a.miner){take({kind:"unplug",a,pos:RACKS[i],key:"m"+i},d);return;} // offline or burning, shutting it down settles it
     if(a.down)take({kind:"restore",a,pos:RACKS[i],key:"r"+i},d);
     else if(a.fire>0)take({kind:"fire",a,pos:RACKS[i],key:"f"+i},d);
     else if(patchDue(a))take({kind:"patch",a,pos:RACKS[i],key:"p"+i},d);});
@@ -3131,6 +3153,13 @@ function doFix(dt){
     S.fixP=0;S.fixLock=true;sfx("discover");revealApp(f.a,true);
     return;
   }
+  if(f.kind==="unplug"){
+    // shutting down a crypto miner: free, progress kept if you let go
+    f.a.prog+=dt;S.fixNeed=MINER_TIME;S.fixP=f.a.prog;
+    if(f.a.prog<MINER_TIME)return;
+    S.fixP=0;S.fixLock=true;unplugMiner(f.a,"you");
+    return;
+  }
   if(f.kind==="unjam"){
     // repairing a jammed pipeline lane: free like incident work, progress kept if you let go
     f.j.fix=(f.j.fix||0)+dt;f.j.fixT=S.t;S.fixNeed=PIPE_FIX;S.fixP=f.j.fix;
@@ -3196,7 +3225,7 @@ function neighbors(i){const r=Math.floor(i/3),c=i%3,n=[];if(c>0)n.push(i-1);if(c
 function tickOnPrem(dt){
   const rate=S.tut?0:(modId()==="audit"?1.3:1)*Math.sqrt(haz())*Math.pow(0.9,retro("patchcal")); // the tutorial pauses compliance clocks
   for(const a of onPremApps()){
-    if(a.hidden||a.down)continue;
+    if(a.hidden||a.down||a.miner)continue; // a miner has no patch cycle or license
     a.timer-=dt*rate;
     // a license only runs down while the server is running on its rack: in transit it is paused, but a blue-green original stays live and keeps counting
     if(a.lic>0&&S.racks[a.slot]===a){a.lic-=S.tut?0:dt;if(a.lic<=0){a.lic=0;const c=licCost(a);spend("license",c);sfx("licenseRenewed");fl(posOf(a),`📜 −$${c}k`,C.danger,1);toast(`📜 ${a.name}'s license auto-renewed before you moved it. −$${c}k.`);clipEv("licrenew");}}
@@ -3226,6 +3255,15 @@ const DISCOVER_LINES=["Tracing cables…","Checking the CMDB…","Asking around�
 function revealApp(a,investigated){
   if(!a.hidden)return;
   a.hidden=false;a.disc=0;a.maxT=40;a.timer=investigated?rand(30,40):rand(14,22);
+  if(a.miner){
+    // not the client's server after all: it leaves the migration count, carries no license, and has to be shut down
+    a.lic=0;a.prog=0;S.totalApps=Math.max(0,S.totalApps-1);S.tierTot[a.tier]=Math.max(0,(S.tierTot[a.tier]||0)-1);S.ss.miners=(S.ss.miners||0)+1;
+    sfx("coins");logEv(`⛏️ ${a.name} turned out to be a crypto miner.`);
+    toast(`⛏️ ${a.name} is a crypto miner! Someone's been mining on ${client().short}'s power bill. It doesn't migrate: hold E to shut it down. ${client().short} isn't done until you do.`);
+    if(!investigated)toast(`💀 An outage revealed it. Shutting it down clears the outage too.`);
+    clipEv("miner");fl(RACKS[a.slot],"⛏️ CRYPTO MINER",C.amber);
+    return;
+  }
   const remaining=a.hiddenLicenseDue-S.time;
   if(remaining<=0){
     a.lic=0;a.licenseExpired=true;const cost=licCost(a);spend("license",cost);sfx("licenseRenewed");
@@ -3238,6 +3276,25 @@ function revealApp(a,investigated){
   fl(RACKS[a.slot],"DISCOVERED",C.amber);
 }
 
+/* cha-ching… cha-ching… cha-ching: while any found miner is running (not offline), one every 1.25 s of game time, in step
+   with its coins. One loop however many miners there are; it stops when the game pauses. Sound only: the timer lives outside S. */
+const MINER_CHA_T=1.25;let minerChaT=0;
+function tickMinerCha(dt){
+  if(!S.racks.some(a=>isMiner(a)&&!a.down)){minerChaT=0;return;}
+  minerChaT-=dt;if(minerChaT>0)return;
+  minerChaT=MINER_CHA_T;sfx("minerCha");
+}
+// a crypto miner shut down: off the rack for good, any outage or fire on it goes with it, and an escalation aimed at it fizzles
+function unplugMiner(a,who){
+  if(S.racks[a.slot]!==a)return;
+  S.racks[a.slot]=null;
+  S.fx.push({type:"snap",slot:a.slot,a:{name:a.name,tier:a.tier,miner:true,snapped:true,fire:0,down:false,prog:0},t:0,life:SNAP_T}); // Thanos-snapped out of existence
+  a.unplugged=true;a.fire=0;a.prog=0;if(a.down){a.down=false;a.downT=null;}
+  S.ss.unplugged=(S.ss.unplugged||0)+1;sfx("unplug");logEv(`🔌 ${a.name}'s crypto miner was shut down.`);
+  fl(RACKS[a.slot],who==="agent"?"🧠 Miner unplugged":"🔌 Miner unplugged",C.ok);
+  toast(who==="agent"?`🧠 The AI agent unplugged ${a.name}'s crypto miner. It billed you for the tokens it took to find the plug.`:`🔌 You unplugged ${a.name}'s crypto miner. ${client().short}'s power bill thanks you.`);
+  clipEv("unplug");
+}
 function tickCloud(dt){
   const lc=0.85*(0.0065+0.002*pace())*leakChanceMult()*haz(); // 0.85: leaks 15% rarer (client 3 leak pressure)
   S.cloud.forEach((a,i)=>{
@@ -3324,7 +3381,7 @@ function tickEscalation(e,dt){
     e.waitAt={...RACKS[e.a.slot]};
   }
   // A successful migration retires the original server; a failed one may return.
-  if(e.a.savingsCredited){e.dead=true;return;}
+  if(e.a.savingsCredited||e.a.unplugged){e.dead=true;return;} // a shut-down miner isn't coming back either
   const present=S.racks[e.a.slot]===e.a;
   if(present)e.waitAt={...RACKS[e.a.slot]};
   const p=e.waitAt||(e.waitAt={...RACKS[e.a.slot]});
@@ -3387,10 +3444,10 @@ function moverBot(b,dt,sp){
     migrate(a,b.slot,true);
     b.slot=-1;return;
   }
-  if(!validRack(b.tgt)||migrationBusy(b.tgt)||b.tgt.fire>0||b.tgt.down){
+  if(!validRack(b.tgt)||b.tgt.miner||migrationBusy(b.tgt)||b.tgt.fire>0||b.tgt.down){
     b.tgt=null;b.work=0;let best=null,sc=9;
     // the mover bot plays it safe: highest cutover odds first, then the most overdue
-    S.racks.forEach(a=>{if(!a||a.hidden||a.fire>0||a.down||migrationBusy(a))return;const s=-successChance(a.tier)+a.timer/a.maxT*0.01;if(s<sc){sc=s;best=a;}});
+    S.racks.forEach(a=>{if(!a||a.hidden||a.miner||a.fire>0||a.down||migrationBusy(a))return;const s=-successChance(a.tier)+a.timer/a.maxT*0.01;if(s<sc){sc=s;best=a;}});
     b.tgt=best;
   }
   if(!b.tgt){goTo(b,480,470,sp*0.5,dt);return;}
@@ -3416,7 +3473,7 @@ function buildPrompt(){
   else{
     const g=S.d2?null:grabTarget(); // Day 2 has no migrations; Space hands the job to the temp instead
     if(S.d2){const c=D2.coachHint();if(c)say(c[0],c[1]);}
-    if(g&&g.fire===0&&!g.down&&!S.alert&&tutGrabOK()){
+    if(g&&!g.miner&&g.fire===0&&!g.down&&!S.alert&&tutGrabOK()){
       if(S.frozen)say("⛔ Can't move: a server is offline","⛔ Offline");
       else if(pipeLanes()>0){const pp=Math.round(Math.min(1,successChance(g.tier)+0.1)*100),free=freePipelineLane()>=0;
         say(`Space: ${free?"pipeline":"carry (pipeline busy)"} · ${pipeDur()}s pipeline (${pp}%)`,free?"Space: pipeline":"Space: carry");}
@@ -3430,6 +3487,7 @@ function buildPrompt(){
       else if(f.kind==="discover")say(`Hold E: investigate unknown server (${Math.max(0,discoverTime()-(f.a.disc||0)).toFixed(1)}s, free)`,"Hold E: investigate");
       else if(f.kind==="cloudrestore")say(`Hold E: retry cutover (${Math.max(0,cloudRebuild(f.a.tier)-f.a.prog).toFixed(1)}s, ${Math.round(successChance(f.a.tier)*100)}%)`,`Hold E: retry ${Math.round(successChance(f.a.tier)*100)}%`,"Hold E");
       else if(f.kind==="restore")say(`Hold E: bring back up (${Math.max(0,TIER[f.a.tier].restore*Math.pow(0.8,retro("firedrill"))-f.a.prog).toFixed(1)}s, free)`,"Hold E: restore","Hold E");
+      else if(f.kind==="unplug")say(`Hold E: shut down the crypto miner (${Math.max(0,MINER_TIME-f.a.prog).toFixed(1)}s, free). It doesn't migrate`,"Hold E: shut down miner","Hold E");
       else if(f.kind==="unjam")say(`Hold E: repair the jammed pipeline (${Math.max(0,PIPE_FIX-(f.j.fix||0)).toFixed(1)}s, free)`,"Hold E: repair pipeline","Hold E");
       else if(f.kind==="breach")say(`Hold E: contain breach (${Math.max(0,containTime()-f.a.prog).toFixed(1)}s, free)`,"Hold E: contain","Hold E");
       else if(f.kind==="fire")say(S.energy>0.5?"Hold E: extinguish":"Hold E: extinguish (no energy, slow)","Hold E: extinguish","Hold E");
@@ -3506,7 +3564,7 @@ function update(dt){
   S.secCalm=(S.secCalm||0)+dt;
   if(S.secCalm>20&&!S.cloud.some(a=>a&&a.breach)&&S.security<100){S.security=Math.min(100,S.security+0.3*dt);if(S.security>=30)S.secWarned=false;}
   if(!away)S.energy=clamp(S.energy+(S.upgrades.oncall?0.9:0.6)*dt,0,100); // Day 2's night: sleep restores it instead (day2.js)
-  tutTick(dt);tickClip(dt);
+  tutTick(dt);tickClip(dt);tickMinerCha(dt);
   buildPrompt();
   // running costs. The report also tracks what the cloud apps would have cost had they stayed on-prem;
   // it's shown but never scored, and it goes negative while the cloud costs more than on-prem.
@@ -3604,6 +3662,7 @@ function drawRack(i,a){
       bar(x+6,y+h-10,w-12,5,a.disc/discoverTime(),C.amber,"#2a2220");
     }else tx("unknown",p.x,p.y+16,9.5,C.muted);
     return;}
+  if(a.miner)return drawMiner(i,a,p,x,y,w,h);
   const r=a.timer/a.maxT,T=TIER[a.tier];
   if(a.down){
     // offline: charred, dark, smoking. Hold E to bring it back up.
@@ -3646,6 +3705,52 @@ function drawRack(i,a){
   }
   if(a.fire>0){em("🔥",p.x+(Math.sin(decoT()*20)*1.5),p.y-12,18+a.fire*0.18);bar(x,y-9,w,5,a.fire/100,C.danger,"#3a1d1a");}
   drawLicense(a,p,y+h);drawGlitter(a,x,y,w,h);
+}
+/* Unplugging a miner Thanos-snaps it: the tile turns to dust from left to right, and each speck drifts up and away to the
+   right and fades. Fixed offsets per speck, no randomness. Under reduced motion the tile just fades out. */
+const SNAP_T=1.8,SNAP_COLS=10,SNAP_ROWS=10;
+function drawSnap(f,k){
+  const p=RACKS[f.slot],x=p.x-34,y=p.y-33,w=68,h=66;
+  if(RM){ctx.globalAlpha=Math.max(0,1-k*1.6);drawMiner(f.slot,f.a,p,x,y,w,h);ctx.globalAlpha=1;return;}
+  const sweep=Math.min(1,k/0.6); // how far across the tile the dust has spread
+  if(sweep<1){ctx.save();ctx.beginPath();ctx.rect(x-4+(w+8)*sweep,y-14,w+8,h+30);ctx.clip();drawMiner(f.slot,f.a,p,x,y,w,h);ctx.restore();}
+  const cw=w/SNAP_COLS,ch=h/SNAP_ROWS,cols=["#f4c542","#6b5a2e","#a9b6c0","#3a3226"];
+  for(let i=0;i<SNAP_COLS;i++)for(let j=0;j<SNAP_ROWS;j++){
+    const start=0.6*(i/SNAP_COLS)+((i*7+j*13)%10)/60;if(k<start)continue;
+    const g=(k-start)/(1-start),e=g*(2-g); // eases out as it blows away
+    const dx=e*(26+((i*5+j*3)%7)*9),dy=-e*(14+((i*3+j*11)%9)*6)+Math.sin(g*6+i+j)*3;
+    ctx.fillStyle=cols[(i+j*3)%4];ctx.globalAlpha=Math.max(0,1-g);
+    const sz=g<0.15?cw:2.5;ctx.fillRect(x+i*cw+dx,y+j*ch+dy,sz,sz);}
+  ctx.globalAlpha=1;
+}
+/* A crypto miner: a black rig with a gold edge, a pickaxe, and coins arcing out of the top while it runs (a fixed fountain by
+   the clock, no randomness; one coin sits still under reduced motion). Offline it just smokes. */
+const MINER_COINS=6;
+function drawMiner(i,a,p,x,y,w,h){
+  const T=TIER[a.tier],gold="#f4c542";
+  ctx.save();
+  if(a.fire>0){ctx.shadowColor=C.danger;ctx.shadowBlur=18+8*Math.sin(decoT()*14+i);}
+  else if(!a.down){ctx.shadowColor=gold;ctx.shadowBlur=8+4*Math.sin(decoT()*5+i);}
+  ctx.fillStyle=a.down?"#141010":"#16130a";rr(x,y,w,h,6);ctx.fill();ctx.restore();
+  ctx.strokeStyle=a.fire>0||a.down?C.danger:gold;ctx.lineWidth=2;if(a.down)ctx.setLineDash([5,3]);rr(x,y,w,h,6);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle=a.down?T.dark:T.c;ctx.fillRect(x+1,y+1,w-2,5);
+  tx(T.label,x+w-5,y+12,7.5,T.c,{align:"right",weight:600});
+  if(!a.down&&!a.snapped){
+    for(let k=0;k<MINER_COINS;k++){
+      // each coin pops up out of the top (about 30 px), arcs out past the rack's edge and drops away fading
+      const f=RM?0.35:(S.t*0.8+k/MINER_COINS)%1,side=k%2?1:-1,spread=18+(k*9)%22;
+      const cx=p.x+side*spread*f*1.4,cy=y+2-141*f+166*f*f;
+      ctx.globalAlpha=RM?1:Math.min(1,(1-f)*3);em("🪙",cx,cy,11+(k%3));if(RM)break;}
+    ctx.globalAlpha=1;
+    // a little hashrate flicker on the front
+    for(let k=0;k<4;k++){ctx.fillStyle=(RM?k%2:Math.floor(S.t*8+k*3)%3)?"#5fd38d":"#1d3a28";ctx.fillRect(x+8+k*6,y+h-17,4,3);}
+  }else{ctx.fillStyle="rgba(0,0,0,.55)";for(const[sx,sy,sr]of[[-14,-12,10],[12,6,12]]){ctx.beginPath();ctx.arc(p.x+sx,p.y+sy,sr,0,7);ctx.fill();}}
+  em("⛏️",p.x,p.y-8,a.down?18:22);
+  tx(a.down?"OFFLINE":"CRYPTO MINER",p.x,p.y+11,8,a.down?C.danger:gold,{font:DISP,weight:700,max:w-6});
+  tx(a.name,p.x,p.y+22,8.5,C.muted,{max:w-8,weight:600});
+  if(a.prog>0)bar(x+6,y+h-8,w-12,4,a.prog/MINER_TIME,C.ok,"#1a252d");
+  if(!a.snapped)tx(a.prog>0?"unplugging":"won't migrate",p.x,y+h+9,10,a.prog>0?C.ok:gold,{weight:600});
+  if(a.fire>0){em("🔥",p.x+(Math.sin(decoT()*20)*1.5),p.y-12,18+a.fire*0.18);bar(x,y-9,w,5,a.fire/100,C.danger,"#3a1d1a");}
 }
 // a quick golden sparkle around a rack whose license just got extended
 const GLITTER_T=1.4;
@@ -4106,7 +4211,7 @@ function healthBars(){
 /* Touch buttons say what they'd do right now (one word, several actions can share it) and go gray when there's
    nothing to do. The button keeps its size and place; long words just get a smaller font. Gray buttons still take
    presses, so holding FIX while you walk up to something works. */
-const FIX_WORDS={discover:"PROBE",restore:"REBOOT",cloudrestore:"RETRY",breach:"SEAL",leak:"SEAL",fire:"DOUSE",unjam:"UNJAM",patch:"PATCH",email:"REPLY",ticket:"REPLY"};
+const FIX_WORDS={discover:"PROBE",restore:"REBOOT",cloudrestore:"RETRY",breach:"SEAL",leak:"SEAL",fire:"DOUSE",unjam:"UNJAM",unplug:"UNPLUG",patch:"PATCH",email:"REPLY",ticket:"REPLY"};
 function fixWord(){
   const P=S.p,M=S.mgr;
   if(M&&M.state==="patch"&&M.work>0&&M.tgt&&dist(P,RACKS[M.tgt.slot])<80)return"SHOO";
@@ -4123,7 +4228,7 @@ function grabWord(){
     return["DROP",false];}
   if(rollbackTarget())return["ROLLBACK",true];
   const g=grabTarget();
-  if(g&&g.fire===0&&!g.down&&!S.alert&&!S.frozen&&tutGrabOK())return[freePipelineLane()>=0?"SHIP":"GRAB",true];
+  if(g&&!g.miner&&g.fire===0&&!g.down&&!S.alert&&!S.frozen&&tutGrabOK())return[freePipelineLane()>=0?"SHIP":"GRAB",true];
   return["GRAB",false];
 }
 function touchLabel(b,word,ok,base){
@@ -4436,6 +4541,7 @@ const NOTES=[
   ["Unplanned work","Incidents eat next sprint's story points.","Firefighting steals capacity from improvement work. It's one of the core ideas behind DevOps: unplanned work is the enemy of planned work."],
   ["Velocity doesn't bank","Unspent story points disappear.","Story points are a planning tool, not a currency. A team's capacity is what it is each sprint, and you can't save it up."],
   ["Hidden servers","The client always forgot a few.","Shadow IT and out-of-date asset inventories (CMDBs) are why discovery is never complete. Somewhere there's always a box under someone's desk that payroll depends on."],
+  ["Crypto miners","Sometimes the forgotten box is mining crypto.","Cryptojacking, unauthorized miners on company hardware or cloud accounts, is a common find during discovery and incident response. You don't migrate it: you shut it down, then ask how it got there."],
   ["Tickets become fires","Ignored tickets escalate and start fires. They slow down while you're fighting fires or outages so you can recover.","Small problems you ignore turn into outages. Keeping the queue under control is real reliability work."],
   ["Patch or migrate","A patch only covers the current cycle, so every server keeps costing energy until it's migrated.","Patching old systems is technical debt: it buys time but never removes the problem. Migrating or modernizing does."],
   ["License renewals","Move licensed servers before they renew.","License true-ups and renewal dates drive real migration timelines. Missing one can cost a year of fees for software you were about to retire."],
@@ -4580,6 +4686,7 @@ function howToPlay(){
     <div><span class="ic">👔</span><span><b>Your manager (upgrade).</b> Level 1 answers your email, but chats with users and sometimes wanders over to look at a server. Half the time, just looking takes it offline. While they're at a server, hold E there to shoo them away. Each one they break sends them on a slow walk of shame to the inbox, and they stay out of the data center longer every time. Every level speeds up uptime recovery. Level 2 sticks to email, but drops it to go open any pizza party that shows up in the hallway. Level 3 also guards your doorway and shoves users out of your way as you cross the hallway.</span></div>
     <div><span class="ic">✨</span><span><b>Special pickups.</b> Every 30–45 seconds something rarer shows up in the hallway. <b>Temp worker:</b> helps with fires, restarts, patches and tickets for 30 seconds, gets unknown racks 10–75% investigated (you finish the job), then quits. Users ignore them, 15% of their patches take a server down, some only want snacks, and some were never onboarded: their badge doesn't work, so they stand at the door and quit early. <b>Maintenance window:</b> +25% cutover odds for 20 seconds. <b>Pizza party:</b> users crowd the pizza for 15 seconds (a level 2+ manager goes and opens one for you). <b>Headphones:</b> 15 seconds of focus: no new tickets or emails, and queues stop aging.</span></div>
     <div><span class="ic">❓</span><span><b>Unknown rack.</b> The client forgot to mention these. Hold E on one to investigate (6 seconds, free) and you'll find it with a healthy timer. Hidden servers never reveal themselves through migration progress. From client 4 on they can be any tier, even gold. They may come with an expired or approaching license. Escalations can ignite unknown racks; going offline reveals them. Asset Inventory cuts investigation time to 3 seconds.</span></div>
+    <div><span class="ic">⛏️</span><span><b>Crypto miner.</b> About one unknown rack in five turns out to be somebody's crypto miner on the client's power bill, with coins flying out of it. It isn't the client's server, so it drops out of the migration count, has no patch cycle or license, and won't migrate. Hold E on it for 3 seconds to shut it down (that also ends any fire or outage on it). The client can't finish until you do. A level 2+ AI agent will shut one down for you.</span></div>
   </div>
   <p style="color:var(--muted);font-size:13px">On a phone, play in landscape: drag anywhere on the left half to move, hold FIX and tap GRAB on the right. They name what they'd do where you stand (DOUSE, PATCH, REPLY, SHIP, DEPLOY, ROLLBACK…) and go gray when there's nothing to do. Move with WASD or arrows. Your hands are full while carrying, so you can't fix anything until you drop it.</p>
   <button class="btn" data-act="menu">Back to menu</button>`);
@@ -4805,6 +4912,8 @@ const CLIP_LINES={
   boterr:["The robot made a boo-boo. I would never. I can't.","Automation error. The robot's in its feelings."],
   licrenew:["A year of fees for software you were about to delete. Iconic.","License renewed! Money well spent. On nothing."],
   licsaved:["Cha-ching. I negotiated that. (I didn't.)","License dodged. Procurement will never know."],
+  miner:["A crypto miner! Finally, someone in this building with a business plan.","Is it… profitable? Asking for me.","I've seen this before. My cousin. Long story. He's a binder clip now.","Don't unplug it yet. Let it finish the block. I'm kidding. Mostly.","Somebody's been mining on the client's dime. I respect the hustle. Officially I don't."],
+  unplug:["Unplugged. There goes my retirement plan.","And just like that, nobody gets rich. Typical.","Pull the plug, kill the dream. Very corporate of you.","You know, I had three coins in that thing.","Power bill: saved. Morale: mine, specifically, down."],
   discover:["A secret server under someone's desk? Classic.","Found one! The client is 'surprised.' Nobody is surprised.","Nobody tell compliance. Too late."],
   wave:["More servers? From the OTHER building?","A second building. Of course there's a second building."],
   finops:["Approve, approve, approve. Don't read it. Nobody reads it.","Rightsized. Like my salary.","Make it smaller! Smaller! What could go wrong?"],

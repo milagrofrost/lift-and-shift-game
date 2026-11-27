@@ -63,21 +63,22 @@ async function career({diff="normal",skill="expert",seed=1,maxClients=8,preset=n
     // a jammed pipeline lane (games that have them): stand on the belt by the stuck server and hold E
     if(G.jammed){const pj=S.pipe.find(G.jammed);if(pj)return{pri:6,kind:"hold",x:G.pipeX(pj),y:G.laneY(pj.lane)};}
     const left=racks.length+S.wave.length;
-    if(left<=P.rush&&!S.frozen&&S.cloud.some(x=>!x)){const mv=racks.filter(o=>!o.a.hidden&&!o.a.down&&o.a.fire===0&&!S.pipe.some(j=>j.a===o.a)&&!S.cloud.some(x=>x&&x.staged&&x.orig===o.a)).map(o=>({...o,p:G.successChance(o.a.tier)})).sort((p,q)=>q.p-p.p)[0];
+    if(left<=P.rush&&!S.frozen&&S.cloud.some(x=>!x)){const mv=racks.filter(o=>!o.a.hidden&&!o.a.miner&&!o.a.down&&o.a.fire===0&&!S.pipe.some(j=>j.a===o.a)&&!S.cloud.some(x=>x&&x.staged&&x.orig===o.a)).map(o=>({...o,p:G.successChance(o.a.tier)})).sort((p,q)=>q.p-p.p)[0];
       if(mv&&mv.p>=P.minOdds)return{pri:5,kind:"grab",...R(mv),a:mv.a};}
     if(S.tk.length>=G.ticketLimit()-P.tkSlack&&S.energy>=3)return{pri:5,kind:"hold",x:480,y:470,q:"tk"};
     if(G.importantMail().length>=G.inboxLimit()-P.emSlack)return{pri:5,kind:"hold",x:480,y:96,q:"em"};
     c=cloud.filter(o=>o.a.leakOn&&o.a.leak>P.leakAt).sort((p,q)=>q.a.leak-p.a.leak)[0];if(c&&S.energy>=13)return{pri:4,kind:"hold",...C(c)};
+    c=racks.find(o=>o.a.miner&&!o.a.hidden);if(c)return{pri:4,kind:"hold",...R(c)}; // a crypto miner (games that have them): hold E to shut it down
     const pc=G.fixCost({kind:"patch"}),opening=S.time<(P.openT||0);
     if(opening&&P.discoverFirst){const h0=racks.find(o=>o.a.hidden);if(h0)return{pri:4,kind:"hold",...R(h0)};}
-    c=racks.filter(o=>!o.a.hidden&&!o.a.down&&o.a.fire===0&&(!o.a.covered||o.a.botErr)&&o.a.timer<o.a.maxT*(opening?1.01:P.patchAt)).sort((p,q)=>p.a.timer-q.a.timer)[0];
+    c=racks.filter(o=>!o.a.hidden&&!o.a.miner&&!o.a.down&&o.a.fire===0&&(!o.a.covered||o.a.botErr)&&o.a.timer<o.a.maxT*(opening?1.01:P.patchAt)).sort((p,q)=>p.a.timer-q.a.timer)[0];
     if(c&&S.energy>=pc)return{pri:3,kind:"hold",...R(c)};
     c=cloud.find(o=>o.a.staged&&!o.a.orig.down);if(c)return{pri:2,kind:"hold",...C(c)};
     const hid=racks.find(o=>o.a.hidden);
     if(hid&&P.discoverEarly)return{pri:2,kind:"hold",...R(hid)};
     if(!S.frozen&&S.cloud.some(x=>!x)){
       const busy=a=>S.cloud.some(x=>x&&x.staged&&x.orig===a)||S.pipe.some(j=>j.a===a)||S.bots.some(b=>b.carry===a);
-      const mv=racks.filter(o=>!o.a.hidden&&!o.a.down&&o.a.fire===0&&!busy(o.a)).map(o=>({...o,p:G.successChance(o.a.tier)})).sort((p,q)=>q.p-p.p||p.a.timer-q.a.timer)[0];
+      const mv=racks.filter(o=>!o.a.hidden&&!o.a.miner&&!o.a.down&&o.a.fire===0&&!busy(o.a)).map(o=>({...o,p:G.successChance(o.a.tier)})).sort((p,q)=>q.p-p.p||p.a.timer-q.a.timer)[0];
       if(mv&&(mv.p>=P.minOdds||!hid))return{pri:1,kind:"grab",...R(mv),a:mv.a};
     }
     if(hid)return{pri:1,kind:"hold",...R(hid)};
