@@ -11,7 +11,7 @@
 (() => {
 "use strict";
 window.LasGitamp = G => {
-const {AU,MUS,MOODS,SONGS,SONG_SETS,DONUT_SET,audio,setMood,setMusic,sndRand,RM} = G;
+const {AU,MUS,MOODS,SONGS,SONG_SETS,DONUT_SET,EMAIL,audio,setMood,setMusic,sndRand,RM} = G;
 
 /* ==== The playlist: Matt's songs (Day 1 rotation first), then the game's own loops ==== */
 const BAND = "Dreams Are For Sleep", OST = "Lift & Shift OST";
@@ -171,10 +171,23 @@ q(".ga-bar").addEventListener("pointerup", () => {drag = null;});
 
 /* ==== PacketDrop 2.0: the visualizer, a parody of the trippy full-screen kind. Now with 40% more loss. ====
    Last frame fed back zoomed and turned (the swirl), a waveform ring, spectrum spokes, and packets spiralling into the
-   cloud on the beat; any that reach it while the kick drum hits are DROPPED and fall out (the cloud's busy). It shows whatever the music bus plays (Gitamp's or the
+   cloud on the beat; any that reach it while the kick drum hits are dropped and fall out (the cloud's busy). It shows whatever the music bus plays (Gitamp's or the
    game's). Draw only; its randomness comes from sndRand. Reduced motion: one still frame. */
-const PD_LABELS = ["SYN","ACK","TCP","UDP","GET /","200 OK","INC0042","JIRA-1337","RE: RE: FW:","DNS?","PATCH","500","PING","503"];
-const PD_GLYPHS = ["📦","🎫","✉️","🖥️","💾","📨"];
+// The packets are the game's own icons, no text: its work (email is the inbox's own types, EMAIL, so they can't drift
+// apart), its incidents, the helpers (the AI agent's 🧠, Mr Paperclip, the bots, the temp) and the hallway's pickups.
+// w is how often each shows up: work most, incidents and helpers less, pickups least.
+const PD_KINDS = [
+  {g: "🎫", w: 5},
+  ...Object.values(EMAIL || {}).map(e => ({g: e.icon, w: 5 * e.w / 100})),
+  {g: "🩹", w: 3}, {g: "🖥️", w: 2}, {g: "📦", w: 2},
+  {g: "$", gf: "800 sans-serif", gc: "#3fcf7f", gs: 1.5, w: 2}, // the FinOps flag
+  {g: "🔥", w: 1}, {g: "💧", w: 1}, {g: "🚨", w: 1}, {g: "💀", w: 0.5},
+  {g: "🧠", w: 1.2}, {g: "📎", w: 1}, {g: "🤖", w: 1}, {g: "🦾", w: 0.8}, {g: "🧑‍💼", w: 0.6}, {g: "🧯", w: 0.6}, {g: "❄️", w: 0.5},
+  {g: "☕", w: 0.6}, {g: "🍩", w: 0.6}, {g: "🍕", w: 0.5}, {g: "🎧", w: 0.4},
+];
+const PD_W = PD_KINDS.reduce((n, k) => n + k.w, 0);
+const pdKind = () => {let r = sndRand() * PD_W; for (const k of PD_KINDS) if ((r -= k.w) <= 0) return k; return PD_KINDS[0];};
+const PD_STILL = ["🎫", "🧠", "🖥️", "📦", "🔥", "$", "📎", "🤖"].map(g => PD_KINDS.find(k => k.g === g)); // the still frame's ring
 const pdCanFull = () => !!document.documentElement.requestFullscreen;
 const pd = document.createElement("section");
 pd.id = "packetdrop"; pd.hidden = true; pd.setAttribute("role","dialog"); pd.setAttribute("aria-label","PacketDrop visualizer");
@@ -198,6 +211,21 @@ document.body.appendChild(pd);
 const pcv = pd.querySelector("canvas"), pc = pcv.getContext("2d");
 const pdS = {raf: 0, an: null, f: null, t: null, last: 0, hue: 200, pk: [], drops: 0, ct: 0, trickle: 0, still: false};
 const PD_MAX = 60, PD_KICK = 0.14;
+// Text is the expensive part (emoji most of all, ~120 a frame at 4K), so each glyph or label is drawn once into a small
+// canvas and stamped from then on. Keyed by text, size, font and colour; label hues are rounded to 12° so they reuse.
+const pdSpr = new Map();
+function pdSprite(txt, px, font, color) {
+  const key = txt + "|" + px + "|" + font + "|" + color; let s = pdSpr.get(key); if (s) return s;
+  if (pdSpr.size > 500) pdSpr.clear(); // a resize changes every size: start over
+  s = document.createElement("canvas"); const x = s.getContext("2d"), f = /^\d/.test(font) ? font.replace(" ", ` ${px}px `) : `${px}px ${font}`; // a weight goes before the size
+  x.font = f; s.width = Math.ceil(x.measureText(txt).width) + 4; s.height = Math.ceil(px * 1.4) + 4;
+  x.font = f; x.textAlign = "center"; x.textBaseline = "middle"; x.fillStyle = color; x.fillText(txt, s.width / 2, s.height / 2);
+  pdSpr.set(key, s); return s;
+}
+function pdStamp(c, txt, px, font, color, x, y, k = 1) {
+  const s = pdSprite(txt, px, font, color), w = s.width * k, h = s.height * k; c.drawImage(s, x - w / 2, y - h / 2, w, h);
+}
+const PD_EMOJI = "sans-serif", PD_MONO = "ui-monospace,monospace";
 function pdOpen() {
   audio(); pd.hidden = false; pdS.last = performance.now(); pdS.still = false; pdText();
   if (!pdS.raf) pdS.raf = requestAnimationFrame(pdLoop);
@@ -258,8 +286,9 @@ function pdFrame(now) {
   const core = R * (0.16 + bass * 0.08);
   const g = c.createRadialGradient(cx,cy,0,cx,cy,core * 1.6); g.addColorStop(0,busy ? "rgba(255,70,70,.95)" : `hsla(${hue},100%,80%,.9)`); g.addColorStop(1,"rgba(0,0,0,0)");
   c.fillStyle = g; c.beginPath(); c.arc(cx,cy,core * 1.6,0,Math.PI * 2); c.fill();
-  c.textAlign = "center"; c.textBaseline = "middle"; c.font = `${Math.round(core * 1.1)}px sans-serif`; c.fillText("☁️",cx,cy);
-  c.font = `${Math.max(9, Math.round(R * 0.045))}px ui-monospace,monospace`; c.fillStyle = busy ? "#ff5a5f" : "#fff"; c.fillText(busy ? "503 BUSY" : "us-east-1",cx,cy + core * 0.95);
+  const cloudPx = Math.max(8, Math.round(R * 0.264)); // the cloud at its biggest (bass 1), scaled down to the beat
+  pdStamp(c, "☁️", cloudPx, PD_EMOJI, "#fff", cx, cy, core * 1.1 / cloudPx);
+  pdStamp(c, busy ? "503 BUSY" : "us-east-1", Math.max(9, Math.round(R * 0.045)), PD_MONO, busy ? "#ff5a5f" : "#fff", cx, cy + core * 0.95);
   // packets: a trickle, and a burst on every beat
   if (!RM) {
     pdS.trickle -= dt;
@@ -267,9 +296,9 @@ function pdFrame(now) {
     if (pdS.trickle <= 0) pdS.trickle = 0.45;
     for (let k = 0; k < add && pdS.pk.length < PD_MAX; k++)
       pdS.pk.push({a: sndRand() * Math.PI * 2, r: R * (1.05 + sndRand() * 0.25), s: 0.6 + sndRand() * 0.8,
-        g: PD_GLYPHS[Math.floor(sndRand() * PD_GLYPHS.length)], l: PD_LABELS[Math.floor(sndRand() * PD_LABELS.length)], drop: false});
+        k: pdKind(), drop: false});
   }
-  const fs = Math.max(12, Math.round(R * 0.075)), ls = Math.max(8, Math.round(R * 0.032));
+  const fs = Math.max(12, Math.round(R * 0.075));
   pdS.pk = pdS.pk.filter(p => {
     if (!p.drop) {
       p.r -= dt * R * 0.33 * p.s * (1 + bass * 1.5); p.a += dt * (0.9 + mid * 2.5) * p.s;
@@ -280,15 +309,12 @@ function pdFrame(now) {
       }
     } else {p.vy += dt * R * 1.6; p.x += p.vx * dt; p.y += p.vy * dt; if (p.y > h + fs * 2) return false;}
     const x = p.drop ? p.x : cx + Math.cos(p.a) * p.r, y = p.drop ? p.y : cy + Math.sin(p.a) * p.r;
-    c.font = `${fs}px sans-serif`; c.globalAlpha = p.drop ? 1 : Math.min(1, 0.35 + (1 - p.r / R) * 1.2); c.fillText(p.g,x,y);
-    c.font = `${ls}px ui-monospace,monospace`; c.fillStyle = p.drop ? "#ff5a5f" : `hsl(${(hue + 120) % 360},90%,70%)`;
-    c.fillText(p.drop ? "DROPPED" : p.l,x,y + fs * 0.85); c.globalAlpha = 1;
+    c.globalAlpha = p.drop ? 1 : Math.min(1, 0.35 + (1 - p.r / R) * 1.2); pdStamp(c, p.k.g, fs, p.k.gf || PD_EMOJI, p.k.gc || "#fff", x, y, p.k.gs); c.globalAlpha = 1;
     return true;
   });
   if (RM) for (let i = 0; i < 8; i++) { // the still frame: a fixed ring of packets, one of them not making it
     const a = i / 8 * Math.PI * 2 - Math.PI / 2, r = R * 0.72, x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r, drop = i === 3;
-    c.font = `${fs}px sans-serif`; c.fillText(PD_GLYPHS[i % PD_GLYPHS.length], x, drop ? y + fs : y);
-    c.font = `${ls}px ui-monospace,monospace`; c.fillStyle = drop ? "#ff5a5f" : "#7ee787"; c.fillText(drop ? "DROPPED" : PD_LABELS[i], x, (drop ? y + fs : y) + fs * 0.85);
+    const k = PD_STILL[i]; pdStamp(c, k.g, fs, k.gf || PD_EMOJI, k.gc || "#fff", x, drop ? y + fs : y, k.gs);
   }
   if (high > 0.3 && !RM) {c.fillStyle = `hsla(${hue},100%,90%,${(high - 0.3) * 0.25})`; c.fillRect(0,0,w,h);} // cymbal shimmer
   if (RM) pdS.still = true;
@@ -310,7 +336,7 @@ function close() {pdClose(); st.open = false; el.hidden = true; st.state = "stop
 
 return {
   TRACKS, open, close, act, st,
-  vis: {open: pdOpen, close: pdClose, frame: pdFrame, state: () => ({open: !pd.hidden, drops: pdS.drops, packets: pdS.pk.length})},
+  vis: {open: pdOpen, close: pdClose, frame: pdFrame, kinds: PD_KINDS, state: () => ({open: !pd.hidden, drops: pdS.drops, packets: pdS.pk.length})},
   toggle: () => (st.open ? close() : open()),
   // what the music should play while Gitamp has it (null: the game decides)
   mood: () => st.state === "stop" ? null : keyOf(),

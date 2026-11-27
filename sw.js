@@ -5,7 +5,7 @@
    v5: adds the Day 2 prototype (assets/day2.js), so it still opens offline.
    v6: adds Gitamp (assets/gitamp.js), the terminal's music player.
    v7: Gitamp gains PacketDrop, its visualizer. */
-const CACHE = 'lift-shift-shell-v7';
+const CACHE = 'lift-shift-shell-v8';
 const GAME = '/lift-and-shift.html';
 const ASSETS = [GAME, '/pwa.js', '/manifest.webmanifest', '/assets/day2.js', '/assets/gitamp.js',
   '/assets/lift-and-shift-logo.png', '/assets/icon-192.png',
