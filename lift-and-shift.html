@@ -3949,6 +3949,24 @@ function drawPlayer(){
     ctx.strokeStyle=done?C.ok:C.amber;ctx.beginPath();ctx.arc(P.x,P.y,22,-Math.PI/2,-Math.PI/2+f*Math.PI*2);ctx.stroke();ctx.lineCap="butt";
   }
 }
+/* What you're carrying, held over your head as a small copy of its rack tile: the tier's colour and stripe, the 🖥️ and
+   its name, with an OFF badge (it's shut down while it moves) or, for a blue-green move, a see-through COPY (the real one
+   is still running in its rack). Its bottom sits at y, kept inside the floor; returns its top, for the prompt above it. */
+function drawCarryTile(a,x,y){
+  const T=TIER[a.tier],copy=liveCopy(a);
+  ctx.font=`600 9.5px ${MONO}`;const nw=Math.min(ctx.measureText(a.name).width,92),w=Math.max(54,nw+30),h=26;
+  const left=clamp(x-w/2,2,W-w-2),t=Math.max(8,y-h);
+  if(copy){ctx.globalAlpha=.55;ctx.fillStyle="#123447";rr(left,t,w,h,5);ctx.fill();ctx.globalAlpha=1;
+    ctx.strokeStyle="#7fd4ff";ctx.lineWidth=1.5;ctx.setLineDash([4,3]);rr(left,t,w,h,5);ctx.stroke();ctx.setLineDash([]);}
+  else{ctx.fillStyle=C.rack;rr(left,t,w,h,5);ctx.fill();ctx.strokeStyle=T.c;ctx.lineWidth=2;rr(left,t,w,h,5);ctx.stroke();
+    ctx.fillStyle=T.c;ctx.fillRect(left+1,t+1,w-2,3);}
+  ctx.globalAlpha=copy?.8:.55;em("🖥️",left+12,t+14.5,13);ctx.globalAlpha=1;
+  tx(a.name,left+22+(w-26)/2,t+15,9.5,copy?"#dff4ff":C.ink,{max:w-28,weight:600});
+  const b=copy?"COPY":"OFF",bw=copy?30:24; // the badge on its top-right corner
+  ctx.fillStyle=copy?"#7fd4ff":"#5b6670";rr(left+w-bw+4,t-6,bw,11,3);ctx.fill();
+  tx(b,left+w-bw/2+4,t-0.5,7.5,copy?"#0b2230":"#eef2f5",{font:DISP,weight:700});
+  return t-6;
+}
 function drawPlayerBody(){
   const P=S.p;
   // ☕ coffee: amber rings radiate outward with orbiting sparks; flickers in the last second
@@ -3977,22 +3995,10 @@ function drawPlayerBody(){
   }
   if(P.stun>0&&!P.heldBy)em("💫",P.x,P.y-22,14);
   let top=P.y-30;
-  if(S.carry&&liveCopy(S.carry)){
-    // blue-green: a see-through copy; the real server is still running in its rack
-    ctx.globalAlpha=.4;ctx.fillStyle="#7fd4ff";rr(P.x-21,P.y-15,42,30,4);ctx.fill();ctx.globalAlpha=1;
-    ctx.strokeStyle="#7fd4ff";ctx.lineWidth=1.5;ctx.setLineDash([4,3]);rr(P.x-21,P.y-15,42,30,4);ctx.stroke();ctx.setLineDash([]);
-    tx("COPY",P.x,P.y,9,"#dff4ff",{font:DISP,weight:700});
-  }else if(S.carry){
-    // the box sits on top of you (you can still see yourself through it), and the dashed ring is your bigger hitbox
-    ctx.globalAlpha=.72;ctx.fillStyle="#4b5560";rr(P.x-21,P.y-15,42,30,4);ctx.fill();ctx.globalAlpha=1;
-    ctx.strokeStyle="#7b8894";ctx.lineWidth=1.5;rr(P.x-21,P.y-15,42,30,4);ctx.stroke();
-    tx("OFF",P.x,P.y,10,"#e3e9ee",{font:DISP,weight:700});
-  }
   if(S.carry){
+    // the dashed ring is your bigger hitbox while carrying; the server itself is held up over your head
     ctx.strokeStyle=C.amber;ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.beginPath();ctx.arc(P.x,P.y,PR_CARRY,0,7);ctx.stroke();ctx.setLineDash([]);
-    ctx.font=`600 10.5px ${MONO}`;const w=Math.min(ctx.measureText(S.carry.name).width,90)+14;
-    ctx.fillStyle="#3a2f20";rr(P.x-w/2,P.y-44,w,17,4);ctx.fill();tx(S.carry.name,P.x,P.y-35.5,10.5,C.amber,{max:90,weight:600});
-    top=P.y-50;
+    top=drawCarryTile(S.carry,P.x,P.y-PR_CARRY-3)-4;
   }
   if(S.prompt){ctx.font=`600 11px ${MONO}`;const w=ctx.measureText(S.prompt).width+14;const px=clamp(P.x,w/2+4,W-w/2-4);
     ctx.fillStyle="rgba(8,16,22,.86)";rr(px-w/2,top-18,w,18,4);ctx.fill();tx(S.prompt,px,top-9,11,C.ink,{weight:600});}

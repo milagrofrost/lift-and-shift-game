@@ -151,7 +151,7 @@ Gitamp, the soundtrack's music player, lives in `assets/gitamp.js` the same way:
 ### Uptime recovery
 
 - Outages burn the uptime budget by tier: gold 3/s, silver 1/s, bronze 0.25/s. Bronze and silver outages are survivable; gold is what gets you fired.
-- A server shut down for migration (carried or in the pipeline, including stuck on a jammed lane) burns a quarter of its outage rate; each Redefine "Uptime" level removes 20% of that. Blue-green moves burn nothing. Moving servers are drawn as OFF. The uptime box pulses red slowly during migrations, faster when migration burn is heavy, and very fast during outages.
+- A server shut down for migration (carried or in the pipeline, including stuck on a jammed lane) burns a quarter of its outage rate; each Redefine "Uptime" level removes 20% of that. Blue-green moves burn nothing. Moving servers are drawn as OFF; one you carry is held over your head as a small copy of its rack tile (tier colour and stripe, 🖥️, name) with an OFF badge, or a dashed blue COPY for a blue-green move (`drawCarryTile`), so your avatar stays visible inside the dashed carry ring. The uptime box pulses red slowly during migrations, faster when migration burn is heavy, and very fast during outages.
 - The uptime budget recovers slowly unless a gold server is offline or something is breached: up to half the budget by default. Redefine "Uptime" raises the rate and cap; managers raise the rate. A manager's server visit is an inspection that takes the server offline half the time. A break sends the manager on a slow walk to the inbox and blocks visits for 45 seconds per career break, capped at 300. Holding E at that server during the inspection cancels it without counting as a break.
 
 ### Restore from backup
