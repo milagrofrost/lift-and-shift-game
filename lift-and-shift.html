@@ -283,6 +283,8 @@ canvas{display:block;width:100%;height:auto;aspect-ratio:960/560;touch-action:no
 kbd{font-family:var(--f-mono);font-size:11.5px;background:var(--panel-2);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;color:var(--ink)}
 #devbtn{position:fixed;left:2px;top:2px;z-index:30;width:24px;height:20px;padding:0;background:none;border:0;color:var(--muted);opacity:.28;font:11px var(--f-mono);cursor:pointer}
 #devbtn:hover,#devbtn:focus-visible{opacity:.8}
+:root[data-theme="light"] #devbtn{opacity:.5} /* a faint grey on a light page all but vanishes: a smidge darker, still unobtrusive */
+:root[data-theme="light"] #devbtn:hover,:root[data-theme="light"] #devbtn:focus-visible{opacity:.9}
 #devterm{position:fixed;z-index:35;left:50%;top:12px;transform:translateX(-50%);width:min(680px,calc(100vw - 24px));max-height:min(calc(100vh - 24px),560px);display:flex;flex-direction:column;box-shadow:0 12px 36px rgba(0,0,0,.6);border-radius:6px}
 #devterm .devbar{display:flex;align-items:center;gap:8px;padding:3px 6px 3px 10px;background:#0d2017;border:1px solid #2f6b47;border-bottom:0;border-radius:6px 6px 0 0;color:#7dffa8;font:12px var(--f-mono);cursor:move;touch-action:none;user-select:none;-webkit-user-select:none}
 #devterm .devbar i{flex:1}
