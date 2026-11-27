@@ -491,6 +491,7 @@ blockquote cite{display:block;font-style:normal;color:var(--muted);font-size:12p
 .toolkit small{color:var(--amber);font-family:var(--f-mono)}
 .toolkit span[data-tip]{cursor:help}
 .toolkit span[data-tip]:focus-visible{outline:2px solid var(--amber);outline-offset:1px}
+.tip .tj{margin:0 0 4px}.tip .tj:last-child{margin:0}.tip .tjd{display:inline-block;min-width:1.4em}
 .tip{position:fixed;z-index:70;max-width:min(300px,calc(100vw - 16px));background:var(--panel);color:var(--ink);border:1px solid var(--amber);border-radius:8px;padding:8px 10px;font-size:12.5px;line-height:1.4;box-shadow:0 6px 20px rgba(0,0,0,.45);pointer-events:none}
 .modcard{border:1px dashed var(--amber);border-radius:8px;padding:10px 12px;font-size:13.5px}
 .modcard b{color:var(--amber)}
@@ -4170,13 +4171,55 @@ function show(html){hideTip();ov.innerHTML=`<div class="card" role="dialog" aria
 /* Hover tips on the toolkit chips: the upgrade's description follows the mouse while it's over a chip. A tap shows it
    at your finger (tap again or anywhere else to close), and keyboard focus shows it under the chip. */
 const TIP=document.getElementById("tip");let tipFor=null;
+/* The tip jar's tooltip (About the author) tells a story. It shows the moment you hover, follows the cursor (above and to
+   its right), and each line trails dots that tick 1-2-3 a few times before the next line arrives, so you know there's
+   more coming. Reduced motion and keyboard focus get the whole story at once; screen readers get it as the link's
+   description. Drawing only, outside S. */
+const TIPJAR=["Like the game? Donate to my hermitage in the woods",
+  "I do have 4 kids who need feeding",
+  "Not that they don't have food. They're just always asking for food",
+  "Maybe I'll get them a nice ice cream. Maybe even in a cone",
+  "I'd say buy me a coffee, but there's always one popping up in the hallway",
+  "Maybe this should be \"buy me tokens\" instead. This game cost a few. Okay, a lot",
+  "In any case, thank you for your consideration",
+  "Oh, and this is a gift for what this has become, not for what it is, should be, might be or could become. No strings attached",
+  "Not that strings are totally off the table. Depending on when you donate, I may have moved on to a new fascination. We'll see. Anything's possible."];
+const TJ={el:null,n:0,d:0,step:0,timer:0,x:0,y:0,all:false},TJ_TICK=300,TJ_CYCLES=3; // dots tick every 300 ms, three 1-2-3 runs a line
+function tjRender(){
+  const all=RM||TJ.all,n=all?TIPJAR.length:TJ.n,last=TIPJAR.length-1;
+  TIP.innerHTML=TIPJAR.slice(0,n).map((l,i)=>`<p class="tj">${esc(l)}${i===last?"":i===n-1&&!all?`<span class="tjd">${".".repeat(TJ.d)}</span>`:"…"}</p>`).join("");
+  tjPlace();
+}
+function tjPlace(){
+  TIP.style.left=TIP.style.top="0px";TIP.hidden=false;const w=TIP.offsetWidth,h=TIP.offsetHeight,m=8;
+  let left=TJ.x+14,top=TJ.y-14-h; // above and to the right of the cursor
+  if(left+w>innerWidth-m)left=Math.max(m,TJ.x-14-w);if(top<m)top=Math.min(innerHeight-h-m,TJ.y+18);
+  TIP.style.left=left+"px";TIP.style.top=Math.max(m,top)+"px";
+}
+function tjTick(){
+  TJ.d=TJ.d%3+1;
+  if(++TJ.step>=3*TJ_CYCLES&&TJ.n<TIPJAR.length){TJ.n++;TJ.step=0;TJ.d=1;}
+  if(TJ.n>=TIPJAR.length){clearInterval(TJ.timer);TJ.timer=0;}
+  if(TJ.el)tjRender();
+}
+function tjShow(el,x,y,all=false){
+  clearInterval(TJ.timer);Object.assign(TJ,{el,x,y,all,n:1,d:1,step:0,timer:0});
+  if(!RM&&!all)TJ.timer=setInterval(tjTick,TJ_TICK);
+  tjRender();
+}
+function tjHide(){clearInterval(TJ.timer);TJ.timer=0;if(TJ.el){TJ.el=null;TIP.hidden=true;}}
 function showTip(el,x,y){
   if(tipFor!==el){TIP.textContent=el.dataset.tip;tipFor=el;el.setAttribute("aria-describedby","tip");}
   TIP.style.left=TIP.style.top="0px";TIP.hidden=false;const w=TIP.offsetWidth,h=TIP.offsetHeight,m=8;
   let left=x+14,top=y+18;if(left+w>innerWidth-m)left=Math.max(m,x-14-w);if(top+h>innerHeight-m)top=Math.max(m,y-14-h);
   TIP.style.left=left+"px";TIP.style.top=top+"px";
 }
-function hideTip(){if(tipFor)tipFor.removeAttribute("aria-describedby");tipFor=null;TIP.hidden=true;}
+function hideTip(){if(tipFor)tipFor.removeAttribute("aria-describedby");tipFor=null;tjHide();TIP.hidden=true;}
+ov.addEventListener("pointerover",e=>{if(e.pointerType!=="mouse")return;const t=e.target.closest("[data-tipjar]");if(t&&TJ.el!==t)tjShow(t,e.clientX,e.clientY);});
+ov.addEventListener("pointermove",e=>{if(!TJ.el||e.pointerType!=="mouse")return;if(!e.target.closest("[data-tipjar]")){tjHide();return;}TJ.x=e.clientX;TJ.y=e.clientY;tjPlace();});
+ov.addEventListener("pointerout",e=>{if(TJ.el&&e.target.closest("[data-tipjar]")&&!(e.relatedTarget&&e.relatedTarget.closest&&e.relatedTarget.closest("[data-tipjar]")))tjHide();});
+ov.addEventListener("focusin",e=>{const t=e.target.closest("[data-tipjar]");if(t){const b=t.getBoundingClientRect();tjShow(t,b.left,b.top,true);}});
+ov.addEventListener("focusout",e=>{if(e.target.closest("[data-tipjar]"))tjHide();});
 ov.addEventListener("pointermove",e=>{if(e.pointerType!=="mouse")return;const t=e.target.closest("[data-tip]");if(t)showTip(t,e.clientX,e.clientY);else if(tipFor)hideTip();});
 ov.addEventListener("pointerleave",e=>{if(e.pointerType==="mouse")hideTip();});
 ov.addEventListener("pointerup",e=>{if(e.pointerType==="mouse")return;const t=e.target.closest("[data-tip]");if(t&&tipFor!==t)showTip(t,e.clientX,e.clientY);else hideTip();});
@@ -4450,7 +4493,7 @@ function learnMore(){
 }
 /* About the author: a humble-brag post in the style of a professional networking feed (no real site's branding),
    with links to the author's profile, site and the source. */
-const AUTHOR_LINKS=[["💼","Connect on LinkedIn","https://www.linkedin.com/in/milagrofrost/"],["🌐","milagrofrost.com","https://milagrofrost.com"],["💻","Source on GitHub","https://github.com/milagrofrost/lift-and-shift-game"],["❤️","Tip jar","https://github.com/sponsors/milagrofrost?frequency=one-time","Like the game? Donate to my hermitage in the woods."]]; // a no-strings GitHub Sponsors tip jar
+const AUTHOR_LINKS=[["💼","Connect on LinkedIn","https://www.linkedin.com/in/milagrofrost/"],["🌐","milagrofrost.com","https://milagrofrost.com"],["💻","Source on GitHub","https://github.com/milagrofrost/lift-and-shift-game"],["❤️","Tip jar","https://github.com/sponsors/milagrofrost?frequency=one-time","tipjar"]]; // a no-strings GitHub Sponsors tip jar, with its story tooltip (TIPJAR)
 // the comments under the post: the usual suspects, saying their actual lines from the game
 function authorComments(){
   const R=n=>RANKS.find(x=>x.name===n).lines;
@@ -4482,7 +4525,8 @@ function aboutAuthor(){
       ${authorComments().map(([i,n,t,c,ago])=>`<div class="cmt"><div class="pfp sm" aria-hidden="true">${i}</div><div><b>${n}</b><small>${t}</small><p>${c}</p><small>Like · Reply · ${ago}</small></div></div>`).join("")}
       <p class="more">33 more comments are just "Agree." and one is a recruiter.</p>
     </details>
-    <div class="postlinks">${AUTHOR_LINKS.map(([i,t,u,tip])=>`<a href="${u}" target="_blank" rel="noopener noreferrer"${tip?` title="${tip}"`:""}>${i} ${t}</a>`).join("")}</div>
+    <div class="postlinks">${AUTHOR_LINKS.map(([i,t,u,tip])=>`<a href="${u}" target="_blank" rel="noopener noreferrer"${tip?` data-tipjar aria-describedby="tipjar-desc"`:""}>${i} ${t}</a>`).join("")}</div>
+    <span id="tipjar-desc" hidden>${esc(TIPJAR.join(". "))}</span>
   </article>
   <p style="font-size:12.5px;color:var(--muted)">Built with help from Claude. Any resemblance to your own data center is purely coincidental.</p>
   <button class="btn" data-act="menu">Back to menu</button>`);
