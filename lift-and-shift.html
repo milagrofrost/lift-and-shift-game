@@ -23,6 +23,8 @@
 <script src="./version-picker.js" defer></script>
 <script src="./assets/day2.js"></script>
 <script src="./assets/gitamp.js"></script>
+<script src="./assets/statuspage.js"></script>
+<script src="./assets/wiresnark.js"></script>
 <style>
 /* ==== Styles ==== */
 /* Layout: one ops-console column. HUD strip on top, the game floor below, controls under it.
@@ -293,6 +295,12 @@ kbd{font-family:var(--f-mono);font-size:11.5px;background:var(--panel-2);border:
 #devterm .devmenu{flex:none;max-height:min(34vh,220px);overflow:auto}
 #devterm .devmenu:empty{display:none}
 #devterm[hidden]{display:none}
+/* the resize grip in a floating window's bottom-right corner (makeResizable) */
+.wgrip{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;touch-action:none;z-index:3;border-bottom-right-radius:6px;background:linear-gradient(135deg,transparent 0 50%,rgba(140,150,160,.85) 50% 56%,transparent 56% 66%,rgba(140,150,160,.85) 66% 72%,transparent 72% 82%,rgba(140,150,160,.85) 82% 88%,transparent 88%)}
+@media (pointer:coarse){.wgrip{width:26px;height:26px}}
+/* a DEBUG panel dragged out of the game into the page's empty space (DBGWIN); sized like it was on the floor */
+.dbgwin{position:fixed;z-index:34;margin:0;padding:4px 6px;background:rgba(4,10,6,.9);border:1px solid #2f6b47;border-radius:4px;font-family:var(--f-mono);font-weight:500;white-space:pre;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.dbgwin[hidden]{display:none}
 #credits{position:fixed;inset:0;z-index:60;background:#000;opacity:0;transition:opacity 1.2s ease;overflow:hidden;cursor:pointer}
 #credits.on{opacity:1}
 #credits .roll,#credits .boot{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;padding:0 16px;opacity:0;transition:opacity 1.2s ease}
@@ -2635,7 +2643,7 @@ $("freeze").addEventListener("click",useFreeze);
 document.getElementById("mus").addEventListener("click",()=>{audio();setMusic(!MUS.on);});
 setMusic(MUS.on);
 addEventListener("keydown",e=>{
-  if(e.target&&e.target.closest&&e.target.closest("#devterm,#gitamp,#packetdrop"))return; // a window has the keys (Esc there is that window's)
+  if(e.target&&e.target.closest&&e.target.closest("#devterm,#gitamp,#packetdrop,#statuspage,#wiresnark"))return; // a window has the keys (Esc there is that window's)
   if(e.target&&e.target.id==="avatar")return; // typing in the avatar box (M would toggle sound, ` would open the terminal)
   if(mode==="credits"){e.preventDefault();return;} // the ending plays out in full: keys do nothing
   if(mode==="restored"){e.preventDefault();if(!e.repeat)play();return;}
@@ -3856,6 +3864,8 @@ function drawPanel(key,corner,rows,{blocked=()=>false,up=()=>false}={}){
   ctx.font=`500 8.5px ${MONO}`;
   const w=Math.max(...rows.map(r=>ctx.measureText(r.line).width),10)+12,h=rows.length*11+8;
   const st=PANEL[key]||(PANEL[key]={m:1,min:false,u:0,up:false});
+  st.rows=rows;st.seen=DBGWIN.frame;
+  if(st.out||st.dragging){if(st.out)dbgWinFill(key);return;} // it's out in the page (or in your hand), not on the floor
   // where it lives: its own corner, or the top left when that corner is needed
   // (judged at its full 9-line height, so whether it moves doesn't depend on how many lines it has yet)
   const home={x:corner==="tr"?W-w-6:6,y:corner==="tr"?34:H-h-6,w,h},FH=9*11+8;st.up=up({...home,y:H-6-FH,h:FH},{x:6,y:34,w,h:FH});
@@ -3866,6 +3876,7 @@ function drawPanel(key,corner,rows,{blocked=()=>false,up=()=>false}={}){
   st.m=ease(st.m,st.min?0:1);st.u=ease(st.u,st.up?1:0);
   const label=`${st.min?"▸":"▾"} ${key}${key==="logs"?` (${rows.length})`:""}`,tw=ctx.measureText(label).width+12,th=15;
   const cw=tw+(w-tw)*st.m,ch=th+(h-th)*st.m,cx=corner==="tr"?W-6-cw:6,cy=corner==="tr"?34:(H-6-ch)+(34-(H-6-ch))*st.u;
+  st.rect={x:cx,y:cy,w:cw,h:ch};
   ctx.fillStyle="rgba(4,10,6,.82)";ctx.fillRect(cx,cy,cw,ch);
   if(st.m>0.5){ctx.save();ctx.beginPath();ctx.rect(cx,cy,cw,ch);ctx.clip();ctx.globalAlpha=(st.m-0.5)*2;
     // the log keeps its newest lines in view as it shrinks; the metrics keep their top
@@ -3873,6 +3884,57 @@ function drawPanel(key,corner,rows,{blocked=()=>false,up=()=>false}={}){
     rows.forEach((r,k)=>tx(r.line,cx+6,y0+9+k*11,8.5,r.col,{align:"left",weight:500}));ctx.restore();}
   else{ctx.globalAlpha=1-st.m*2;tx(label,cx+6,cy+th/2,8.5,"#9fe870",{align:"left",weight:500});ctx.globalAlpha=1;}
 }
+/* Drag a DEBUG panel off the floor: it lifts into its own little window (same size and colours) that follows the pointer.
+   Dropped wholly outside the game, in the page's empty space, it stays there and keeps updating; dropped anywhere still
+   touching the game (or left touching it after the window resizes) it snaps back to its corner. Drag it back in to return
+   it. Draw-only, outside S; hidden whenever DEBUG isn't drawn. */
+const DBGWIN={frame:0,drag:null};
+const gameRect=()=>cv.getBoundingClientRect();
+const overlapsGame=el=>{const a=el.getBoundingClientRect(),b=gameRect();return a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;};
+function dbgWinEl(key){
+  const st=PANEL[key];if(st.el)return st.el;
+  const el=st.el=document.createElement("pre");el.className="dbgwin";el.hidden=true;el.setAttribute("aria-hidden","true");el.title="Drag back onto the game to put it back";
+  el.addEventListener("pointerdown",e=>dbgDragStart(e,key));document.body.appendChild(el);return el;
+}
+function dbgWinFill(key){
+  const st=PANEL[key],el=dbgWinEl(key);if(!st.rows)return;
+  const html=st.rows.map(r=>`<span style="color:${r.col}">${esc(r.line)}</span>`).join("\n");if(el.innerHTML!==html)el.innerHTML=html;
+}
+function dbgDragStart(e,key){
+  const st=PANEL[key],el=dbgWinEl(key);
+  if(!st.out){ // lift it off the canvas at the same place and size
+    const g=gameRect(),k=g.width/W;dbgWinFill(key);
+    Object.assign(el.style,{fontSize:`${8.5*k}px`,lineHeight:`${11*k}px`,left:`${g.left+st.rect.x*k}px`,top:`${g.top+st.rect.y*k}px`});
+    el.hidden=false;}
+  const b=el.getBoundingClientRect();Object.assign(el.style,{left:`${b.left}px`,top:`${b.top}px`,right:"auto",bottom:"auto"}); // back to top-left while held
+  DBGWIN.drag={key,dx:e.clientX-b.left,dy:e.clientY-b.top,id:e.pointerId};
+  st.dragging=true;el.style.cursor="grabbing";e.preventDefault();e.stopPropagation();
+}
+addEventListener("pointerdown",e=>{ // a press on a panel drawn on the floor picks it up (before the joystick can take it)
+  if(!S||logLv()<3||!(mode==="play"||mode==="paused")||DBGWIN.drag)return;
+  const g=gameRect(),room=Math.max(g.left,innerWidth-g.right,g.top,innerHeight-g.bottom);
+  if(e.pointerType==="touch"&&room<120)return; // a phone has nowhere to put it, and the log sits under the joystick thumb
+  const k=W/g.width,p={x:(e.clientX-g.left)*k,y:(e.clientY-g.top)*k};
+  for(const key in PANEL){const st=PANEL[key];if(!st.out&&st.rect&&st.seen===DBGWIN.frame&&inRect(p,st.rect)){dbgDragStart(e,key);return;}}
+},true);
+addEventListener("pointermove",e=>{const d=DBGWIN.drag;if(!d||e.pointerId!==d.id)return;const el=PANEL[d.key].el;
+  el.style.left=`${clamp(e.clientX-d.dx,0,Math.max(0,innerWidth-el.offsetWidth))}px`;el.style.top=`${clamp(e.clientY-d.dy,0,Math.max(0,innerHeight-el.offsetHeight))}px`;},true);
+function dbgDragEnd(e){const d=DBGWIN.drag;if(!d||e.pointerId!==d.id)return;DBGWIN.drag=null;
+  const st=PANEL[d.key];st.dragging=false;st.el.style.cursor="";st.out=!overlapsGame(st.el);if(!st.out)st.el.hidden=true;else dbgAnchor(st.el);}
+// pin it by the edge nearest the game, so as its lines come and go it grows away from the game, never into it
+function dbgAnchor(el){
+  const a=el.getBoundingClientRect(),g=gameRect();
+  if(a.right<=g.left)Object.assign(el.style,{left:"auto",right:`${innerWidth-a.right}px`});
+  if(a.bottom<=g.top)Object.assign(el.style,{top:"auto",bottom:`${innerHeight-a.bottom}px`});
+}
+addEventListener("pointerup",dbgDragEnd,true);addEventListener("pointercancel",dbgDragEnd,true);
+// each frame: show the ones out in the page only while DEBUG is being drawn (growing never snaps them back: they're pinned
+// away from the game; only a drop that still touches it, or a browser resize that puts the game under them, does)
+function dbgWinSweep(){
+  for(const key in PANEL){const st=PANEL[key];if(st.out&&st.el)st.el.hidden=st.seen!==DBGWIN.frame;}
+  DBGWIN.frame++;
+}
+addEventListener("resize",()=>{for(const key in PANEL){const st=PANEL[key];if(st.out&&st.el&&!st.dragging&&!st.el.hidden&&overlapsGame(st.el)){st.out=false;st.el.hidden=true;}}});
 function drawPlayer(){
   const P=S.p;let ox=0,oy=0;
   if(P.heldBy&&P.stun>0){const stk=stick.on&&(stick.x||stick.y),mx=stk?stick.x:(keys.r?1:0)-(keys.l?1:0),my=stk?stick.y:(keys.d?1:0)-(keys.u?1:0),m=Math.hypot(mx,my);if(m>0){ox=mx/m*3;oy=my/m*3;}}
@@ -3949,6 +4011,7 @@ function drawLoadin(){
   loadinPieces().slice(0,Math.max(0,n)).forEach(p=>p());
 }
 function draw(){
+  dbgWinSweep();
   ctx.clearRect(0,0,W,H);if(!S)return;
   if(LOADIN.on){drawLoadin();return;}
   ctx.save();
@@ -5507,6 +5570,7 @@ const CLI={
   cat:cli("Read a file",{"passwords.txt":cli("Please don't"),"resume_final_v7_REAL.docx":cli("Your qualifications")}),
   cd:cli("Change directory",{"<dir>":cli("A directory from ls")}),
   cowsay:cli("A cow says it",{"<text>":cli("What the cow says")}),
+  curl:cli("Fetch a URL",{status:cli("The client's public status page")}),
   date:cli("Show the date"),
   dig:cli("Look up a DNS name",{"<name>":cli("Any name")}),
   exit:cli("Close the terminal"),
@@ -5527,6 +5591,8 @@ const CLI={
   terraform:cli("Infrastructure as code",{plan:cli("Preview the changes")}),
   uptime:cli("Show uptime"),
   whoami:cli("Show who you are"),
+  wiresnark:cli("Capture the floor's packets (with opinions)"),
+  tcpdump:cli("Same as wiresnark, for purists"),
 };
 function cliHelp(cmd){
   const toks=cmd.slice(0,-1).split(" "),pre=toks.pop();let node=CLI;
@@ -5580,6 +5646,9 @@ function cliRun(cmd,raw=cmd){
   const[h,...a]=cmd.split(" "),rest=a.join(" ");let out=null;
   const rawRest=raw.trim().replace(/^\S+\s*/,"");
   if(h==="gitamp"&&GA){GA.open();out="Opening Gitamp… It really whips the vendor's SaaS.";}
+  else if((h==="wiresnark"||h==="tcpdump")&&WS){WS.open();out=h==="tcpdump"?"tcpdump: listening on eth0, link-type EN10MB. Opening WireSnark instead, because you deserve colours.":"Capturing from eth0 (the floor). The world's most popular network protocol analyzer, now with opinions.";}
+  else if(h==="curl"&&SP&&/^(https?:\/\/)?status\b/.test(rest)){SP.open();out="HTTP/1.1 200 OK\nContent-Type: text/optimism\n\nOpening the status page. Everything is fine.";}
+  else if(h==="curl")out=`curl: (6) Could not resolve host: ${rest.split(" ")[0]||"nothing"}. It's DNS. Try: curl status`;
   else if(h==="cowsay")out=`${sayBubble(rawRest||"Moo. (Try: cowsay hello)")}\n${COW}`;
   else if(h==="foxsay"){out=`${sayBubble(FOX_NOISES[foxN%FOX_NOISES.length])}\n${FOX}`;foxN++;}
   else if(h==="dig"){const q=(rest||"prod.internal").split(" ")[0];out=`; <<>> DiG 9.18 <<>> ${q}\n;; QUESTION SECTION:\n;${q}.\t\tIN\tA\n\n;; ANSWER SECTION:\n;; It's not DNS.\n;; There's no way it's DNS.\n;; It was DNS.\n\n;; Query time: 3 weeks\n;; SERVER: 127.0.0.1#53 (the sticky note on Gary's monitor)`;}
@@ -5648,8 +5717,22 @@ function devClose(){
   else if(mode==="review")review(); // a cheat may have changed the shop
   else if(mode==="title")titleScreen(); // git checkout day2 may have changed the menu
 }
+/* Floating windows resize from a grip in their bottom-right corner, by mouse or finger: kept above a minimum size and
+   inside the screen (and shrunk back in if the browser window gets smaller). Shared with the extension files through
+   their bridges. Draw-only, outside S. */
+function makeResizable(el,{minW=260,minH=140}={}){
+  const g=document.createElement("div");g.className="wgrip";g.setAttribute("aria-hidden","true");g.title="Drag to resize";el.appendChild(g);
+  let d=null;
+  g.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();const r=el.getBoundingClientRect();d={x:e.clientX,y:e.clientY,w:r.width,h:r.height,l:r.left,t:r.top};
+    g.setPointerCapture(e.pointerId);Object.assign(el.style,{left:`${r.left}px`,top:`${r.top}px`,right:"auto",bottom:"auto",transform:"none",boxSizing:"border-box",width:`${r.width}px`,height:`${r.height}px`,maxWidth:"none",maxHeight:"none"});});
+  g.addEventListener("pointermove",e=>{if(!d)return;
+    Object.assign(el.style,{width:`${clamp(d.w+e.clientX-d.x,minW,innerWidth-d.l)}px`,height:`${clamp(d.h+e.clientY-d.y,minH,innerHeight-d.t)}px`,maxWidth:"none",maxHeight:"none"});});
+  const end=()=>{d=null;};g.addEventListener("pointerup",end);g.addEventListener("pointercancel",end);
+  addEventListener("resize",()=>{if(!el.style.width)return;const r=el.getBoundingClientRect();
+    if(r.width>innerWidth)el.style.width=`${Math.max(minW,innerWidth)}px`;if(r.height>innerHeight)el.style.height=`${Math.max(minH,innerHeight)}px`;});
+}
 // drag the terminal by its title bar, kept on screen (the title bar always stays reachable)
-{const bar=document.querySelector("#devterm .devbar"),w=$("devterm");let d=null;
+{const bar=document.querySelector("#devterm .devbar"),w=$("devterm");let d=null;makeResizable(w,{minW:300,minH:150});
   bar.addEventListener("pointerdown",e=>{if(e.target.closest("button"))return;const r=w.getBoundingClientRect();d={dx:e.clientX-r.left,dy:e.clientY-r.top};bar.setPointerCapture(e.pointerId);});
   bar.addEventListener("pointermove",e=>{if(!d)return;
     const x=Math.min(Math.max(0,e.clientX-d.dx),innerWidth-w.offsetWidth),y=Math.min(Math.max(0,e.clientY-d.dy),Math.max(0,innerHeight-w.offsetHeight));
@@ -5764,7 +5847,13 @@ const D2=typeof window.LasDay2==="function"?window.LasDay2({get S(){return S},ge
   tx,rr,em,bar,smallBubble,fl,toast,sfx,goTo,dist,clamp,$,K,show,play,newRun,update,vpMail,setMuffle,applyPatch,patchDue,noteRestored,ticketLimit,mkBot,logLv,decoT,doorCross,spraying,drawSpray}):null;
 /* Gitamp (assets/gitamp.js, loaded before this script): the soundtrack's music player, opened with `gitamp` in the terminal.
    It only ever changes the music, never S. If the file didn't load, GA is null and the command doesn't exist. */
-const GA=typeof window.LasGitamp==="function"?window.LasGitamp({AU,MUS,MOODS,SONGS,SONG_SETS,DONUT_SET,EMAIL,audio,setMood,setMusic,sndRand,RM}):null;
+const GA=typeof window.LasGitamp==="function"?window.LasGitamp({resizable:makeResizable,AU,MUS,MOODS,SONGS,SONG_SETS,DONUT_SET,EMAIL,audio,setMood,setMusic,sndRand,RM}):null;
+/* The status page (assets/statuspage.js): the client's public status page, opened with `curl status`. It only reads the
+   floor (known servers and apps), never S's rolls or hidden servers. If the file didn't load, SP is null. */
+/* WireSnark (assets/wiresnark.js): a packet capture of the floor, opened with `wiresnark` or `tcpdump`. It only reads the
+   floor (known things only) and has its own random generator, so it never shifts the game's rolls. Null if it didn't load. */
+const WS=typeof window.LasWireSnark==="function"?window.LasWireSnark({resizable:makeResizable,get S(){return S},get mode(){return mode},ticketLimit}):null;
+const SP=typeof window.LasStatus==="function"?window.LasStatus({resizable:makeResizable,get S(){return S},get mode(){return mode},CO,client,lvl}):null;
 newRun();titleScreen();requestAnimationFrame(frame);
 })();
 </script>
