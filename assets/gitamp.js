@@ -1,9 +1,11 @@
 /* Lift & Shift · Gitamp: a retro desktop music player for the soundtrack. Type `gitamp` in the terminal.
    It really whips the vendor's SaaS.
 
-   A small floating window that plays any of the game's songs in any mood (Normal, Tense, On fire, Red alert), with a
-   playlist, prev/play/pause/stop/next, shuffle, repeat and a spectrum meter. It stays open over play, pause and the menus.
-   While it's playing it decides the music; Stop (or closing it) hands the music back to the game.
+   A small floating window that plays any of Matt's songs, with a playlist, prev/play/pause/stop/next, shuffle, repeat
+   and a spectrum meter. It stays open over play, pause and the menus. While it's playing it picks the song; Stop (or
+   closing it) hands the music back to the game. Its mood is AUTO by default: the game's own mood (Normal, Tense, On fire,
+   Red alert, from what's going on) on Gitamp's song. A mood button pins that mood to preview it, until you're back in the
+   game (a click or key outside Gitamp, PacketDrop and the terminal), which returns it to AUTO.
 
    This file loads before the game. The game calls window.LasGitamp(G) once with a bridge to its music internals and
    keeps the result as GA. Rules kept from the game: it never touches S or the game's random rolls (shuffle uses the
@@ -13,8 +15,8 @@
 window.LasGitamp = G => {
 const {AU,MUS,MOODS,SONGS,SONG_SETS,DONUT_SET,EMAIL,audio,setMood,setMusic,sndRand,RM} = G;
 
-/* ==== The playlist: Matt's songs (Day 1 rotation first), then the game's own loops ==== */
-const BAND = "Dreams Are For Sleep", OST = "Lift & Shift OST";
+/* ==== The playlist: Matt's songs, Day 1 rotation first (the menu and victory loops aren't on it: they have no moods) ==== */
+const BAND = "Dreams Are For Sleep";
 const songSecs = (M,bars) => {const s = M.song, N = s.steps || 16; return bars * N * 60 / M.bpm / (s.beat || N/4);};
 const TRACKS = [];
 const rotation = SONG_SETS.map(set => set[0].slice(5));
@@ -25,14 +27,17 @@ for (const k of [...rotation, ...Object.keys(SONGS).filter(k => !rotation.includ
   const note = k === "bitLove" ? "the donut shop" : k === "dreamOn" ? "Day 2's night shift" : "";
   TRACKS.push({title: SONGS[k].title || k, artist: BAND, set, bars, secs: songSecs(M,bars), note});
 }
-for (const [m,title,note] of [["calm","Menu","the main menu"],["victory","Victory","between clients"]]) if (MOODS[m]) {
-  const bars = 16; TRACKS.push({title, artist: OST, set: [m,m,m], bars, secs: bars * 4 * 60 / MOODS[m].bpm, note, loop: true});
-}
-const MOOD_NAMES = [["normal","Normal"],["tense","Tense"],["hot","On fire"],["alert","Red alert"]];
+const MOOD_NAMES = [["auto","Auto"],["normal","Normal"],["tense","Tense"],["hot","On fire"],["alert","Red alert"]];
 
 /* ==== State: all outside the game's S ==== */
-const st = {open: false, state: "stop", i: 0, mood: "normal", shuffle: false, repeat: false, bars: 0, t0: 0, played: 0};
-const keyOf = () => {const set = TRACKS[st.i].set; return st.mood === "alert" ? set[2] : st.mood === "normal" ? set[0] : set[1];};
+// mood: "auto" or a pinned one; own: the mood the game wants for its own song right now (it tells us every half bar)
+// repeat starts on, like the game: a client's song plays until the client is done
+const st = {open: false, state: "stop", i: 0, mood: "auto", own: "calm", shuffle: false, repeat: true, bars: 0, t0: 0, played: 0};
+const ownLevel = () => st.own.startsWith("alert") ? 2 : st.own.startsWith("tense") ? 1 : 0;
+const level = () => st.mood === "auto" ? ownLevel() : st.mood === "alert" ? 2 : st.mood === "normal" ? 0 : 1;
+const keyOf = () => TRACKS[st.i].set[level()];
+const moodLabel = () => st.mood !== "auto" ? MOOD_NAMES.find(m => m[0] === st.mood)[1].toUpperCase()
+  : "AUTO · " + ["NORMAL", MUS.heat >= 2 ? "ON FIRE" : "TENSE", "RED ALERT"][ownLevel()];
 const now = () => performance.now() / 1000;
 const elapsed = () => st.played + (st.state === "play" ? now() - st.t0 : 0);
 const mmss = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}`;
@@ -91,15 +96,18 @@ document.body.appendChild(el);
 const q = s => el.querySelector(s), cv = q("canvas"), g2 = cv.getContext("2d");
 
 let scroll = 0, ticker = null, raf = 0, an = null, bins = null;
-const titleText = () => {const t = TRACKS[st.i]; return `${st.i+1}. ${t.artist} - ${t.title}`;};
+// a client wrapping up plays the game's victory tune over Gitamp's song, and says so
+const VICTORY = {title: "Victory", artist: "Lift & Shift OST"};
+const victory = () => st.own === "victory" && st.state !== "stop";
+const nowTrack = () => victory() ? VICTORY : TRACKS[st.i];
+const titleText = () => {const t = nowTrack(); return victory() ? `${t.artist} - ${t.title}` : `${st.i+1}. ${t.artist} - ${t.title}`;};
 function render() {
-  const t = TRACKS[st.i], single = !!t.loop;
   const full = `${titleText()}  ***  `, w = 34;
   q(".ga-title").textContent = RM || full.length - 7 <= w ? titleText() : (full + full).slice(scroll % full.length, scroll % full.length + w);
   q(".ga-time").textContent = mmss(elapsed());
-  q(".ga-mood").textContent = single ? "LOOP" : MOOD_NAMES.find(m => m[0] === st.mood)[1].toUpperCase();
+  q(".ga-mood").textContent = victory() ? "VICTORY" : moodLabel();
   q(".ga-state").textContent = !AU.on ? "SOUND OFF (M)" : st.state === "play" ? "PLAYING" : st.state === "pause" ? "PAUSED" : "STOPPED · GAME MUSIC";
-  el.querySelectorAll("[data-mood]").forEach(b => {b.setAttribute("aria-pressed", String(!single && b.dataset.mood === st.mood)); b.disabled = single;});
+  el.querySelectorAll("[data-mood]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mood === st.mood)));
   el.querySelectorAll("[data-track]").forEach(b => b.setAttribute("aria-current", String(+b.dataset.track === st.i)));
   q('[data-ga="shuffle"]').setAttribute("aria-pressed", String(st.shuffle));
   q('[data-ga="repeat"]').setAttribute("aria-pressed", String(st.repeat));
@@ -153,7 +161,13 @@ el.addEventListener("click", e => {
   else if (b.dataset.mood) {st.mood = b.dataset.mood; if (st.state === "stop") play(); else {if (MUS.started) setMood(keyOf()); render();}}
   else if (b.dataset.track) {audio(); if (!MUS.on) setMusic(true); st.state = "play"; go(+b.dataset.track);}
 });
-el.addEventListener("keydown", e => e.stopPropagation()); // Space on a focused button is the button's, not the game's
+el.addEventListener("keydown", e => {e.stopPropagation(); if (e.key === "Escape" && document.activeElement) document.activeElement.blur();}); // Space on a focused button is the button's, not the game's; Esc lets go of Gitamp
+// back in the game (a click or a key anywhere but Gitamp, PacketDrop or the terminal): a pinned mood goes back to AUTO
+function backToGame(e) {
+  if (st.mood === "auto" || (e.target.closest && e.target.closest("#gitamp,#packetdrop,#devterm"))) return;
+  st.mood = "auto"; if (MUS.started && st.state !== "stop") setMood(keyOf()); render();
+}
+addEventListener("pointerdown", backToGame, true); addEventListener("keydown", backToGame, true);
 
 /* drag it by the title bar, kept on screen */
 let drag = null;
@@ -197,8 +211,9 @@ style.textContent += `
 #packetdrop{position:fixed;z-index:41;left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,calc(100vw - 32px));height:min(520px,calc(100vh - 32px));display:flex;flex-direction:column;
   background:#000;border:1px solid #11141a;border-radius:6px;box-shadow:0 14px 40px rgba(0,0,0,.7);font:12px/1.2 var(--f-mono,ui-monospace,monospace);color:#c9d1d9;overflow:hidden}
 #packetdrop[hidden]{display:none}
-#packetdrop:fullscreen{width:100vw;height:100vh;transform:none;left:0;top:0;border-radius:0}
-#packetdrop .pd-bar{display:flex;align-items:center;gap:8px;padding:4px 6px;background:repeating-linear-gradient(0deg,#4a505a 0 1px,#30353d 1px 3px);border-bottom:1px solid #11141a}
+#packetdrop:focus{outline:none}
+#packetdrop:fullscreen{width:100vw;height:100vh;transform:none!important;left:0!important;top:0!important;border-radius:0}
+#packetdrop .pd-bar{display:flex;align-items:center;gap:8px;padding:4px 6px;cursor:move;touch-action:none;background:repeating-linear-gradient(0deg,#4a505a 0 1px,#30353d 1px 3px);border-bottom:1px solid #11141a}
 #packetdrop .pd-bar b{background:#262a30;padding:0 6px;letter-spacing:.2em;font-size:11px;color:#f0b429;white-space:nowrap}
 #packetdrop .pd-bar span{color:#c9d1d9;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #packetdrop .pd-bar i{flex:1}
@@ -236,7 +251,7 @@ function pdClose() {
   if (document.fullscreenElement === pd && document.exitFullscreen) document.exitFullscreen().catch(() => {});
 }
 function pdText() {
-  const t = TRACKS[st.i];
+  const t = nowTrack();
   pd.querySelector(".pd-now").textContent = st.state !== "stop" ? `▶ ${t.artist} - ${t.title}` : "▶ the game's own music";
   pd.querySelector(".pd-drop").textContent = `packets dropped: ${pdS.drops}${RM ? " · still frame (reduced motion)" : ""}`;
 }
@@ -325,7 +340,21 @@ pd.addEventListener("click", e => {
   else if (b.dataset.pd === "full") {if (document.fullscreenElement === pd) document.exitFullscreen().catch(() => {}); else pd.requestFullscreen().catch(() => {});}
 });
 pd.addEventListener("keydown", e => e.stopPropagation());
-addEventListener("keydown", e => {if (e.key === "Escape" && !pd.hidden) {e.preventDefault(); e.stopImmediatePropagation(); pdClose();}}, true); // Esc closes it, not the game's pause
+/* drag it by the title bar like Gitamp, kept on screen (not while full screen). It opens centred; once dragged it stays put. */
+let pdDrag = null; const pdBar = pd.querySelector(".pd-bar");
+pdBar.addEventListener("pointerdown", e => {
+  if (e.target.closest("button") || document.fullscreenElement === pd) return;
+  const r = pd.getBoundingClientRect(); pdDrag = {dx: e.clientX - r.left, dy: e.clientY - r.top}; pdBar.setPointerCapture(e.pointerId);
+});
+pdBar.addEventListener("pointermove", e => {
+  if (!pdDrag) return;
+  const x = Math.min(Math.max(0, e.clientX - pdDrag.dx), innerWidth - pd.offsetWidth), y = Math.min(Math.max(0, e.clientY - pdDrag.dy), innerHeight - 30);
+  Object.assign(pd.style, {left: `${x}px`, top: `${y}px`, transform: "none"});
+});
+pdBar.addEventListener("pointerup", () => {pdDrag = null;}); pdBar.addEventListener("pointercancel", () => {pdDrag = null;});
+// Esc closes it while it has focus (it takes focus when opened or clicked); otherwise Esc is the game's pause
+pd.tabIndex = -1; pd.addEventListener("pointerdown", e => {if (!e.target.closest("button")) pd.focus({preventScroll: true});});
+addEventListener("keydown", e => {if (e.key === "Escape" && !pd.hidden && e.target.closest && e.target.closest("#packetdrop")) {e.preventDefault(); e.stopImmediatePropagation(); pdClose();}}, true);
 
 function open() {
   st.open = true; el.hidden = false; render();
@@ -338,12 +367,22 @@ return {
   TRACKS, open, close, act, st,
   vis: {open: pdOpen, close: pdClose, frame: pdFrame, kinds: PD_KINDS, state: () => ({open: !pd.hidden, drops: pdS.drops, packets: pdS.pk.length})},
   toggle: () => (st.open ? close() : open()),
-  // what the music should play while Gitamp has it (null: the game decides)
-  mood: () => st.state === "stop" ? null : keyOf(),
-  heat: () => st.state === "stop" ? null : st.mood === "hot" ? 2 : 0,
+  // what the music should play while Gitamp has it (null: the game decides). own is the game's mood for its own song,
+  // which AUTO plays on Gitamp's song. heat null: the game's own (AUTO follows its fires too).
+  mood: own => {
+    const was = victory(); if (own) st.own = own;
+    if (victory() !== was) {render(); if (!pd.hidden) pdText();}
+    return st.state === "stop" ? null : victory() ? "victory" : keyOf();
+  },
+  // a new client: select the song the game would play for it (it plays now if Gitamp is playing, or is ready on Play)
+  client: set => {
+    const i = TRACKS.findIndex(t => set && t.set[0] === set[0]); if (i < 0 || i === st.i) return;
+    if (st.state === "stop") {st.i = i; render();} else go(i);
+  },
+  heat: () => st.state === "stop" || st.mood === "auto" ? null : st.mood === "hot" ? 2 : 0,
   silent: () => st.state === "pause",
   // a bar went by: after the track's length, on to the next (or round again on repeat)
-  bar: () => {if (st.state !== "play") return; if (++st.bars >= TRACKS[st.i].bars) {if (st.repeat) {st.bars = 0;} else go(nextIndex(1));}},
+  bar: () => {if (st.state !== "play" || victory()) return; if (++st.bars >= TRACKS[st.i].bars) {if (st.repeat) {st.bars = 0;} else go(nextIndex(1));}},
 };
 };
 })();

@@ -64,6 +64,7 @@ export const SCENES = [
   // last, since it stays open over whatever comes next
   {name: '20-gitamp', build: `fresh(); G.togglePause(); G.devRun('gitamp'); G.GA.act('next');`, mode: 'paused'},
   {name: '21-packetdrop', build: `G.GA.act('vis'); for (let k = 1; k <= 40; k++) G.GA.vis.frame(performance.now() + k * 16);`, mode: 'paused'},
+  {name: '22-terminal', build: `G.GA.close(); const S = fresh(); G.devShow(); G.devLog('$ whoami'); G.devRun('whoami');`, mode: 'play'},
 ];
 
 /** Build a scene in the page, render one frame, and return what the checks need. */
@@ -79,6 +80,9 @@ export async function buildScene(page, scene) {
     return {mode: G.mode, prompt: G.S && G.S.prompt, keyText, fix: b('t-fix'), grab: b('t-grab'), toastsTop: document.getElementById('toasts').classList.contains('top'),
       alert: document.querySelector('.stage').classList.contains('alert'),
       overlayOpen: !ov.hidden, overlayScroll: ov.hidden ? 0 : ov.scrollTop + (ov.firstElementChild ? ov.firstElementChild.scrollTop : 0),
-      scrollW: document.documentElement.scrollWidth, innerW: innerWidth};
+      scrollW: document.documentElement.scrollWidth, innerW: innerWidth, innerH: innerHeight,
+      card: ov.hidden || !ov.firstElementChild ? null : (r => ({top: r.top, bottom: innerHeight - r.bottom, left: r.left, right: innerWidth - r.right}))(ov.firstElementChild.getBoundingClientRect()),
+      wins: ['devterm', 'gitamp', 'packetdrop'].map(id => document.getElementById(id)).filter(e => e && !e.hidden && !(document.fullscreenElement === e))
+        .map(e => { const r = e.getBoundingClientRect(); return {id: e.id, left: r.left, right: innerWidth - r.right, top: r.top, bottom: innerHeight - r.bottom}; })};
   })()`);
 }

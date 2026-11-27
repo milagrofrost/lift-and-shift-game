@@ -45,3 +45,36 @@ test('an older build shows which version is open and can go back', async ({page}
   await pick.selectOption({index: 0});
   await page.waitForURL(u => u.pathname === '/');
 });
+
+// Floating windows (DESIGN.md): the terminal and PacketDrop drag by their title bars, follow the mouse exactly, stay on
+// screen, and the game keeps running under the terminal.
+test('the terminal and PacketDrop drag by their title bars and stay on screen', async ({page}) => {
+  const errors = watchErrors(page);
+  await openHooked(page);
+  // a long session with the cheat menu open: the terminal stays a bounded window and its input line stays in view
+  await S(page, G => { G.newRun(); G.startSprint(1); G.play(); G.DEV.unlocked = true; G.devShow(); for (let k = 0; k < 80; k++) G.devRun('ping linda'); });
+  expect(await S(page, G => G.mode), 'opening the terminal paused the game').toBe('play');
+  const drag = async (win, bar, dx, dy) => {
+    const b = await page.locator(bar).boundingBox(), before = await page.locator(win).boundingBox();
+    await page.mouse.move(b.x + 40, b.y + b.height / 2); await page.mouse.down();
+    await page.mouse.move(b.x + 40 + dx, b.y + b.height / 2 + dy, {steps: 6}); await page.mouse.up();
+    return {before, after: await page.locator(win).boundingBox()};
+  };
+  const vp = page.viewportSize(), inView = async sel => { const b = await page.locator(sel).boundingBox(); return b.y >= -0.5 && b.y + b.height <= vp.height + 0.5; };
+  expect(await inView('#devterm'), 'a long terminal ran off the screen').toBe(true);
+  expect(await inView('#devinput'), "the terminal's input line scrolled out of view").toBe(true);
+  for (const [win, bar] of [['#devterm', '#devterm .devbar'], ['#packetdrop', '#packetdrop .pd-bar']]) {
+    if (win === '#packetdrop') await S(page, G => G.GA.vis.open());
+    const {before, after} = await drag(win, bar, -150, 120);
+    expect(Math.round(after.x - before.x), `${win} didn't follow the mouse sideways`).toBe(-150);
+    expect(Math.round(after.y - before.y), `${win} didn't follow the mouse down`).toBe(120);
+    const far = await drag(win, bar, 4000, 4000);
+    if (win === '#devterm') { expect(await inView('#devterm'), 'the terminal went off the bottom when dragged down').toBe(true);
+      await S(page, G => { for (let k = 0; k < 20; k++) G.devRun('ping linda'); }); expect(await inView('#devterm'), 'the dragged terminal grew off the bottom').toBe(true); }
+    expect(far.after.x + far.after.width, `${win} went off the right edge`).toBeLessThanOrEqual(vp.width + 0.5);
+    expect(far.after.y, `${win}'s title bar went off the bottom`).toBeLessThanOrEqual(vp.height - 30 + 0.5);
+    await page.locator(`${win} [aria-label^="Close"]`).click();
+    await expect(page.locator(win), `${win}'s × didn't close it after dragging`).toBeHidden();
+  }
+  expect(errors, errors.join('\n')).toEqual([]);
+});
