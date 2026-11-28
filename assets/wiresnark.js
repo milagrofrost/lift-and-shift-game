@@ -100,7 +100,7 @@ function scene() {
   const live = [], leak = [], breach = [];
   (s.cloud || []).forEach((c, i) => {
     if (!c || c.staged) return; live.push(cloud(i));
-    if (c.breach) breach.push(cloud(i)); else if (c.down) down.push(cloud(i)); else if (c.leakOn) leak.push([cloud(i), (c.leak || 0) / 100]);
+    if (c.breach) breach.push(cloud(i)); else if (c.down || c.out) down.push(cloud(i)); else if (c.fire > 0) fire.push(cloud(i)); else if (c.leakOn) leak.push([cloud(i), (c.leak || 0) / 100]);
   });
   const moving = (s.carry ? 1 : 0) + (s.bots || []).filter(b => b.carry).length + (s.pipe || []).length;
   const jammed = (s.pipe || []).filter(j => j.brk != null && j.t >= j.brk * j.dur).length;

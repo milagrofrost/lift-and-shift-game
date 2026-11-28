@@ -7,7 +7,7 @@
    v7: Gitamp gains PacketDrop, its visualizer.
    v10: adds the status page (assets/statuspage.js), opened with `curl status`.
    v11: adds WireSnark (assets/wiresnark.js), opened with `wiresnark` or `tcpdump`. */
-const CACHE = 'lift-shift-shell-v11';
+const CACHE = 'lift-shift-shell-v12';
 const GAME = '/lift-and-shift.html';
 const ASSETS = [GAME, '/pwa.js', '/manifest.webmanifest', '/assets/day2.js', '/assets/gitamp.js', '/assets/statuspage.js', '/assets/wiresnark.js',
   '/assets/lift-and-shift-logo.png', '/assets/icon-192.png',

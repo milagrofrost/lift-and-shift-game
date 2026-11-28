@@ -56,10 +56,13 @@ async function career({diff="normal",skill="expert",seed=1,maxClients=8,preset=n
     let c=cloud.find(o=>o.a.breach&&!o.a.down);if(c)return{pri:8,kind:"hold",...C(c)};
     c=racks.find(o=>o.a.down&&o.a.tier==="gold"&&!o.a.hidden);if(c)return{pri:8,kind:"hold",...R(c)};
     c=cloud.find(o=>o.a.down&&o.a.tier==="gold");if(c)return{pri:8,kind:G.successChance("gold")<P.retryMin?"rollback":"hold",...C(c)};
+    c=cloud.find(o=>o.a.out&&o.a.tier==="gold");if(c)return{pri:8,kind:"hold",...C(c)}; // burned out in the cloud (games with cloud fires)
     if(S.alert)return null;
     c=cloud.find(o=>o.a.down);if(c)return{pri:7,kind:G.successChance(c.a.tier)<P.retryMin?"rollback":"hold",...C(c)};
     c=racks.find(o=>o.a.down);if(c)return{pri:6,kind:"hold",...R(c)};
+    c=cloud.find(o=>o.a.out);if(c)return{pri:6,kind:"hold",...C(c)};
     c=racks.filter(o=>o.a.fire>0&&!o.a.hidden).sort((p,q)=>q.a.fire-p.a.fire)[0];if(c)return{pri:6,kind:"hold",...R(c)};
+    c=cloud.filter(o=>o.a.fire>0&&!o.a.out).sort((p,q)=>q.a.fire-p.a.fire)[0];if(c)return{pri:6,kind:"hold",...C(c)};
     // a jammed pipeline lane (games that have them): stand on the belt by the stuck server and hold E
     if(G.jammed){const pj=S.pipe.find(G.jammed);if(pj)return{pri:6,kind:"hold",x:G.pipeX(pj),y:G.laneY(pj.lane)};}
     const left=racks.length+S.wave.length;
