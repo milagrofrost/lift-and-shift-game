@@ -25,7 +25,7 @@ function incidents() {
   const s = S(); if (!s || !s.racks) return [];
   const out = [];
   for (const a of s.racks) if (a && !a.hidden && (a.down || a.fire > 0)) out.push(a.name);
-  for (const c of s.cloud || []) if (c && !c.staged && (c.down || c.breach)) out.push(c.name);
+  for (const c of s.cloud || []) if (c && !c.staged && (c.down || c.out || c.fire > 0 || c.breach)) out.push(c.name);
   return out;
 }
 
@@ -38,7 +38,7 @@ function components() {
   for (const j of s.pipe || []) mv(j.a, j.brk != null && j.t >= j.brk * j.dur ? ["Migrating · stuck on the pipeline", "y"] : ["Migrating", "b"]);
   for (const c of s.cloud || []) if (c && c.staged) mv(c.orig, ["Migrating · cloud copy failed, on-prem still up", "y"]);
   const rackSt = a => a.down ? ["Offline", "r"] : a.fire > 0 ? ["On fire", "r"] : moving.has(a) ? [`${moving.get(a)[0]} (still up on-prem)`, moving.get(a)[1]] : ["Operational", "g"];
-  const cloudSt = c => c.breach ? ["Breached", "r"] : c.down ? (c.rb > 0 ? ["Rolling back", "y"] : c.downT != null ? ["Down · cutover failed", "r"] : ["Offline", "r"]) : ["Operational", "g"];
+  const cloudSt = c => c.breach ? ["Breached", "r"] : c.out ? ["Offline · burned out", "r"] : c.fire > 0 ? ["On fire", "r"] : c.down ? (c.rb > 0 ? ["Rolling back", "y"] : c.downT != null ? ["Down · cutover failed", "r"] : ["Offline", "r"]) : ["Operational", "g"];
   const onRack = s.racks.filter(a => a && !a.hidden);
   return {
     prem: onRack.map(a => [a.name, ...rackSt(a)]),
